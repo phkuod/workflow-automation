@@ -1,18 +1,20 @@
 import { memo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
-import type { Step, StepType } from '../../types/workflow';
+import { Handle, Position } from '@xyflow/react';
+import type { Step } from '../../types/workflow';
 import { STEP_TYPE_INFO } from '../../types/workflow';
 import { CheckCircle, XCircle, Clock, Loader } from 'lucide-react';
 
-interface StepNodeData {
+interface StepNodeData extends Record<string, unknown> {
   step: Step;
   status?: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
   isSelected?: boolean;
 }
 
-const StepNode = memo(({ data }: NodeProps<StepNodeData>) => {
+// Using a more generic props type for compatibility with Xyflow v12
+const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: boolean }) => {
   const { step, status, isSelected } = data;
-  const typeInfo = STEP_TYPE_INFO[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
+  const activeSelected = isSelected || selected;
+  const typeInfo = (STEP_TYPE_INFO as any)[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
 
   const getStatusIcon = () => {
     switch (status) {
@@ -46,7 +48,7 @@ const StepNode = memo(({ data }: NodeProps<StepNodeData>) => {
     <div
       style={{
         background: 'var(--bg-secondary)',
-        border: `2px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border-color)'}`,
+        border: `2px solid ${activeSelected ? 'var(--accent-primary)' : 'var(--border-color)'}`,
         borderRadius: '10px',
         padding: '12px 16px',
         minWidth: '200px',

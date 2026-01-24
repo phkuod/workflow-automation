@@ -42,7 +42,6 @@ function EditorPage() {
     currentExecution,
     executionLogs,
     isLoading,
-    error,
   } = useWorkflowStore();
 
   // View state

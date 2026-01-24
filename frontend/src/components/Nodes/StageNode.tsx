@@ -1,10 +1,10 @@
 import { memo, useMemo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import type { Station } from '../../types/workflow';
 import { STEP_TYPE_INFO } from '../../types/workflow';
 import { Layers, ChevronRight, CheckCircle, XCircle, Clock, Loader } from 'lucide-react';
 
-interface StageNodeData {
+interface StageNodeData extends Record<string, unknown> {
   station: Station;
   stationIndex: number;
   status?: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
@@ -13,8 +13,10 @@ interface StageNodeData {
   onEditClick?: (stationId: string) => void;
 }
 
-const StageNode = memo(({ data, id }: NodeProps<StageNodeData>) => {
+// Using a more generic props type for compatibility with Xyflow v12
+const StageNode = memo(({ data, selected }: { data: StageNodeData; selected?: boolean }) => {
   const { station, stationIndex, status, isSelected, onDoubleClick, onEditClick } = data;
+  const activeSelected = isSelected || selected;
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -50,7 +52,7 @@ const StageNode = memo(({ data, id }: NodeProps<StageNodeData>) => {
       case 'running':
         return 'var(--accent-primary)';
       default:
-        return isSelected ? 'var(--accent-secondary)' : 'var(--border-color)';
+        return activeSelected ? 'var(--accent-secondary)' : 'var(--border-color)';
     }
   };
 
@@ -74,7 +76,7 @@ const StageNode = memo(({ data, id }: NodeProps<StageNodeData>) => {
         maxWidth: '280px',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
-        boxShadow: isSelected ? '0 0 20px rgba(139, 92, 246, 0.3)' : 'var(--shadow)',
+        boxShadow: activeSelected ? '0 0 20px rgba(139, 92, 246, 0.3)' : 'var(--shadow)',
       }}
     >
       {/* Left Handle - Input */}
@@ -137,8 +139,8 @@ const StageNode = memo(({ data, id }: NodeProps<StageNodeData>) => {
         gap: '6px',
         marginBottom: '12px',
       }}>
-        {stepsPreview.visibleSteps.map((step, index) => {
-          const typeInfo = STEP_TYPE_INFO[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
+        {stepsPreview.visibleSteps.map((step) => {
+          const typeInfo = (STEP_TYPE_INFO as any)[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
           return (
             <div 
               key={step.id}

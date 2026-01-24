@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
+
 import type { 
   Workflow, 
   WorkflowDefinition, 
@@ -37,7 +37,7 @@ interface WorkflowState {
   // Actions
   fetchWorkflows: () => Promise<void>;
   fetchWorkflow: (id: string) => Promise<void>;
-  createWorkflow: (name: string, description?: string) => Promise<Workflow>;
+  createWorkflow: (name: string, description?: string, definition?: WorkflowDefinition) => Promise<Workflow>;
   updateWorkflow: (id: string, data: Partial<Workflow>) => Promise<void>;
   deleteWorkflow: (id: string) => Promise<void>;
   saveWorkflow: () => Promise<void>;
@@ -97,10 +97,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
 
   // Create new workflow
-  createWorkflow: async (name: string, description?: string) => {
+  createWorkflow: async (name: string, description?: string, existingDefinition?: WorkflowDefinition) => {
     set({ isLoading: true, error: null });
     try {
-      const definition: WorkflowDefinition = {
+      const definition: WorkflowDefinition = existingDefinition || {
         stations: [],
         variables: {},
       };

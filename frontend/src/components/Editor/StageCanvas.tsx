@@ -13,15 +13,16 @@ import {
   Node,
   BackgroundVariant,
   MarkerType,
+  NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import StageNode from '../Nodes/StageNode';
-import type { Workflow, Station, Execution } from '../../types/workflow';
+import type { Workflow, Execution } from '../../types/workflow';
 import { Plus } from 'lucide-react';
 
-const nodeTypes = {
-  stage: StageNode,
+const nodeTypes: NodeTypes = {
+  stage: StageNode as any,
 };
 
 interface StageCanvasProps {
@@ -44,7 +45,7 @@ export default function StageCanvas({
   onStageConnect,
 }: StageCanvasProps) {
   // Convert workflow stations to React Flow nodes
-  const initialNodes = useMemo(() => {
+  const initialNodes = useMemo((): Node[] => {
     return workflow.definition.stations.map((station, index) => ({
       id: station.id,
       type: 'stage',

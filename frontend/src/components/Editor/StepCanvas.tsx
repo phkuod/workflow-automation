@@ -11,13 +11,14 @@ import {
   Node,
   BackgroundVariant,
   MarkerType,
+  NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import StepNode from '../Nodes/StepNode';
 import type { Station, Step, StepType, Execution } from '../../types/workflow';
 
-const nodeTypes = {
+const nodeTypes: NodeTypes = {
   step: StepNode,
 };
 
@@ -40,7 +41,6 @@ export default function StepCanvas({
   onStepClick,
   onStepUpdate,
   onStepConnect,
-  onAddStep,
 }: StepCanvasProps) {
   // Convert station steps to React Flow nodes
   const initialNodes = useMemo(() => {
@@ -128,7 +128,7 @@ export default function StepCanvas({
 
   // Handle node position change
   const handleNodesChange = useCallback(
-    (changes: any) => {
+    (changes: any[]) => {
       onNodesChange(changes);
       
       // Update step positions in workflow store

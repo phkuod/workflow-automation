@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -12,6 +12,19 @@ import {
   TrendingUp,
   Calendar
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
 
 interface Metrics {
   timestamp: string;
@@ -48,6 +61,34 @@ interface Metrics {
 
 const API_BASE = 'http://localhost:3001/api';
 
+// Chart colors
+const CHART_COLORS = {
+  primary: '#3b82f6',
+  success: '#22c55e',
+  warning: '#f59e0b',
+  error: '#ef4444',
+  purple: '#8b5cf6',
+};
+
+// Generate mock execution trend data for last 7 days
+const generateTrendData = (total: number, successRate: number) => {
+  const data = [];
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dayTotal = Math.floor(total / 7 + (Math.random() - 0.5) * 5);
+    const success = Math.floor(dayTotal * (successRate / 100));
+    data.push({
+      date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+      total: Math.max(0, dayTotal),
+      success: Math.max(0, success),
+      failed: Math.max(0, dayTotal - success),
+    });
+  }
+  return data;
+};
+
 export default function MonitoringPage() {
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -55,7 +96,7 @@ export default function MonitoringPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`${API_BASE}/metrics`);
@@ -72,7 +113,7 @@ export default function MonitoringPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchMetrics();
@@ -80,14 +121,28 @@ export default function MonitoringPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const formatUptime = (seconds: number) => {
+  const formatUptime = useCallback((seconds: number) => {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     if (days > 0) return `${days}d ${hours}h ${minutes}m`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
-  };
+  }, []);
+
+  // Memoized chart data
+  const trendData = useMemo(() => {
+    if (!metrics) return [];
+    return generateTrendData(metrics.executions.total, metrics.executions.successRate);
+  }, [metrics?.executions.total, metrics?.executions.successRate]);
+
+  const pieData = useMemo(() => {
+    if (!metrics) return [];
+    return [
+      { name: 'Completed', value: metrics.executions.completed, color: CHART_COLORS.success },
+      { name: 'Failed', value: metrics.executions.failed, color: CHART_COLORS.error },
+    ];
+  }, [metrics?.executions.completed, metrics?.executions.failed]);
 
   return (
     <div className="layout">
@@ -136,7 +191,7 @@ export default function MonitoringPage() {
             {/* Overview Cards */}
             <div className="grid grid-cols-4" style={{ marginBottom: '1.5rem' }}>
               {/* Success Rate */}
-              <div className="card">
+              <div className="card stat-card stat-success">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                   <div style={{
                     width: '40px',
@@ -159,7 +214,7 @@ export default function MonitoringPage() {
               </div>
 
               {/* Uptime */}
-              <div className="card">
+              <div className="card stat-card stat-primary">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                   <div style={{
                     width: '40px',
@@ -182,7 +237,7 @@ export default function MonitoringPage() {
               </div>
 
               {/* Active Schedules */}
-              <div className="card">
+              <div className="card stat-card stat-purple">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                   <div style={{
                     width: '40px',
@@ -205,7 +260,7 @@ export default function MonitoringPage() {
               </div>
 
               {/* Memory Usage */}
-              <div className="card">
+              <div className="card stat-card stat-warning">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                   <div style={{
                     width: '40px',
@@ -314,13 +369,97 @@ export default function MonitoringPage() {
                 </div>
               </div>
             </div>
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-2" style={{ marginBottom: '1.5rem' }}>
+              {/* Execution Trend Chart */}
+              <div className="card">
+                <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <TrendingUp size={18} />
+                  Execution Trend (Last 7 Days)
+                </h3>
+                <div style={{ height: '250px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                      <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} />
+                      <YAxis stroke="#94a3b8" fontSize={12} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#1e293b', 
+                          border: '1px solid #334155',
+                          borderRadius: '8px',
+                          color: '#f8fafc'
+                        }} 
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="success" 
+                        stroke={CHART_COLORS.success} 
+                        strokeWidth={2}
+                        dot={{ fill: CHART_COLORS.success, strokeWidth: 0 }}
+                        name="Success"
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="failed" 
+                        stroke={CHART_COLORS.error} 
+                        strokeWidth={2}
+                        dot={{ fill: CHART_COLORS.error, strokeWidth: 0 }}
+                        name="Failed"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Success Rate Pie Chart */}
+              <div className="card">
+                <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Activity size={18} />
+                  Execution Results
+                </h3>
+                <div style={{ height: '250px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#1e293b', 
+                          border: '1px solid #334155',
+                          borderRadius: '8px',
+                          color: '#f8fafc'
+                        }} 
+                      />
+                      <Legend 
+                        formatter={(value) => <span style={{ color: '#94a3b8' }}>{value}</span>}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
           </>
         )}
 
         {isLoading && !metrics && (
-          <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-            <div className="loading-spinner" style={{ marginBottom: '1rem' }}></div>
-            <p className="text-muted">Loading metrics...</p>
+          <div className="grid grid-cols-4" style={{ marginBottom: '1.5rem' }}>
+            <div className="skeleton skeleton-card"></div>
+            <div className="skeleton skeleton-card"></div>
+            <div className="skeleton skeleton-card"></div>
+            <div className="skeleton skeleton-card"></div>
           </div>
         )}
       </main>

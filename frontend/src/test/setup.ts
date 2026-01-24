@@ -16,8 +16,10 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
+class MockResizeObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
-};
+}
+
+(globalThis as any).ResizeObserver = MockResizeObserver;

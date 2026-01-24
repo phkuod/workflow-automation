@@ -98,7 +98,6 @@ class SchedulerService {
         console.error(`[Scheduler] Failed to execute workflow "${workflow.name}":`, error);
       }
     }, {
-      scheduled: true,
       timezone: 'Asia/Taipei',
     });
 

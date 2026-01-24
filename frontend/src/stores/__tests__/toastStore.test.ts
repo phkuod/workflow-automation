@@ -9,7 +9,7 @@ describe('toastStore', () => {
 
   describe('addToast', () => {
     it('should add a toast to the store', () => {
-      const { addToast, toasts } = useToastStore.getState();
+      const { addToast } = useToastStore.getState();
       
       addToast('success', 'Test message');
       

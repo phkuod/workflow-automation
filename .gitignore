@@ -55,4 +55,11 @@ ehthumbs.db
 .shared/
 .gemini/skills/
 .agent/
+.agents/
+.claude/
 .vscode/
+
+# Build artifacts
+*.tsbuildinfo
+*.d.ts
+*.d.ts.map
