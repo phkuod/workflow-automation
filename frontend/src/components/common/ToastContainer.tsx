@@ -1,5 +1,9 @@
 import { useToastStore, Toast } from '../../stores/toastStore';
-import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import Info from 'lucide-react/dist/esm/icons/info';
+import X from 'lucide-react/dist/esm/icons/x';
 
 const iconMap = {
   success: CheckCircle,

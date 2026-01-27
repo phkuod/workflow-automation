@@ -19,7 +19,7 @@ export class ScriptRunner {
     try {
       // Create sandbox context
       const sandbox: Context = {
-        inputData,
+        ...inputData,
         console: {
           log: (...args: any[]) => logs.push(args.map(a => JSON.stringify(a)).join(' ')),
           error: (...args: any[]) => logs.push(`[ERROR] ${args.map(a => JSON.stringify(a)).join(' ')}`),
@@ -236,15 +236,18 @@ ${code}
    * Replaces ${path.to.value} with actual values from context
    */
   static interpolateVariables(template: string, context: Record<string, any>): string {
-    return template.replace(/\$\{([^}]+)\}/g, (match, path) => {
+    // Handle both ${var} and {{var}}
+    const regex = /\$\{([^}]+)\}|\{\{([^}]+)\}\}/g;
+    return template.replace(regex, (match, path1, path2) => {
+      const path = (path1 || path2).trim();
       try {
-        const value = this.getValueByPath(context, path.trim());
+        const value = this.getValueByPath(context, path);
         if (typeof value === 'object') {
           return JSON.stringify(value);
         }
-        return String(value ?? '');
+        return String(value ?? match);
       } catch {
-        return match; // Keep original if can't resolve
+        return match;
       }
     });
   }

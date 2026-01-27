@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import type { Station, StepType } from '../../types/workflow';
 import { STEP_TYPE_INFO } from '../../types/workflow';
-import { X, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x';
+import Search from 'lucide-react/dist/esm/icons/search';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 
 interface NodeLibraryProps {
   onAddStep: (type: StepType) => void;
@@ -13,15 +16,15 @@ interface NodeLibraryProps {
 const NODE_CATEGORIES = {
   triggers: {
     label: '📌 Triggers',
-    types: ['trigger-manual', 'trigger-cron'] as StepType[],
+    types: ['trigger-manual', 'trigger-cron', 'trigger-webhook'] as StepType[],
   },
   actions: {
     label: '⚙️ Actions',
-    types: ['script-js', 'script-python', 'http-request', 'set-variable'] as StepType[],
+    types: ['script-js', 'script-python', 'http-request', 'set-variable', 'action-email', 'action-slack'] as StepType[],
   },
   flow: {
     label: '🔀 Flow Control',
-    types: ['if-else'] as StepType[],
+    types: ['if-else', 'wait'] as StepType[],
   },
 };
 

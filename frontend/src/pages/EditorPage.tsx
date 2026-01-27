@@ -8,6 +8,7 @@ import StepCanvas from '../components/Editor/StepCanvas';
 import EditorBreadcrumb from '../components/Editor/EditorBreadcrumb';
 import NodeLibrary from '../components/Editor/NodeLibrary';
 import NodeConfigPanel from '../components/Editor/NodeConfigPanel';
+import StationConfigPanel from '../components/Editor/StationConfigPanel';
 import SimulationPanel from '../components/Editor/SimulationPanel';
 import type { StepType } from '../types/workflow';
 import { 
@@ -37,6 +38,10 @@ function EditorPage() {
     deleteStep,
     selectStep,
     selectedStepId,
+    selectedStationId,
+    selectStation,
+    updateStation,
+    deleteStation,
     simulateWorkflow,
     isSimulating,
     currentExecution,
@@ -78,6 +83,12 @@ function EditorPage() {
       .find(s => s.id === selectedStepId) || null;
   }, [selectedStepId, currentWorkflow]);
 
+  // Get selected station
+  const selectedStation = useMemo(() => {
+    if (!selectedStationId || !currentWorkflow) return null;
+    return currentWorkflow.definition.stations.find(s => s.id === selectedStationId) || null;
+  }, [selectedStationId, currentWorkflow]);
+
   // Breadcrumb items
   const breadcrumbItems = useMemo(() => {
     const items = [
@@ -113,7 +124,8 @@ function EditorPage() {
   const handleBackToStageView = useCallback(() => {
     setEditorView({ type: 'stage-view' });
     selectStep(null);
-  }, [selectStep]);
+    selectStation(null);
+  }, [selectStep, selectStation]);
 
   const handleAddStation = useCallback(() => {
     const name = prompt('Enter stage name:');
@@ -146,12 +158,18 @@ function EditorPage() {
     selectStep(stepId);
   }, [selectStep]);
 
+  const handleStationClick = useCallback((stationId: string) => {
+    selectStation(stationId);
+  }, [selectStation]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (selectedStepId) {
           selectStep(null);
+        } else if (selectedStationId) {
+          selectStation(null);
         } else if (editorView.type === 'step-view') {
           handleBackToStageView();
         }
@@ -160,7 +178,7 @@ function EditorPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedStepId, editorView, selectStep, handleBackToStageView]);
+  }, [selectedStepId, selectedStationId, editorView, selectStep, selectStation, handleBackToStageView]);
 
   // Loading state
   if (isLoading && !currentWorkflow) {
@@ -288,6 +306,7 @@ function EditorPage() {
               execution={currentExecution}
               isSimulating={isSimulating}
               onStageDoubleClick={handleStageDoubleClick}
+              onStageClick={handleStationClick}
               onAddStation={handleAddStation}
             />
           )}
@@ -305,12 +324,26 @@ function EditorPage() {
         </div>
 
         {/* Config Panel */}
-        {selectedStep && (
+        {selectedStep && currentWorkflow && (
           <NodeConfigPanel 
             step={selectedStep}
+            workflow={currentWorkflow}
             onUpdate={(data) => updateStep(selectedStep.id, data)}
             onDelete={() => deleteStep(selectedStep.id)}
             onClose={() => selectStep(null)}
+          />
+        )}
+
+        {selectedStation && currentWorkflow && editorView.type === 'stage-view' && (
+          <StationConfigPanel 
+            station={selectedStation}
+            workflow={currentWorkflow}
+            onUpdate={(data) => {
+              updateStation(selectedStation.id, data);
+              saveWorkflow();
+            }}
+            onDelete={() => deleteStation(selectedStation.id)}
+            onClose={() => selectStation(null)}
           />
         )}
 

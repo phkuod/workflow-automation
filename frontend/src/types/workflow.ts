@@ -22,6 +22,11 @@ export interface Station {
   steps: Step[];
   position: { x: number; y: number };
   condition?: StationCondition;
+  iterator?: {
+    enabled: boolean;
+    sourceVariable: string;
+    itemVariableName: string;
+  };
 }
 
 export interface StationCondition {
@@ -38,6 +43,12 @@ export interface Step {
   inputVars?: VariableMapping[];
   outputVars?: VariableDefinition[];
   timeout?: number;
+  retryPolicy?: {
+    maxAttempts: number;
+    initialInterval: number;
+    backoffCoefficient: number;
+    maxInterval?: number;
+  };
 }
 
 export type StepType = 
@@ -47,7 +58,11 @@ export type StepType =
   | 'script-python'
   | 'http-request'
   | 'if-else'
-  | 'set-variable';
+  | 'set-variable'
+  | 'wait'
+  | 'trigger-webhook'
+  | 'action-email'
+  | 'action-slack';
 
 export interface StepConfig {
   code?: string;
@@ -59,6 +74,18 @@ export interface StepConfig {
   variableName?: string;
   variableValue?: string;
   cronExpression?: string;
+  duration?: number;
+  unit?: 'seconds' | 'minutes' | 'hours';
+  webhookMethod?: 'GET' | 'POST' | 'PUT';
+  // Email fields
+  emailTo?: string;
+  emailSubject?: string;
+  emailBody?: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  // Slack fields
+  slackWebhookUrl?: string;
+  slackMessage?: string;
 }
 
 export interface VariableMapping {
@@ -148,4 +175,8 @@ export const STEP_TYPE_INFO: Record<StepType, { label: string; icon: string; col
   'http-request': { label: 'HTTP Request', icon: '🔗', color: '#8b5cf6' },
   'if-else': { label: 'If/Else', icon: '🔀', color: '#ec4899' },
   'set-variable': { label: 'Set Variable', icon: '📝', color: '#6366f1' },
+  'wait': { label: 'Wait', icon: '⏳', color: '#64748b' },
+  'trigger-webhook': { label: 'Webhook Trigger', icon: '⚡', color: '#22c55e' },
+  'action-email': { label: 'Send Email', icon: '📧', color: '#3b82f6' },
+  'action-slack': { label: 'Slack Message', icon: '💬', color: '#4a154b' },
 };

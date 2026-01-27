@@ -2,7 +2,10 @@ import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { Step } from '../../types/workflow';
 import { STEP_TYPE_INFO } from '../../types/workflow';
-import { CheckCircle, XCircle, Clock, Loader } from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import Loader from 'lucide-react/dist/esm/icons/loader';
 
 interface StepNodeData extends Record<string, unknown> {
   step: Step;

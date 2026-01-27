@@ -1,4 +1,5 @@
-import { ChevronRight, Home } from 'lucide-react';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Home from 'lucide-react/dist/esm/icons/home';
 
 interface BreadcrumbItem {
   id: string;

@@ -18,4 +18,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['react', 'react-dom'],
+        }
+      }
+    }
+  },
+  esbuild: {
+    drop: ['console', 'debugger'],
+  },
 });

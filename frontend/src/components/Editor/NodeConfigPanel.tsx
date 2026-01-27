@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react';
-import type { Step } from '../../types/workflow';
+import type { Step, Workflow } from '../../types/workflow';
 import { STEP_TYPE_INFO } from '../../types/workflow';
-import { X, Trash2, Save } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Save from 'lucide-react/dist/esm/icons/save';
+import Database from 'lucide-react/dist/esm/icons/database';
+import { VariablePicker } from './VariablePicker';
 
 interface NodeConfigPanelProps {
   step: Step;
+  workflow: Workflow;
   onUpdate: (data: Partial<Step>) => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-function NodeConfigPanel({ step, onUpdate, onDelete, onClose }: NodeConfigPanelProps) {
+function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeConfigPanelProps) {
   const [name, setName] = useState(step.name);
   const [code, setCode] = useState(step.config.code || '');
   const [url, setUrl] = useState(step.config.url || '');
@@ -20,6 +25,27 @@ function NodeConfigPanel({ step, onUpdate, onDelete, onClose }: NodeConfigPanelP
   const [variableName, setVariableName] = useState(step.config.variableName || '');
   const [variableValue, setVariableValue] = useState(step.config.variableValue || '');
   const [cronExpression, setCronExpression] = useState(step.config.cronExpression || '');
+  const [duration, setDuration] = useState(step.config.duration || 5);
+  const [unit, setUnit] = useState(step.config.unit || 'seconds');
+  const [webhookMethod, setWebhookMethod] = useState(step.config.webhookMethod || 'POST');
+  
+  // Email fields
+  const [emailTo, setEmailTo] = useState(step.config.emailTo || '');
+  const [emailSubject, setEmailSubject] = useState(step.config.emailSubject || '');
+  const [emailBody, setEmailBody] = useState(step.config.emailBody || '');
+  
+  // Slack fields
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState(step.config.slackWebhookUrl || '');
+  const [slackMessage, setSlackMessage] = useState(step.config.slackMessage || '');
+  
+  // Picker state
+  const [activePicker, setActivePicker] = useState<string | null>(null);
+
+  // Retry Policy
+  const [retryEnabled, setRetryEnabled] = useState(!!step.retryPolicy);
+  const [maxAttempts, setMaxAttempts] = useState(step.retryPolicy?.maxAttempts || 3);
+  const [initialInterval, setInitialInterval] = useState(step.retryPolicy?.initialInterval || 1000);
+  const [backoffCoefficient, setBackoffCoefficient] = useState(step.retryPolicy?.backoffCoefficient || 2);
 
   useEffect(() => {
     setName(step.name);
@@ -31,6 +57,18 @@ function NodeConfigPanel({ step, onUpdate, onDelete, onClose }: NodeConfigPanelP
     setVariableName(step.config.variableName || '');
     setVariableValue(step.config.variableValue || '');
     setCronExpression(step.config.cronExpression || '');
+    setDuration(step.config.duration || 5);
+    setUnit(step.config.unit || 'seconds');
+    setWebhookMethod(step.config.webhookMethod || 'POST');
+    setEmailTo(step.config.emailTo || '');
+    setEmailSubject(step.config.emailSubject || '');
+    setEmailBody(step.config.emailBody || '');
+    setSlackWebhookUrl(step.config.slackWebhookUrl || '');
+    setSlackMessage(step.config.slackMessage || '');
+    setRetryEnabled(!!step.retryPolicy);
+    setMaxAttempts(step.retryPolicy?.maxAttempts || 3);
+    setInitialInterval(step.retryPolicy?.initialInterval || 1000);
+    setBackoffCoefficient(step.retryPolicy?.backoffCoefficient || 2);
   }, [step]);
 
   const handleSave = () => {
@@ -56,9 +94,37 @@ function NodeConfigPanel({ step, onUpdate, onDelete, onClose }: NodeConfigPanelP
       case 'trigger-cron':
         config.cronExpression = cronExpression;
         break;
+      case 'wait':
+        config.duration = Number(duration);
+        config.unit = unit as any;
+        break;
+      case 'trigger-webhook':
+        config.webhookMethod = webhookMethod as any;
+        break;
+      case 'action-email':
+        config.emailTo = emailTo;
+        config.emailSubject = emailSubject;
+        config.emailBody = emailBody;
+        break;
+      case 'action-slack':
+        config.slackWebhookUrl = slackWebhookUrl;
+        config.slackMessage = slackMessage;
+        break;
     }
 
-    onUpdate({ name, config });
+    const updateData: Partial<Step> = { name, config };
+    
+    if (retryEnabled) {
+      updateData.retryPolicy = {
+        maxAttempts: Number(maxAttempts),
+        initialInterval: Number(initialInterval),
+        backoffCoefficient: Number(backoffCoefficient)
+      };
+    } else {
+      updateData.retryPolicy = undefined;
+    }
+
+    onUpdate(updateData);
   };
 
   const typeInfo = STEP_TYPE_INFO[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
@@ -111,17 +177,47 @@ print(json.dumps({'result': result}))`}
         return (
           <>
             <div className="form-group">
-              <label className="form-label">URL</label>
-              <input
-                type="text"
-                className="form-input"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://api.example.com/data"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="form-input"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://api.example.com/data"
+                />
+                <button 
+                  className={`btn btn-icon btn-sm ${activePicker === 'url' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setActivePicker(activePicker === 'url' ? null : 'url')}
+                >
+                  <Database size={14} />
+                </button>
+              </div>
+              {activePicker === 'url' && (
+                <div className="mt-2">
+                  <VariablePicker 
+                    workflow={workflow} 
+                    currentStepId={step.id} 
+                    onSelect={(v) => {
+                      setUrl(url + v);
+                      setActivePicker(null);
+                    }} 
+                  />
+                </div>
+              )}
               <p className="text-xs text-muted mt-2">
-                Use <code>{'${variable}'}</code> for dynamic values
+                Use <code>{'${variable}'}</code> for dynamic values or click the database icon to pick upstream outputs.
               </p>
+              <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded text-xs border border-gray-200 dark:border-gray-700">
+                <p className="font-semibold mb-1">Output Structure:</p>
+                <div className="font-mono text-muted">
+                  {'{'}<br/>
+                  &nbsp;&nbsp;status: number,<br/>
+                  &nbsp;&nbsp;statusText: string,<br/>
+                  &nbsp;&nbsp;headers: object,<br/>
+                  &nbsp;&nbsp;data: any // Response body<br/>
+                  {'}'}
+                </div>
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">Method</label>
@@ -139,7 +235,15 @@ print(json.dumps({'result': result}))`}
             </div>
             {method !== 'GET' && (
               <div className="form-group">
-                <label className="form-label">Request Body (JSON)</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="form-label">Request Body (JSON)</label>
+                  <button 
+                    className="btn btn-ghost btn-xs flex gap-1 items-center"
+                    onClick={() => setActivePicker(activePicker === 'body' ? null : 'body')}
+                  >
+                    <Database size={10} /> Insert Variable
+                  </button>
+                </div>
                 <textarea
                   className="form-textarea"
                   value={body}
@@ -147,6 +251,18 @@ print(json.dumps({'result': result}))`}
                   placeholder='{"key": "value"}'
                   style={{ fontFamily: 'monospace' }}
                 />
+                {activePicker === 'body' && (
+                  <div className="mt-2">
+                    <VariablePicker 
+                      workflow={workflow} 
+                      currentStepId={step.id} 
+                      onSelect={(v) => {
+                        setBody(body + v);
+                        setActivePicker(null);
+                      }} 
+                    />
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -156,15 +272,36 @@ print(json.dumps({'result': result}))`}
         return (
           <div className="form-group">
             <label className="form-label">Condition Expression</label>
-            <input
-              type="text"
-              className="form-input"
-              value={condition}
-              onChange={(e) => setCondition(e.target.value)}
-              placeholder="${step1.output.value} > 10"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className="form-input"
+                value={condition}
+                onChange={(e) => setCondition(e.target.value)}
+                placeholder="${step1.output.value} > 10"
+              />
+              <button 
+                className={`btn btn-icon btn-sm ${activePicker === 'condition' ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => setActivePicker(activePicker === 'condition' ? null : 'condition')}
+              >
+                <Database size={14} />
+              </button>
+            </div>
+            {activePicker === 'condition' && (
+              <div className="mt-2">
+                <VariablePicker 
+                  workflow={workflow} 
+                  currentStepId={step.id} 
+                  onSelect={(v) => {
+                    const cleanVar = v.replace(/[{}]/g, ''); // Conditions in ScriptRunner often don't want {{}} wrapper if they are evaluated directly as JS
+                    setCondition(condition + (condition ? ' && ' : '') + cleanVar);
+                    setActivePicker(null);
+                  }} 
+                />
+              </div>
+            )}
             <p className="text-xs text-muted mt-2">
-              JavaScript expression that evaluates to true/false
+              JavaScript expression that evaluates to true/false.
             </p>
           </div>
         );
@@ -184,6 +321,7 @@ print(json.dumps({'result': result}))`}
             </div>
             <div className="form-group">
               <label className="form-label">Value</label>
+              <div className="flex gap-2">
               <input
                 type="text"
                 className="form-input"
@@ -191,6 +329,25 @@ print(json.dumps({'result': result}))`}
                 onChange={(e) => setVariableValue(e.target.value)}
                 placeholder="${step1.output.result}"
               />
+              <button 
+                className={`btn btn-icon btn-sm ${activePicker === 'variableValue' ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => setActivePicker(activePicker === 'variableValue' ? null : 'variableValue')}
+              >
+                <Database size={14} />
+              </button>
+            </div>
+            {activePicker === 'variableValue' && (
+              <div className="mt-2">
+                <VariablePicker 
+                  workflow={workflow} 
+                  currentStepId={step.id} 
+                  onSelect={(v) => {
+                    setVariableValue(variableValue + v);
+                    setActivePicker(null);
+                  }} 
+                />
+              </div>
+            )}
             </div>
           </>
         );
@@ -217,6 +374,192 @@ print(json.dumps({'result': result}))`}
           <div className="text-muted text-sm">
             This trigger is activated manually when you run the workflow.
           </div>
+        );
+
+      case 'wait':
+        return (
+          <div className="flex gap-4">
+            <div className="form-group flex-1">
+              <label className="form-label">Duration</label>
+              <input
+                type="number"
+                className="form-input"
+                value={duration}
+                onChange={(e) => setDuration(Number(e.target.value))}
+                min={1}
+              />
+            </div>
+            <div className="form-group flex-1">
+              <label className="form-label">Unit</label>
+              <select
+                className="form-select"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as any)}
+              >
+                <option value="seconds">Seconds</option>
+                <option value="minutes">Minutes</option>
+                <option value="hours">Hours</option>
+              </select>
+            </div>
+          </div>
+        );
+
+      case 'trigger-webhook':
+        const webhookUrl = `${window.location.protocol}//${window.location.host}/api/webhooks/${step.id}`;
+        return (
+          <>
+            <div className="form-group">
+              <label className="form-label">Webhook URL</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="form-input"
+                  value={webhookUrl}
+                  readOnly
+                />
+                <button 
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => navigator.clipboard.writeText(webhookUrl)}
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Expected Method</label>
+              <select
+                className="form-select"
+                value={webhookMethod}
+                onChange={(e) => setWebhookMethod(e.target.value as any)}
+              >
+                <option value="POST">POST</option>
+                <option value="GET">GET</option>
+                <option value="PUT">PUT</option>
+              </select>
+            </div>
+          </>
+        );
+
+      case 'action-email':
+        return (
+          <>
+            <div className="form-group">
+              <label className="form-label">To</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="form-input"
+                  value={emailTo}
+                  onChange={(e) => setEmailTo(e.target.value)}
+                  placeholder="user@example.com"
+                />
+                <button 
+                  className={`btn btn-icon btn-sm ${activePicker === 'emailTo' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setActivePicker(activePicker === 'emailTo' ? null : 'emailTo')}
+                >
+                  <Database size={14} />
+                </button>
+              </div>
+              {activePicker === 'emailTo' && (
+                <div className="mt-2">
+                  <VariablePicker 
+                    workflow={workflow} 
+                    currentStepId={step.id} 
+                    onSelect={(v) => {
+                      setEmailTo(emailTo + v);
+                      setActivePicker(null);
+                    }} 
+                  />
+                </div>
+              )}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Subject</label>
+              <input
+                type="text"
+                className="form-input"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Workflow Notification"
+              />
+            </div>
+            <div className="form-group">
+              <div className="flex justify-between items-center mb-1">
+                <label className="form-label">Body</label>
+                <button 
+                  className="btn btn-ghost btn-xs flex gap-1 items-center"
+                  onClick={() => setActivePicker(activePicker === 'emailBody' ? null : 'emailBody')}
+                >
+                  <Database size={10} /> Insert Variable
+                </button>
+              </div>
+              <textarea
+                className="form-textarea"
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                placeholder="Hello, the result is {{path}}"
+                style={{ minHeight: '120px' }}
+              />
+              {activePicker === 'emailBody' && (
+                <div className="mt-2">
+                  <VariablePicker 
+                    workflow={workflow} 
+                    currentStepId={step.id} 
+                    onSelect={(v) => {
+                      setEmailBody(emailBody + v);
+                      setActivePicker(null);
+                    }} 
+                  />
+                </div>
+              )}
+            </div>
+          </>
+        );
+
+      case 'action-slack':
+        return (
+          <>
+            <div className="form-group">
+              <label className="form-label">Slack Webhook URL</label>
+              <input
+                type="text"
+                className="form-input"
+                value={slackWebhookUrl}
+                onChange={(e) => setSlackWebhookUrl(e.target.value)}
+                placeholder="https://hooks.slack.com/services/..."
+              />
+            </div>
+            <div className="form-group">
+              <div className="flex justify-between items-center mb-1">
+                <label className="form-label">Message</label>
+                <button 
+                  className="btn btn-ghost btn-xs flex gap-1 items-center"
+                  onClick={() => setActivePicker(activePicker === 'slackMessage' ? null : 'slackMessage')}
+                >
+                  <Database size={10} /> Insert Variable
+                </button>
+              </div>
+              <textarea
+                className="form-textarea"
+                value={slackMessage}
+                onChange={(e) => setSlackMessage(e.target.value)}
+                placeholder="Workflow notification: {{status}}"
+                style={{ minHeight: '100px' }}
+              />
+              {activePicker === 'slackMessage' && (
+                <div className="mt-2">
+                  <VariablePicker 
+                    workflow={workflow} 
+                    currentStepId={step.id} 
+                    onSelect={(v) => {
+                      setSlackMessage(slackMessage + v);
+                      setActivePicker(null);
+                    }} 
+                  />
+                </div>
+              )}
+            </div>
+          </>
         );
 
       default:
@@ -283,6 +626,62 @@ print(json.dumps({'result': result}))`}
         </div>
 
         {renderConfigFields()}
+
+        {/* Retry Policy - Only for actions, not triggers */}
+        {!step.type.startsWith('trigger-') && step.type !== 'if-else' && step.type !== 'wait' && (
+          <div className="mt-8 pt-6 border-t border-color">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-semibold">Retry Policy</h4>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={retryEnabled}
+                  onChange={(e) => setRetryEnabled(e.target.checked)}
+                />
+                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {retryEnabled && (
+              <div className="space-y-4">
+                <div className="form-group">
+                  <label className="form-label">Max Attempts</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={maxAttempts}
+                    onChange={(e) => setMaxAttempts(Number(e.target.value))}
+                    min={1}
+                    max={10}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Initial Interval (ms)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={initialInterval}
+                    onChange={(e) => setInitialInterval(Number(e.target.value))}
+                    min={100}
+                    step={100}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Backoff Coefficient</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={backoffCoefficient}
+                    onChange={(e) => setBackoffCoefficient(Number(e.target.value))}
+                    min={1}
+                    step={0.1}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Footer */}

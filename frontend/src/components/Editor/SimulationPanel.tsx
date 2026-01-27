@@ -1,6 +1,12 @@
 import { useRef, useEffect } from 'react';
 import type { Execution, ExecutionLog } from '../../types/workflow';
-import { X, CheckCircle, XCircle, Clock, AlertCircle, Info, Bug } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import Info from 'lucide-react/dist/esm/icons/info';
+import Bug from 'lucide-react/dist/esm/icons/bug';
 
 interface SimulationPanelProps {
   execution: Execution | null;

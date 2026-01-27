@@ -32,6 +32,7 @@ interface WorkflowState {
   isLoading: boolean;
   error: string | null;
   selectedStepId: string | null;
+  selectedStationId: string | null;
   isSimulating: boolean;
   
   // Actions
@@ -51,6 +52,7 @@ interface WorkflowState {
   updateStep: (stepId: string, data: Partial<Step>) => void;
   deleteStep: (stepId: string) => void;
   selectStep: (stepId: string | null) => void;
+  selectStation: (stationId: string | null) => void;
   
   // Execution actions
   executeWorkflow: (inputData?: Record<string, any>) => Promise<Execution>;
@@ -72,6 +74,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   isLoading: false,
   error: null,
   selectedStepId: null,
+  selectedStationId: null,
   isSimulating: false,
 
   // Fetch all workflows
@@ -163,7 +166,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   // Set current workflow
   setCurrentWorkflow: (workflow) => {
-    set({ currentWorkflow: workflow, selectedStepId: null });
+    set({ currentWorkflow: workflow, selectedStepId: null, selectedStationId: null });
   },
 
   // Add a new station
@@ -297,7 +300,12 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   // Select step
   selectStep: (stepId) => {
-    set({ selectedStepId: stepId });
+    set({ selectedStepId: stepId, selectedStationId: null });
+  },
+  
+  // Select station
+  selectStation: (stationId) => {
+    set({ selectedStationId: stationId, selectedStepId: null });
   },
 
   // Execute workflow
