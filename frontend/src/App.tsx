@@ -5,6 +5,7 @@ import MonitoringPage from './pages/MonitoringPage';
 import Sidebar from './components/common/Sidebar';
 import ToastContainer from './components/common/ToastContainer';
 import { ConfirmProvider } from './components/common/ConfirmDialog';
+import { InputProvider } from './components/common/InputDialog';
 
 // Layout with sidebar for main pages
 function MainLayout({ children }: { children: React.ReactNode }) {
@@ -14,19 +15,22 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <ConfirmProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<MainLayout><DashboardPage /></MainLayout>} />
-          <Route path="/monitoring" element={<MainLayout><MonitoringPage /></MainLayout>} />
-          {/* Editor pages without sidebar for full-screen editing */}
-          <Route path="/editor/:id" element={<EditorPage />} />
-          <Route path="/editor" element={<EditorPage />} />
-        </Routes>
-      </BrowserRouter>
-      <ToastContainer />
+      <InputProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<MainLayout><DashboardPage /></MainLayout>} />
+            <Route path="/monitoring" element={<MainLayout><MonitoringPage /></MainLayout>} />
+            {/* Editor pages without sidebar for full-screen editing */}
+            <Route path="/editor/:id" element={<EditorPage />} />
+            <Route path="/editor" element={<EditorPage />} />
+          </Routes>
+        </BrowserRouter>
+        <ToastContainer />
+      </InputProvider>
     </ConfirmProvider>
   );
 }
 
 export default App;
+

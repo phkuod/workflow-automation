@@ -22,6 +22,13 @@ export interface Station {
   steps: Step[];
   position: { x: number; y: number };
   condition?: StationCondition;
+  iterator?: StationIterator;
+}
+
+export interface StationIterator {
+  enabled: boolean;
+  sourceVariable: string;
+  itemVariableName?: string;
 }
 
 export interface StationCondition {
@@ -38,16 +45,30 @@ export interface Step {
   inputVars?: VariableMapping[];
   outputVars?: VariableDefinition[];
   timeout?: number;
+  retryPolicy?: RetryPolicy;
+}
+
+export interface RetryPolicy {
+  maxAttempts: number;
+  initialInterval: number;
+  backoffCoefficient?: number;
+  maxInterval?: number;
 }
 
 export type StepType = 
   | 'trigger-manual'
   | 'trigger-cron'
+  | 'trigger-webhook'
   | 'script-js'
   | 'script-python'
   | 'http-request'
   | 'if-else'
-  | 'set-variable';
+  | 'set-variable'
+  | 'wait'
+  | 'notification-email'
+  | 'notification-slack'
+  | 'action-email'
+  | 'action-slack';
 
 export interface StepConfig {
   // Script nodes
@@ -68,6 +89,22 @@ export interface StepConfig {
   
   // Cron
   cronExpression?: string;
+  
+  // Webhook Trigger
+  webhookMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'any';
+  
+  // Wait Node
+  duration?: number;
+  unit?: 'seconds' | 'minutes' | 'hours';
+  
+  // Email Notification
+  emailTo?: string;
+  emailSubject?: string;
+  emailBody?: string;
+  
+  // Slack Notification
+  slackWebhookUrl?: string;
+  slackMessage?: string;
 }
 
 export interface VariableMapping {

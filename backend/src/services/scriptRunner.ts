@@ -75,25 +75,29 @@ export class ScriptRunner {
   /**
    * Execute Python code via subprocess
    */
-  static async executePython(code: string, inputData: Record<string, any>, timeout = 30000): Promise<ScriptResult> {
+  static async executePython(code: string, context: { variables: Record<string, any>, inputData: Record<string, any>, steps: Record<string, any> }, timeout = 30000): Promise<ScriptResult> {
     return new Promise((resolve) => {
       const logs: string[] = [];
       let output = '';
       let errorOutput = '';
 
-      // Prepare Python script with input data
+      // Prepare Python script with input data and steps (Zero-Config access)
       const pythonScript = `
 import json
 import sys
 
-# Input data
-input_data = json.loads('''${JSON.stringify(inputData)}''')
+# Input data (legacy)
+input_data = json.loads('''${JSON.stringify(context.inputData)}''')
+
+# Steps (Zero-Config access) - access via steps['Step Name']['output']
+steps = json.loads('''${JSON.stringify(context.steps)}''')
 
 # User code
 ${code}
 `;
 
-      const python = spawn('python', ['-c', pythonScript], {
+      const pythonCmd = process.env.PYTHON_CMD || 'python';
+      const python = spawn(pythonCmd, ['-c', pythonScript], {
         timeout
       });
 

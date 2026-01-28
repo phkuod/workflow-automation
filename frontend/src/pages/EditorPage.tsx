@@ -1,8 +1,10 @@
-import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import '@xyflow/react/dist/style.css';
 
 import { useWorkflowStore } from '../stores/workflowStore';
+import { useInput } from '../components/common/InputDialog';
+import { useConfirm } from '../components/common/ConfirmDialog';
 import StageCanvas from '../components/Editor/StageCanvas';
 import StepCanvas from '../components/Editor/StepCanvas';
 import EditorBreadcrumb from '../components/Editor/EditorBreadcrumb';
@@ -47,12 +49,21 @@ function EditorPage() {
     currentExecution,
     executionLogs,
     isLoading,
+    updateWorkflow,
   } = useWorkflowStore();
+
+  // Input dialog hook
+  const { prompt: showInputDialog } = useInput();
+  const { confirm } = useConfirm();
 
   // View state
   const [editorView, setEditorView] = useState<EditorView>({ type: 'stage-view' });
   const [showLibrary, setShowLibrary] = useState(true);
   const [showSimulation, setShowSimulation] = useState(false);
+  
+  // Track unsaved changes
+  const originalWorkflowRef = useRef<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Load workflow
   useEffect(() => {
@@ -63,10 +74,41 @@ function EditorPage() {
     }
   }, [id, fetchWorkflow, setCurrentWorkflow]);
 
+  // Store original workflow for change detection
+  useEffect(() => {
+    if (currentWorkflow && !originalWorkflowRef.current) {
+      originalWorkflowRef.current = JSON.stringify(currentWorkflow.definition);
+    }
+  }, [currentWorkflow]);
+
+  // Detect unsaved changes
+  useEffect(() => {
+    if (currentWorkflow && originalWorkflowRef.current) {
+      const currentDef = JSON.stringify(currentWorkflow.definition);
+      setHasUnsavedChanges(currentDef !== originalWorkflowRef.current);
+    }
+  }, [currentWorkflow]);
+
+  // Browser beforeunload warning
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   // Reset view when workflow changes
   useEffect(() => {
     setEditorView({ type: 'stage-view' });
     selectStep(null);
+    originalWorkflowRef.current = null; // Reset original on new workflow
+    setHasUnsavedChanges(false);
   }, [id]);
 
   // Get current stage for Step View
@@ -127,23 +169,53 @@ function EditorPage() {
     selectStation(null);
   }, [selectStep, selectStation]);
 
-  const handleAddStation = useCallback(() => {
-    const name = prompt('Enter stage name:');
+  // Navigate back with unsaved changes check
+  const handleNavigateBack = useCallback(async () => {
+    if (hasUnsavedChanges) {
+      const shouldLeave = await confirm({
+        title: 'Unsaved Changes',
+        message: 'You have unsaved changes. Are you sure you want to leave? Your changes will be lost.',
+        confirmText: 'Leave',
+        cancelText: 'Stay',
+        type: 'warning',
+      });
+      if (!shouldLeave) return;
+    }
+    navigate('/dashboard');
+  }, [hasUnsavedChanges, confirm, navigate]);
+
+  const handleAddStation = useCallback(async () => {
+    const name = await showInputDialog({
+      title: 'Add Stage',
+      message: 'Enter a name for the new stage:',
+      placeholder: 'Stage name...',
+      confirmText: 'Create Stage',
+    });
     if (name) {
       addStation(name);
     }
-  }, [addStation]);
+  }, [addStation, showInputDialog]);
 
-  const handleAddStep = useCallback((stationId: string, type: StepType) => {
-    const name = prompt('Enter step name:');
+  const handleAddStep = useCallback(async (stationId: string, type: StepType) => {
+    const name = await showInputDialog({
+      title: 'Add Step',
+      message: `Enter a name for the new ${type.replace('-', ' ')} step:`,
+      placeholder: 'Step name...',
+      confirmText: 'Create Step',
+    });
     if (name) {
       addStep(stationId, type, name);
     }
-  }, [addStep]);
+  }, [addStep, showInputDialog]);
 
   const handleSave = useCallback(async () => {
     await saveWorkflow();
-  }, [saveWorkflow]);
+    // Reset change tracking after save
+    if (currentWorkflow) {
+      originalWorkflowRef.current = JSON.stringify(currentWorkflow.definition);
+      setHasUnsavedChanges(false);
+    }
+  }, [saveWorkflow, currentWorkflow]);
 
   const handleSimulate = useCallback(async () => {
     setShowSimulation(true);
@@ -210,7 +282,7 @@ function EditorPage() {
       {/* Header */}
       <header className="header">
         <div className="flex items-center gap-4">
-          <button className="btn btn-ghost btn-icon" onClick={() => navigate('/dashboard')}>
+          <button className="btn btn-ghost btn-icon" onClick={handleNavigateBack}>
             <ArrowLeft size={20} />
           </button>
           
@@ -262,13 +334,52 @@ function EditorPage() {
             </button>
           )}
 
+          {/* Workflow Status */}
+          {currentWorkflow && (
+            <select
+              className="form-select"
+              value={currentWorkflow.status}
+              onChange={(e) => updateWorkflow(currentWorkflow.id, { status: e.target.value as 'draft' | 'active' | 'paused' })}
+              style={{ 
+                width: 'auto', 
+                fontSize: '12px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: currentWorkflow.status === 'active' ? 'rgba(34, 197, 94, 0.15)' : 
+                            currentWorkflow.status === 'paused' ? 'rgba(234, 179, 8, 0.15)' : 'var(--bg-tertiary)',
+                color: currentWorkflow.status === 'active' ? 'rgb(34, 197, 94)' : 
+                       currentWorkflow.status === 'paused' ? 'rgb(234, 179, 8)' : 'var(--text-secondary)',
+                border: '1px solid var(--border-color)'
+              }}
+            >
+              <option value="draft">📝 Draft</option>
+              <option value="active">✅ Active</option>
+              <option value="paused">⏸️ Paused</option>
+            </select>
+          )}
+
           <button 
-            className="btn btn-secondary"
+            className={`btn ${hasUnsavedChanges ? 'btn-primary' : 'btn-secondary'}`}
             onClick={handleSave}
             disabled={isLoading}
+            style={{
+              position: 'relative',
+            }}
           >
             <Save size={18} />
-            Save
+            {hasUnsavedChanges ? 'Save*' : 'Save'}
+            {hasUnsavedChanges && (
+              <span style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                width: '10px',
+                height: '10px',
+                background: 'var(--accent-warning)',
+                borderRadius: '50%',
+                border: '2px solid var(--bg-secondary)',
+              }} />
+            )}
           </button>
           
           <button 

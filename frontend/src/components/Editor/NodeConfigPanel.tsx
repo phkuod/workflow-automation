@@ -21,6 +21,10 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
   const [url, setUrl] = useState(step.config.url || '');
   const [method, setMethod] = useState(step.config.method || 'GET');
   const [body, setBody] = useState(step.config.body || '');
+  const [headers, setHeaders] = useState<{key: string, value: string}[]>(
+    step.config.headers ? Object.entries(step.config.headers).map(([key, value]) => ({ key, value: value as string })) : []
+  );
+  const [timeout, setTimeout] = useState(step.timeout ? step.timeout / 1000 : 30);
   const [condition, setCondition] = useState(step.config.condition || '');
   const [variableName, setVariableName] = useState(step.config.variableName || '');
   const [variableValue, setVariableValue] = useState(step.config.variableValue || '');
@@ -53,6 +57,8 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
     setUrl(step.config.url || '');
     setMethod(step.config.method || 'GET');
     setBody(step.config.body || '');
+    setHeaders(step.config.headers ? Object.entries(step.config.headers).map(([key, value]) => ({ key, value: value as string })) : []);
+    setTimeout(step.timeout ? step.timeout / 1000 : 30);
     setCondition(step.config.condition || '');
     setVariableName(step.config.variableName || '');
     setVariableValue(step.config.variableValue || '');
@@ -83,6 +89,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
         config.url = url;
         config.method = method as any;
         config.body = body;
+        config.headers = headers.length > 0 ? Object.fromEntries(headers.filter(h => h.key).map(h => [h.key, h.value])) : undefined;
         break;
       case 'if-else':
         config.condition = condition;
@@ -112,7 +119,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
         break;
     }
 
-    const updateData: Partial<Step> = { name, config };
+    const updateData: Partial<Step> = { name, config, timeout: timeout * 1000 };
     
     if (retryEnabled) {
       updateData.retryPolicy = {
@@ -265,6 +272,80 @@ print(json.dumps({'result': result}))`}
                 )}
               </div>
             )}
+
+            {/* Headers Section */}
+            <div className="form-group">
+              <div className="flex justify-between items-center mb-2">
+                <label className="form-label">Request Headers</label>
+                <button 
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setHeaders([...headers, { key: '', value: '' }])}
+                >
+                  + Add Header
+                </button>
+              </div>
+              {headers.length === 0 ? (
+                <p className="text-xs text-muted italic">No custom headers configured.</p>
+              ) : (
+                <div className="space-y-2">
+                  {headers.map((header, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Header Name"
+                        value={header.key}
+                        onChange={(e) => {
+                          const newHeaders = [...headers];
+                          newHeaders[idx].key = e.target.value;
+                          setHeaders(newHeaders);
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Value"
+                        value={header.value}
+                        onChange={(e) => {
+                          const newHeaders = [...headers];
+                          newHeaders[idx].value = e.target.value;
+                          setHeaders(newHeaders);
+                        }}
+                        style={{ flex: 2 }}
+                      />
+                      <button 
+                        className="btn btn-ghost btn-icon btn-xs text-red-500"
+                        onClick={() => setHeaders(headers.filter((_, i) => i !== idx))}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Advanced Settings */}
+            <details className="mt-4">
+              <summary className="text-xs font-semibold cursor-pointer text-muted hover:text-primary">
+                Advanced Settings
+              </summary>
+              <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                <div className="form-group">
+                  <label className="form-label">Timeout (seconds)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={timeout}
+                    onChange={(e) => setTimeout(Number(e.target.value))}
+                    min={1}
+                    max={300}
+                  />
+                  <p className="text-xs text-muted mt-1">Request will fail if it takes longer than this.</p>
+                </div>
+              </div>
+            </details>
           </>
         );
 

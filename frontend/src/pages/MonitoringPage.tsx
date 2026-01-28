@@ -59,7 +59,7 @@ interface Metrics {
   };
 }
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = '/api';
 
 // Chart colors
 const CHART_COLORS = {

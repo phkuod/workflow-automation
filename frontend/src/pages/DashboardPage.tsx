@@ -16,17 +16,19 @@ import {
   Download,
   Upload
 } from 'lucide-react';
+import { useConfirm } from '../components/common/ConfirmDialog';
 
 function DashboardPage() {
   const navigate = useNavigate();
-  const { 
-    workflows, 
-    fetchWorkflows, 
-    createWorkflow, 
+  const { confirm } = useConfirm();
+  const {
+    workflows,
+    fetchWorkflows,
+    createWorkflow,
     deleteWorkflow,
     updateWorkflow,
     isLoading,
-    error 
+    error
   } = useWorkflowStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -50,7 +52,7 @@ function DashboardPage() {
 
   const handleCreate = useCallback(async () => {
     if (!newWorkflowName.trim()) return;
-    
+
     try {
       const workflow = await createWorkflow(newWorkflowName, newWorkflowDesc);
       setShowCreateModal(false);
@@ -64,10 +66,18 @@ function DashboardPage() {
 
   const handleDelete = useCallback(async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this workflow?')) {
+
+    const isConfirmed = await confirm({
+      title: 'Delete Workflow',
+      message: 'Are you sure you want to delete this workflow? This action cannot be undone.',
+      confirmText: 'Delete',
+      type: 'danger'
+    });
+
+    if (isConfirmed) {
       await deleteWorkflow(id);
     }
-  }, [deleteWorkflow]);
+  }, [deleteWorkflow, confirm]);
 
   const handleToggleStatus = useCallback(async (workflow: Workflow, e: React.MouseEvent) => {
     e.stopPropagation();

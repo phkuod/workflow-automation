@@ -16,29 +16,41 @@ interface StationConfigPanelProps {
 
 export default function StationConfigPanel({ station, workflow, onUpdate, onDelete, onClose }: StationConfigPanelProps) {
   const [name, setName] = useState(station.name);
+  const [description, setDescription] = useState(station.description || '');
   const [iteratorEnabled, setIteratorEnabled] = useState(station.iterator?.enabled || false);
   const [sourceVariable, setSourceVariable] = useState(station.iterator?.sourceVariable || '');
   const [itemVariableName, setItemVariableName] = useState(station.iterator?.itemVariableName || 'item');
+  const [conditionType, setConditionType] = useState<'none' | 'expression' | 'previousSuccess'>(station.condition?.type === 'expression' ? 'expression' : station.condition?.type === 'previousSuccess' ? 'previousSuccess' : 'none');
   const [conditionExpression, setConditionExpression] = useState(station.condition?.expression || '');
   const [activePicker, setActivePicker] = useState<string | boolean>(false);
 
   useEffect(() => {
     setName(station.name);
+    setDescription(station.description || '');
     setIteratorEnabled(station.iterator?.enabled || false);
     setSourceVariable(station.iterator?.sourceVariable || '');
     setItemVariableName(station.iterator?.itemVariableName || 'item');
+    setConditionType(station.condition?.type === 'expression' ? 'expression' : station.condition?.type === 'previousSuccess' ? 'previousSuccess' : 'none');
     setConditionExpression(station.condition?.expression || '');
   }, [station]);
 
   const handleSave = () => {
+    let condition: Station['condition'] = undefined;
+    if (conditionType === 'expression' && conditionExpression) {
+      condition = { type: 'expression', expression: conditionExpression };
+    } else if (conditionType === 'previousSuccess') {
+      condition = { type: 'previousSuccess' };
+    }
+    
     onUpdate({
       name,
+      description: description || undefined,
       iterator: {
         enabled: iteratorEnabled,
         sourceVariable,
         itemVariableName
       },
-      condition: conditionExpression ? { type: 'expression', expression: conditionExpression } : undefined
+      condition
     });
   };
 
@@ -99,28 +111,45 @@ export default function StationConfigPanel({ station, workflow, onUpdate, onDele
           />
         </div>
 
+        <div className="form-group">
+          <label className="form-label">Description (optional)</label>
+          <textarea
+            className="form-textarea"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Describe what this stage does..."
+            rows={2}
+          />
+        </div>
+
         <div className="mt-8 pt-6 border-t border-color">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
                Execution Condition
             </h4>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                className="sr-only peer"
-                checked={!!conditionExpression}
-                onChange={(e) => setConditionExpression(e.target.checked ? 'true' : '')}
-              />
-              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
           </div>
 
-          <p className="text-xs text-muted mb-4 italic">
-            Run this stage only when the condition evaluates to true.
-          </p>
+          <div className="form-group">
+            <label className="form-label">Condition Type</label>
+            <select
+              className="form-select"
+              value={conditionType}
+              onChange={(e) => setConditionType(e.target.value as 'none' | 'expression' | 'previousSuccess')}
+            >
+              <option value="none">Always Run</option>
+              <option value="expression">Custom Expression</option>
+              <option value="previousSuccess">Previous Stage Succeeded</option>
+            </select>
+          </div>
 
-          {!!conditionExpression && (
+          {conditionType === 'previousSuccess' && (
+            <p className="text-xs text-muted mb-4 italic">
+              This stage will only run if the previous stage completed successfully.
+            </p>
+          )}
+
+          {conditionType === 'expression' && (
             <div className="space-y-4">
               <div className="form-group">
                 <label className="form-label">Condition (JavaScript)</label>
@@ -147,7 +176,7 @@ export default function StationConfigPanel({ station, workflow, onUpdate, onDele
                       currentStepId={station.steps[0]?.id || ''} 
                       onSelect={(v) => {
                         const cleanVar = v.replace(/[{}]/g, '');
-                        setConditionExpression(conditionExpression === 'true' ? cleanVar : conditionExpression + (conditionExpression ? ' && ' : '') + cleanVar);
+                        setConditionExpression(conditionExpression ? conditionExpression + ' && ' + cleanVar : cleanVar);
                         setActivePicker(false);
                       }} 
                     />

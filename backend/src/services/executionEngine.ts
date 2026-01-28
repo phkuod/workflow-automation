@@ -153,8 +153,8 @@ export class ExecutionEngine {
           ...context,
           variables: { 
             ...context.variables, 
-            [station.iterator.itemVariableName]: item,
-            [`index`]: i
+            [station.iterator.itemVariableName || 'item']: item,
+            ['index']: i
           },
           // We share the same step results and log history to allow access, 
           // but steps in an iterator might overwrite each other in context.steps
@@ -276,7 +276,7 @@ export class ExecutionEngine {
               step.config.code || '',
               { 
                 variables: context.variables, 
-                inputData: stepResult.input,
+                inputData: stepResult.input || {},
                 steps: context.steps
               },
               step.timeout || 30000
