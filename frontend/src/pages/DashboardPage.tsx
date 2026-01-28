@@ -153,7 +153,7 @@ function DashboardPage() {
           Workflow Automation
         </h1>
         <div className="header-actions">
-          <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+          <label className="btn btn-secondary cursor-pointer">
             <Upload size={18} />
             Import
             <input 
@@ -238,7 +238,7 @@ function DashboardPage() {
                   <tr 
                     key={workflow.id}
                     onClick={() => navigate(`/editor/${workflow.id}`)}
-                    style={{ cursor: 'pointer' }}
+                    className="cursor-pointer"
                   >
                     <td>
                       <div className="font-medium">{workflow.name}</div>

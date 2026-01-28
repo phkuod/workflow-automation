@@ -23,10 +23,13 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor': ['react', 'react-dom'],
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['@xyflow/react', 'recharts', 'lucide-react'],
+          'vendor-utils': ['axios', 'zustand']
         }
       }
-    }
+    },
+    chunkSizeWarningLimit: 1000
   },
   esbuild: {
     drop: ['console', 'debugger'],

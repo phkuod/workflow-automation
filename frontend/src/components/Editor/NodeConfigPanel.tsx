@@ -5,6 +5,7 @@ import X from 'lucide-react/dist/esm/icons/x';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import Save from 'lucide-react/dist/esm/icons/save';
 import Database from 'lucide-react/dist/esm/icons/database';
+import Package from 'lucide-react/dist/esm/icons/package';
 import { VariablePicker } from './VariablePicker';
 
 interface NodeConfigPanelProps {
@@ -134,7 +135,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
     onUpdate(updateData);
   };
 
-  const typeInfo = STEP_TYPE_INFO[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
+  const typeInfo = STEP_TYPE_INFO[step.type] || { label: step.type, icon: <Package size={16} />, color: '#64748b' };
 
   const renderConfigFields = () => {
     switch (step.type) {
