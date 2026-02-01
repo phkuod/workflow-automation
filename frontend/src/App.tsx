@@ -1,11 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import DashboardPage from './pages/DashboardPage';
-import EditorPage from './pages/EditorPage';
-import MonitoringPage from './pages/MonitoringPage';
-import Sidebar from './components/common/Sidebar';
-import ToastContainer from './components/common/ToastContainer';
-import { ConfirmProvider } from './components/common/ConfirmDialog';
-import { InputProvider } from './components/common/InputDialog';
+import DashboardPage from './features/dashboard/DashboardPage';
+import EditorPage from './features/editor/EditorPage';
+import MonitoringPage from './features/monitoring/MonitoringPage';
+import Sidebar from './shared/components/Sidebar';
+import ToastContainer from './shared/components/ToastContainer';
+import { ConfirmProvider } from './shared/components/ConfirmDialog';
+import { InputProvider } from './shared/components/InputDialog';
 
 // Layout with sidebar for main pages
 function MainLayout({ children }: { children: React.ReactNode }) {

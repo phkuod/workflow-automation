@@ -2,17 +2,17 @@ import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import '@xyflow/react/dist/style.css';
 
-import { useWorkflowStore } from '../stores/workflowStore';
-import { useInput } from '../components/common/InputDialog';
-import { useConfirm } from '../components/common/ConfirmDialog';
-import StageCanvas from '../components/Editor/StageCanvas';
-import StepCanvas from '../components/Editor/StepCanvas';
-import EditorBreadcrumb from '../components/Editor/EditorBreadcrumb';
-import NodeLibrary from '../components/Editor/NodeLibrary';
-import NodeConfigPanel from '../components/Editor/NodeConfigPanel';
-import StationConfigPanel from '../components/Editor/StationConfigPanel';
-import SimulationPanel from '../components/Editor/SimulationPanel';
-import type { StepType } from '../types/workflow';
+import { useWorkflowStore } from './stores/workflowStore';
+import { useInput } from '../../shared/components/InputDialog';
+import { useConfirm } from '../../shared/components/ConfirmDialog';
+import StageCanvas from './components/StageCanvas';
+import StepCanvas from './components/StepCanvas';
+import EditorBreadcrumb from './components/EditorBreadcrumb';
+import NodeLibrary from './components/NodeLibrary';
+import NodeConfigPanel from './components/NodeConfigPanel';
+import StationConfigPanel from './components/StationConfigPanel';
+import SimulationPanel from './components/SimulationPanel';
+import type { StepType } from '../../shared/types/workflow';
 import { 
   ArrowLeft, 
   Save, 

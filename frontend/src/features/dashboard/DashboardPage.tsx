@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useWorkflowStore } from '../stores/workflowStore';
-import type { Workflow } from '../types/workflow';
+import { useWorkflowStore } from '../editor/stores/workflowStore';
+import type { Workflow } from '../../shared/types/workflow';
 import { 
   Plus, 
   Play, 
@@ -16,7 +16,7 @@ import {
   Download,
   Upload
 } from 'lucide-react';
-import { useConfirm } from '../components/common/ConfirmDialog';
+import { useConfirm } from '../../shared/components/ConfirmDialog';
 
 function DashboardPage() {
   const navigate = useNavigate();

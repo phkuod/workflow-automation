@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import type { Execution, ExecutionLog } from '../../types/workflow';
+import type { Execution, ExecutionLog } from '../../../shared/types/workflow';
 import X from 'lucide-react/dist/esm/icons/x';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
 import XCircle from 'lucide-react/dist/esm/icons/x-circle';

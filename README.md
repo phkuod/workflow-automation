@@ -28,48 +28,31 @@ A complete workflow automation platform with a visual editor, execution engine, 
 - Vite (build tool)
 - Lucide React (icons)
 
+## Documentation
+
+- **[Project Overview](PROJECT_OVERVIEW.md)**: Mission, usage, and architecture.
+- **[Setup Guide](SETUP_GUIDE.md)**: Installation, configuration, and running the application.
+
 ## Quick Start
+
+For detailed instructions, please refer to the [Setup Guide](SETUP_GUIDE.md).
 
 ### Prerequisites
 
 - Node.js 18+
 - Python 3.x (for Python script nodes)
 
-### Installation
+### Installation & Run
 
 ```bash
-# Install all dependencies
-cd backend && npm install
-cd ../frontend && npm install
-cd ..
-```
-
-### Running in Development
-
-**Option 1: Run both servers separately**
-
-Terminal 1 (Backend):
-
-```bash
-cd backend
-npm run dev
-```
-
-Terminal 2 (Frontend):
-
-```bash
-cd frontend
-npm run dev
-```
-
-**Option 2: Run with concurrently (requires root package install)**
-
-```bash
+# Install root dependencies (optional, but recommended for concurrent running)
 npm install
+
+# Run both frontend and backend concurrently
 npm run dev
 ```
 
-### Access the Application
+### Access
 
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:3001

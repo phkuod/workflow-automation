@@ -17,8 +17,8 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import StageNode from '../Nodes/StageNode';
-import type { Workflow, Execution } from '../../types/workflow';
+import StageNode from '../nodes/StageNode';
+import type { Workflow, Execution } from '../../../shared/types/workflow';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 
 const nodeTypes: NodeTypes = {

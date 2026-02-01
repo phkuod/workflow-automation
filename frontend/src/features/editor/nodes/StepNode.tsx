@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import type { Step } from '../../types/workflow';
-import { STEP_TYPE_INFO } from '../../types/workflow';
+import type { Step } from '../../../shared/types/workflow';
+import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
 import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import Clock from 'lucide-react/dist/esm/icons/clock';

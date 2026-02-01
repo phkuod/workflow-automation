@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import type { Station } from '../../types/workflow';
-import { STEP_TYPE_INFO } from '../../types/workflow';
+import type { Station } from '../../../shared/types/workflow';
+import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
 import Layers from 'lucide-react/dist/esm/icons/layers';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';

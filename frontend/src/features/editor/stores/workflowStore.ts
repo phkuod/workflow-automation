@@ -8,8 +8,8 @@ import type {
   StepType,
   Execution,
   ExecutionLog 
-} from '../types/workflow';
-import { workflowApi, executionApi } from '../api/workflowApi';
+} from '../../../shared/types/workflow';
+import { workflowApi, executionApi } from '../../../shared/api/workflowApi';
 
 // Generate UUID function (simple version for browser)
 function generateId(): string {

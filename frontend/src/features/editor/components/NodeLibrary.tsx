@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { Station, StepType } from '../../types/workflow';
-import { STEP_TYPE_INFO } from '../../types/workflow';
+import type { Station, StepType } from '../../../shared/types/workflow';
+import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
 import X from 'lucide-react/dist/esm/icons/x';
 import Search from 'lucide-react/dist/esm/icons/search';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';

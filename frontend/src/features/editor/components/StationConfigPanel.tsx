@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Station, Workflow } from '../../types/workflow';
+import type { Station, Workflow } from '../../../shared/types/workflow';
 import X from 'lucide-react/dist/esm/icons/x';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import Save from 'lucide-react/dist/esm/icons/save';

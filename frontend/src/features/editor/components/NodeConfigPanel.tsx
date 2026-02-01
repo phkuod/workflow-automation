@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { Step, Workflow } from '../../types/workflow';
-import { STEP_TYPE_INFO } from '../../types/workflow';
+import type { Step, Workflow } from '../../../shared/types/workflow';
+import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
 import X from 'lucide-react/dist/esm/icons/x';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import Save from 'lucide-react/dist/esm/icons/save';

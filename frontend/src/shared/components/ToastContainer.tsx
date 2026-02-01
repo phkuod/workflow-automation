@@ -1,4 +1,4 @@
-import { useToastStore, Toast } from '../../stores/toastStore';
+import { useToastStore, Toast } from '../stores/toastStore';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
 import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';

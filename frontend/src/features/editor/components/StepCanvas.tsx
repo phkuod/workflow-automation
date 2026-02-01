@@ -15,8 +15,8 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import StepNode from '../Nodes/StepNode';
-import type { Station, Step, StepType, Execution } from '../../types/workflow';
+import StepNode from '../nodes/StepNode';
+import type { Station, Step, StepType, Execution } from '../../../shared/types/workflow';
 
 const nodeTypes: NodeTypes = {
   step: StepNode,

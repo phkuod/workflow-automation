@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Workflow, Step } from '../../types/workflow';
+import type { Workflow, Step } from '../../../shared/types/workflow';
 import Database from 'lucide-react/dist/esm/icons/database';
 
 interface VariablePickerProps {
