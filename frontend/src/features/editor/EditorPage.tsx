@@ -1,0 +1,475 @@
+import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import '@xyflow/react/dist/style.css';
+
+import { useWorkflowStore } from './stores/workflowStore';
+import { useInput } from '../../shared/components/InputDialog';
+import { useConfirm } from '../../shared/components/ConfirmDialog';
+import StageCanvas from './components/StageCanvas';
+import StepCanvas from './components/StepCanvas';
+import EditorBreadcrumb from './components/EditorBreadcrumb';
+import NodeLibrary from './components/NodeLibrary';
+import NodeConfigPanel from './components/NodeConfigPanel';
+import StationConfigPanel from './components/StationConfigPanel';
+import SimulationPanel from './components/SimulationPanel';
+import type { StepType } from '../../shared/types/workflow';
+import { 
+  ArrowLeft, 
+  Save, 
+  Play, 
+  Plus,
+  Layers
+} from 'lucide-react';
+
+// Editor view state
+type EditorView = 
+  | { type: 'stage-view' }
+  | { type: 'step-view'; stageId: string };
+
+function EditorPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const {
+    currentWorkflow,
+    fetchWorkflow,
+    saveWorkflow,
+    setCurrentWorkflow,
+    addStation,
+    addStep,
+    updateStep,
+    deleteStep,
+    selectStep,
+    selectedStepId,
+    selectedStationId,
+    selectStation,
+    updateStation,
+    deleteStation,
+    simulateWorkflow,
+    isSimulating,
+    currentExecution,
+    executionLogs,
+    isLoading,
+    updateWorkflow,
+  } = useWorkflowStore();
+
+  // Input dialog hook
+  const { prompt: showInputDialog } = useInput();
+  const { confirm } = useConfirm();
+
+  // View state
+  const [editorView, setEditorView] = useState<EditorView>({ type: 'stage-view' });
+  const [showLibrary, setShowLibrary] = useState(true);
+  const [showSimulation, setShowSimulation] = useState(false);
+  
+  // Track unsaved changes
+  const originalWorkflowRef = useRef<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Load workflow
+  useEffect(() => {
+    if (id) {
+      fetchWorkflow(id);
+    } else {
+      setCurrentWorkflow(null);
+    }
+  }, [id, fetchWorkflow, setCurrentWorkflow]);
+
+  // Store original workflow for change detection
+  useEffect(() => {
+    if (currentWorkflow && !originalWorkflowRef.current) {
+      originalWorkflowRef.current = JSON.stringify(currentWorkflow.definition);
+    }
+  }, [currentWorkflow]);
+
+  // Detect unsaved changes
+  useEffect(() => {
+    if (currentWorkflow && originalWorkflowRef.current) {
+      const currentDef = JSON.stringify(currentWorkflow.definition);
+      setHasUnsavedChanges(currentDef !== originalWorkflowRef.current);
+    }
+  }, [currentWorkflow]);
+
+  // Browser beforeunload warning
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Reset view when workflow changes
+  useEffect(() => {
+    setEditorView({ type: 'stage-view' });
+    selectStep(null);
+    originalWorkflowRef.current = null; // Reset original on new workflow
+    setHasUnsavedChanges(false);
+  }, [id]);
+
+  // Get current stage for Step View
+  const currentStage = useMemo(() => {
+    if (editorView.type !== 'step-view') return null;
+    return currentWorkflow?.definition.stations.find(s => s.id === editorView.stageId) || null;
+  }, [editorView, currentWorkflow]);
+
+  // Get selected step
+  const selectedStep = useMemo(() => {
+    if (!selectedStepId || !currentWorkflow) return null;
+    return currentWorkflow.definition.stations
+      .flatMap(s => s.steps)
+      .find(s => s.id === selectedStepId) || null;
+  }, [selectedStepId, currentWorkflow]);
+
+  // Get selected station
+  const selectedStation = useMemo(() => {
+    if (!selectedStationId || !currentWorkflow) return null;
+    return currentWorkflow.definition.stations.find(s => s.id === selectedStationId) || null;
+  }, [selectedStationId, currentWorkflow]);
+
+  // Breadcrumb items
+  const breadcrumbItems = useMemo(() => {
+    const items = [
+      {
+        id: 'workflow',
+        label: currentWorkflow?.name || 'Workflow',
+        onClick: editorView.type === 'step-view' 
+          ? () => {
+              setEditorView({ type: 'stage-view' });
+              selectStep(null);
+            }
+          : undefined,
+      },
+    ];
+
+    if (editorView.type === 'step-view' && currentStage) {
+      items.push({
+        id: 'stage',
+        label: currentStage.name,
+        onClick: undefined,
+      });
+    }
+
+    return items;
+  }, [currentWorkflow, editorView, currentStage]);
+
+  // Handlers
+  const handleStageDoubleClick = useCallback((stageId: string) => {
+    setEditorView({ type: 'step-view', stageId });
+    selectStep(null);
+  }, [selectStep]);
+
+  const handleBackToStageView = useCallback(() => {
+    setEditorView({ type: 'stage-view' });
+    selectStep(null);
+    selectStation(null);
+  }, [selectStep, selectStation]);
+
+  // Navigate back with unsaved changes check
+  const handleNavigateBack = useCallback(async () => {
+    if (hasUnsavedChanges) {
+      const shouldLeave = await confirm({
+        title: 'Unsaved Changes',
+        message: 'You have unsaved changes. Are you sure you want to leave? Your changes will be lost.',
+        confirmText: 'Leave',
+        cancelText: 'Stay',
+        type: 'warning',
+      });
+      if (!shouldLeave) return;
+    }
+    navigate('/dashboard');
+  }, [hasUnsavedChanges, confirm, navigate]);
+
+  const handleAddStation = useCallback(async () => {
+    const name = await showInputDialog({
+      title: 'Add Stage',
+      message: 'Enter a name for the new stage:',
+      placeholder: 'Stage name...',
+      confirmText: 'Create Stage',
+    });
+    if (name) {
+      addStation(name);
+    }
+  }, [addStation, showInputDialog]);
+
+  const handleAddStep = useCallback(async (stationId: string, type: StepType) => {
+    const name = await showInputDialog({
+      title: 'Add Step',
+      message: `Enter a name for the new ${type.replace('-', ' ')} step:`,
+      placeholder: 'Step name...',
+      confirmText: 'Create Step',
+    });
+    if (name) {
+      addStep(stationId, type, name);
+    }
+  }, [addStep, showInputDialog]);
+
+  const handleSave = useCallback(async () => {
+    await saveWorkflow();
+    // Reset change tracking after save
+    if (currentWorkflow) {
+      originalWorkflowRef.current = JSON.stringify(currentWorkflow.definition);
+      setHasUnsavedChanges(false);
+    }
+  }, [saveWorkflow, currentWorkflow]);
+
+  const handleSimulate = useCallback(async () => {
+    setShowSimulation(true);
+    try {
+      await simulateWorkflow();
+    } catch (err) {
+      console.error('Simulation failed:', err);
+    }
+  }, [simulateWorkflow]);
+
+  const handleStepClick = useCallback((stepId: string) => {
+    selectStep(stepId);
+  }, [selectStep]);
+
+  const handleStationClick = useCallback((stationId: string) => {
+    selectStation(stationId);
+  }, [selectStation]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedStepId) {
+          selectStep(null);
+        } else if (selectedStationId) {
+          selectStation(null);
+        } else if (editorView.type === 'step-view') {
+          handleBackToStageView();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedStepId, selectedStationId, editorView, selectStep, selectStation, handleBackToStageView]);
+
+  // Loading state
+  if (isLoading && !currentWorkflow) {
+    return (
+      <div className="layout">
+        <div className="flex items-center justify-center" style={{ height: '100vh' }}>
+          <div className="loading-spinner"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Not found state
+  if (!currentWorkflow && id) {
+    return (
+      <div className="layout">
+        <div className="flex flex-col items-center justify-center" style={{ height: '100vh' }}>
+          <p className="text-muted">Workflow not found</p>
+          <button className="btn btn-primary mt-4" onClick={() => navigate('/dashboard')}>
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="layout" style={{ height: '100vh' }}>
+      {/* Header */}
+      <header className="header">
+        <div className="flex items-center gap-4">
+          <button className="btn btn-ghost btn-icon" onClick={handleNavigateBack}>
+            <ArrowLeft size={20} />
+          </button>
+          
+          {/* Breadcrumb Navigation */}
+          <EditorBreadcrumb items={breadcrumbItems} />
+        </div>
+        
+        <div className="header-actions">
+          {/* View indicator */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px',
+            padding: '6px 12px',
+            background: 'var(--bg-tertiary)',
+            borderRadius: '8px',
+            fontSize: '12px',
+            color: 'var(--text-secondary)',
+          }}>
+            <Layers size={14} />
+            {editorView.type === 'stage-view' ? 'Stage View' : 'Step View'}
+          </div>
+
+          {editorView.type === 'step-view' && (
+            <button 
+              className="btn btn-secondary"
+              onClick={handleBackToStageView}
+            >
+              <ArrowLeft size={18} />
+              Back to Stages
+            </button>
+          )}
+
+          {editorView.type === 'stage-view' ? (
+            <button 
+              className="btn btn-secondary"
+              onClick={handleAddStation}
+            >
+              <Plus size={18} />
+              Add Stage
+            </button>
+          ) : (
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setShowLibrary(!showLibrary)}
+            >
+              <Plus size={18} />
+              Add Step
+            </button>
+          )}
+
+          {/* Workflow Status */}
+          {currentWorkflow && (
+            <select
+              className="form-select"
+              value={currentWorkflow.status}
+              onChange={(e) => updateWorkflow(currentWorkflow.id, { status: e.target.value as 'draft' | 'active' | 'paused' })}
+              style={{ 
+                width: 'auto', 
+                fontSize: '12px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: currentWorkflow.status === 'active' ? 'rgba(34, 197, 94, 0.15)' : 
+                            currentWorkflow.status === 'paused' ? 'rgba(234, 179, 8, 0.15)' : 'var(--bg-tertiary)',
+                color: currentWorkflow.status === 'active' ? 'rgb(34, 197, 94)' : 
+                       currentWorkflow.status === 'paused' ? 'rgb(234, 179, 8)' : 'var(--text-secondary)',
+                border: '1px solid var(--border-color)'
+              }}
+            >
+              <option value="draft">📝 Draft</option>
+              <option value="active">✅ Active</option>
+              <option value="paused">⏸️ Paused</option>
+            </select>
+          )}
+
+          <button 
+            className={`btn ${hasUnsavedChanges ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={handleSave}
+            disabled={isLoading}
+            style={{
+              position: 'relative',
+            }}
+          >
+            <Save size={18} />
+            {hasUnsavedChanges ? 'Save*' : 'Save'}
+            {hasUnsavedChanges && (
+              <span style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                width: '10px',
+                height: '10px',
+                background: 'var(--accent-warning)',
+                borderRadius: '50%',
+                border: '2px solid var(--bg-secondary)',
+              }} />
+            )}
+          </button>
+          
+          <button 
+            className="btn btn-success"
+            onClick={handleSimulate}
+            disabled={isSimulating || !currentWorkflow?.definition.stations.length}
+          >
+            {isSimulating ? (
+              <span className="loading-spinner" />
+            ) : (
+              <Play size={18} />
+            )}
+            Simulate
+          </button>
+        </div>
+      </header>
+
+      {/* Main Editor Area */}
+      <div className="flex" style={{ flex: 1, overflow: 'hidden' }}>
+        {/* Node Library Panel (only in Step View) */}
+        {showLibrary && editorView.type === 'step-view' && currentStage && (
+          <NodeLibrary 
+            onAddStep={(type) => handleAddStep(currentStage.id, type)}
+            stations={currentWorkflow?.definition.stations || []}
+            onAddStepToStation={handleAddStep}
+            onClose={() => setShowLibrary(false)}
+          />
+        )}
+
+        {/* Canvas Area */}
+        <div style={{ flex: 1, height: '100%' }}>
+          {currentWorkflow && editorView.type === 'stage-view' && (
+            <StageCanvas
+              workflow={currentWorkflow}
+              execution={currentExecution}
+              isSimulating={isSimulating}
+              onStageDoubleClick={handleStageDoubleClick}
+              onStageClick={handleStationClick}
+              onAddStation={handleAddStation}
+            />
+          )}
+
+          {currentWorkflow && editorView.type === 'step-view' && currentStage && (
+            <StepCanvas
+              station={currentStage}
+              execution={currentExecution}
+              isSimulating={isSimulating}
+              selectedStepId={selectedStepId}
+              onStepClick={handleStepClick}
+              onStepUpdate={updateStep}
+            />
+          )}
+        </div>
+
+        {/* Config Panel */}
+        {selectedStep && currentWorkflow && (
+          <NodeConfigPanel 
+            step={selectedStep}
+            workflow={currentWorkflow}
+            onUpdate={(data) => updateStep(selectedStep.id, data)}
+            onDelete={() => deleteStep(selectedStep.id)}
+            onClose={() => selectStep(null)}
+          />
+        )}
+
+        {selectedStation && currentWorkflow && editorView.type === 'stage-view' && (
+          <StationConfigPanel 
+            station={selectedStation}
+            workflow={currentWorkflow}
+            onUpdate={(data) => {
+              updateStation(selectedStation.id, data);
+              saveWorkflow();
+            }}
+            onDelete={() => deleteStation(selectedStation.id)}
+            onClose={() => selectStation(null)}
+          />
+        )}
+
+        {/* Simulation Panel */}
+        {showSimulation && (
+          <SimulationPanel 
+            execution={currentExecution}
+            logs={executionLogs}
+            isRunning={isSimulating}
+            onClose={() => setShowSimulation(false)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default EditorPage;

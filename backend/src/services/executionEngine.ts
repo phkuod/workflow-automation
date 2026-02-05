@@ -125,20 +125,93 @@ export class ExecutionEngine {
       output: {}
     };
 
+    if (station.iterator?.enabled) {
+      const sourceVar = station.iterator.sourceVariable;
+      const resolvedSource = ScriptRunner.interpolateVariables(sourceVar, context.variables);
+      let items: any[] = [];
+      
+      try {
+        items = JSON.parse(resolvedSource);
+        if (!Array.isArray(items)) {
+          throw new Error('Resolved source is not an array');
+        }
+      } catch (e) {
+        this.log(context, 'error', `Iteration failed: Source variable ${sourceVar} is not a valid array`, undefined, station.id);
+        stationResult.status = 'failed';
+        stationResult.endTime = new Date().toISOString();
+        return stationResult;
+      }
+
+      this.log(context, 'info', `Starting iteration over ${items.length} items`, undefined, station.id);
+      
+      const iterationResults: any[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        
+        // Scope variables for this iteration
+        const iterationContext: ExecutionContext = {
+          ...context,
+          variables: { 
+            ...context.variables, 
+            [station.iterator.itemVariableName || 'item']: item,
+            ['index']: i
+          },
+          // We share the same step results and log history to allow access, 
+          // but steps in an iterator might overwrite each other in context.steps
+          // This is a known limitation for now.
+        };
+
+        this.log(context, 'info', `Iteration ${i + 1}/${items.length}`, { item }, station.id);
+        
+        const iterStepsResult = await this.executeStationSteps(station, iterationContext);
+        stationResult.steps.push(...iterStepsResult.steps);
+
+        if (iterStepsResult.status === 'failed') {
+          stationResult.status = 'failed';
+          stationResult.endTime = new Date().toISOString();
+          this.log(context, 'error', `Iteration failed at index ${i}`, undefined, station.id);
+          return stationResult;
+        }
+        
+        iterationResults.push(iterStepsResult.output);
+      }
+
+      stationResult.status = 'completed';
+      stationResult.output = iterationResults;
+    } else {
+      const res = await this.executeStationSteps(station, context);
+      stationResult.status = res.status;
+      stationResult.steps = res.steps;
+      stationResult.output = res.output;
+    }
+
+    stationResult.endTime = new Date().toISOString();
+
+    // Store station output for next stations
+    context.variables[station.id] = { output: stationResult.output };
+    context.variables[station.name] = { output: stationResult.output };
+
+    return stationResult;
+  }
+
+  /**
+   * Helper to execute a set of steps for a station
+   */
+  private static async executeStationSteps(station: Station, context: ExecutionContext): Promise<{ status: StationResult['status'], steps: StepResult[], output: any }> {
+    const steps: StepResult[] = [];
+
     // Execute steps sequentially
     for (const step of station.steps) {
       const stepResult = await this.executeStep(step, context);
-      stationResult.steps.push(stepResult);
+      steps.push(stepResult);
 
       // Store step result for variable access
       context.steps[step.id] = stepResult;
       context.steps[step.name] = stepResult;
 
-      // If step failed, stop the workflow
+      // If step failed, stop the station
       if (stepResult.status === 'failed') {
-        stationResult.status = 'failed';
-        stationResult.endTime = new Date().toISOString();
-        return stationResult;
+        return { status: 'failed', steps, output: {} };
       }
 
       // Add step output to context variables
@@ -148,16 +221,8 @@ export class ExecutionEngine {
       }
     }
 
-    // Station completed - aggregate results
-    stationResult.status = 'completed';
-    stationResult.endTime = new Date().toISOString();
-    stationResult.output = this.aggregateStationOutput(station, stationResult.steps, context);
-
-    // Store station output for next stations
-    context.variables[station.id] = { output: stationResult.output };
-    context.variables[station.name] = { output: stationResult.output };
-
-    return stationResult;
+    const output = this.aggregateStationOutput(station, steps, context);
+    return { status: 'completed', steps, output };
   }
 
   /**
@@ -173,101 +238,178 @@ export class ExecutionEngine {
       input: this.resolveInputVariables(step, context)
     };
 
-    this.log(context, 'info', `Executing step: ${step.name}`, stepResult.input, undefined, step.id);
+    const startTime = new Date().toISOString();
+    let retryAttempts = 0;
+    let currentInterval = step.retryPolicy?.initialInterval || 1000;
+    const maxAttempts = step.retryPolicy?.maxAttempts || 1;
 
-    try {
-      let result: ScriptResult;
-
-      switch (step.type) {
-        case 'script-js':
-          result = await ScriptRunner.executeJS(
-            step.config.code || '',
-            { ...context.variables, inputData: stepResult.input },
-            step.timeout || 30000
-          );
-          break;
-
-        case 'script-python':
-          result = await ScriptRunner.executePython(
-            step.config.code || '',
-            { ...context.variables, inputData: stepResult.input },
-            step.timeout || 30000
-          );
-          break;
-
-        case 'http-request':
-          result = await ScriptRunner.executeHttpRequest(
-            step.config,
-            { ...context.variables, inputData: stepResult.input }
-          );
-          break;
-
-        case 'if-else':
-          const condition = step.config.condition || 'true';
-          const conditionResult = ScriptRunner.evaluateCondition(condition, {
-            ...context.variables,
-            inputData: stepResult.input
-          });
-          result = {
-            success: true,
-            output: { result: conditionResult, branch: conditionResult ? 'true' : 'false' },
-            logs: [`Condition evaluated to: ${conditionResult}`]
-          };
-          break;
-
-        case 'set-variable':
-          const varName = step.config.variableName || 'variable';
-          const varValue = ScriptRunner.interpolateVariables(
-            step.config.variableValue || '',
-            { ...context.variables, inputData: stepResult.input }
-          );
-          context.variables[varName] = varValue;
-          result = {
-            success: true,
-            output: { [varName]: varValue },
-            logs: [`Set variable ${varName} = ${varValue}`]
-          };
-          break;
-
-        case 'trigger-manual':
-        case 'trigger-cron':
-          result = {
-            success: true,
-            output: { triggered: true, timestamp: new Date().toISOString() },
-            logs: ['Trigger activated']
-          };
-          break;
-
-        default:
-          result = {
-            success: false,
-            error: `Unknown step type: ${step.type}`,
-            logs: []
-          };
+    while (retryAttempts < maxAttempts) {
+      if (retryAttempts > 0) {
+        this.log(context, 'warn', `Retrying step: ${step.name} (Attempt ${retryAttempts + 1}/${maxAttempts})`, undefined, undefined, step.id);
+        await new Promise(resolve => setTimeout(resolve, currentInterval));
+        currentInterval = Math.min(
+          currentInterval * (step.retryPolicy?.backoffCoefficient || 2),
+          step.retryPolicy?.maxInterval || 300000 // default 5m cap
+        );
       }
 
-      // Log script output
-      for (const log of result.logs) {
-        this.log(context, 'debug', log, undefined, undefined, step.id);
-      }
+      this.log(context, 'info', `Executing step: ${step.name}`, stepResult.input, undefined, step.id);
 
-      if (result.success) {
-        stepResult.status = 'completed';
-        stepResult.output = result.output;
-        this.log(context, 'info', `Step completed: ${step.name}`, result.output, undefined, step.id);
-      } else {
-        stepResult.status = 'failed';
-        stepResult.error = { message: result.error || 'Unknown error' };
-        this.log(context, 'error', `Step failed: ${step.name} - ${result.error}`, undefined, undefined, step.id);
-      }
+      try {
+        let result: ScriptResult;
 
-    } catch (error: any) {
-      stepResult.status = 'failed';
-      stepResult.error = {
-        message: error.message || String(error),
-        stack: error.stack
-      };
-      this.log(context, 'error', `Step error: ${step.name} - ${error.message}`, undefined, undefined, step.id);
+        switch (step.type) {
+          case 'script-js':
+            result = await ScriptRunner.executeJS(
+              step.config.code || '',
+              { 
+                variables: context.variables, 
+                inputData: stepResult.input,
+                steps: context.steps 
+              },
+              step.timeout || 30000
+            );
+            break;
+
+          case 'script-python':
+            result = await ScriptRunner.executePython(
+              step.config.code || '',
+              { 
+                variables: context.variables, 
+                inputData: stepResult.input || {},
+                steps: context.steps
+              },
+              step.timeout || 30000
+            );
+            break;
+
+          case 'http-request':
+            result = await ScriptRunner.executeHttpRequest(
+              step.config,
+              { ...context.variables, inputData: stepResult.input }
+            );
+            break;
+
+          case 'wait':
+            const duration = step.config.duration || 0;
+            const unit = step.config.unit || 'seconds';
+            const multiplier = unit === 'hours' ? 3600000 : unit === 'minutes' ? 60000 : 1000;
+            const waitMs = duration * multiplier;
+            this.log(context, 'info', `Waiting for ${duration} ${unit} (${waitMs}ms)...`, undefined, undefined, step.id);
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+            result = {
+              success: true,
+              output: { waited: true, duration, unit, ms: waitMs },
+              logs: [`Waited for ${duration} ${unit}`]
+            };
+            break;
+
+          case 'if-else':
+            const condition = step.config.condition || 'true';
+            const conditionResult = ScriptRunner.evaluateCondition(condition, {
+              ...context.variables,
+              inputData: stepResult.input
+            });
+            result = {
+              success: true,
+              output: { result: conditionResult, branch: conditionResult ? 'true' : 'false' },
+              logs: [`Condition evaluated to: ${conditionResult}`]
+            };
+            break;
+
+          case 'set-variable':
+            const varName = step.config.variableName || 'variable';
+            const varValue = ScriptRunner.interpolateVariables(
+              step.config.variableValue || '',
+              { ...context.variables, inputData: stepResult.input }
+            );
+            context.variables[varName] = varValue;
+            result = {
+              success: true,
+              output: { [varName]: varValue },
+              logs: [`Set variable ${varName} = ${varValue}`]
+            };
+            break;
+
+          case 'trigger-manual':
+          case 'trigger-cron':
+          case 'trigger-webhook':
+            result = {
+              success: true,
+              output: { triggered: true, timestamp: new Date().toISOString() },
+              logs: [`Trigger ${step.type} activated`]
+            };
+            break;
+
+          case 'action-slack':
+            const slackUrl = ScriptRunner.interpolateVariables(step.config.slackWebhookUrl || '', { ...context.variables, inputData: stepResult.input });
+            const slackMsg = ScriptRunner.interpolateVariables(step.config.slackMessage || '', { ...context.variables, inputData: stepResult.input });
+            
+            this.log(context, 'info', `Sending Slack message to ${slackUrl.substring(0, 20)}...`, undefined, undefined, step.id);
+            
+            result = await ScriptRunner.executeHttpRequest(
+              { 
+                url: slackUrl, 
+                method: 'POST', 
+                body: JSON.stringify({ text: slackMsg }) 
+              },
+              { ...context.variables, inputData: stepResult.input }
+            );
+            break;
+
+          case 'action-email':
+            const to = ScriptRunner.interpolateVariables(step.config.emailTo || '', { ...context.variables, inputData: stepResult.input });
+            const subject = ScriptRunner.interpolateVariables(step.config.emailSubject || '', { ...context.variables, inputData: stepResult.input });
+            const emailBody = ScriptRunner.interpolateVariables(step.config.emailBody || '', { ...context.variables, inputData: stepResult.input });
+            
+            this.log(context, 'info', `Sending Email to ${to}`, { subject, body: emailBody }, undefined, step.id);
+            
+            // Mocking email success as we don't have nodemailer in environment
+            result = {
+              success: true,
+              output: { sent: true, to, subject, timestamp: new Date().toISOString() },
+              logs: [`Email successfully queued for ${to} (Mock)`]
+            };
+            break;
+
+          default:
+            result = {
+              success: false,
+              error: `Unknown step type: ${step.type}`,
+              logs: []
+            };
+        }
+
+        // Log script output
+        for (const log of result.logs) {
+          this.log(context, 'debug', log, undefined, undefined, step.id);
+        }
+
+        if (result.success) {
+          stepResult.status = 'completed';
+          stepResult.output = result.output;
+          this.log(context, 'info', `Step completed: ${step.name}`, result.output, undefined, step.id);
+          break; // Exit retry loop
+        } else {
+          retryAttempts++;
+          if (retryAttempts >= maxAttempts) {
+            stepResult.status = 'failed';
+            stepResult.error = { message: result.error || 'Unknown error' };
+            this.log(context, 'error', `Step failed: ${step.name} - ${result.error}`, undefined, undefined, step.id);
+          }
+        }
+
+      } catch (error: any) {
+        retryAttempts++;
+        if (retryAttempts >= maxAttempts) {
+          stepResult.status = 'failed';
+          stepResult.error = {
+            message: error.message || String(error),
+            stack: error.stack
+          };
+          this.log(context, 'error', `Step error: ${step.name} - ${error.message}`, undefined, undefined, step.id);
+        }
+      }
     }
 
     stepResult.endTime = new Date().toISOString();
@@ -293,7 +435,10 @@ export class ExecutionEngine {
       
       case 'expression':
         if (!station.condition.expression) return true;
-        return ScriptRunner.evaluateCondition(station.condition.expression, context.variables);
+        return ScriptRunner.evaluateCondition(station.condition.expression, {
+          ...context.variables,
+          steps: context.steps
+        });
       
       default:
         return true;

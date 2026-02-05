@@ -63,3 +63,7 @@ ehthumbs.db
 *.tsbuildinfo
 *.d.ts
 *.d.ts.map
+
+# SQLite database files (runtime/temporary)
+*.db-shm
+*.db-wal

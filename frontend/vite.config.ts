@@ -13,9 +13,25 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_API_URL || 'http://localhost:3001',
         changeOrigin: true,
       },
     },
+  },
+  build: {
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['@xyflow/react', 'recharts', 'lucide-react'],
+          'vendor-utils': ['axios', 'zustand']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
+  },
+  esbuild: {
+    drop: ['console', 'debugger'],
   },
 });

@@ -19,6 +19,7 @@ const server = app.listen(PORT, async () => {
   console.log(`   GET    /api/schedules          - List scheduled workflows`);
   console.log(`   PUT    /api/schedules/:id/pause - Pause schedule`);
   console.log(`   PUT    /api/schedules/:id/resume - Resume schedule`);
+  console.log(`   ANY    /api/webhooks/:id       - Dynamic webhook endpoint`);
 
   // Initialize scheduler
   try {

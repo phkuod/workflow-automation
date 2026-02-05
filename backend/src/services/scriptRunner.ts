@@ -19,7 +19,7 @@ export class ScriptRunner {
     try {
       // Create sandbox context
       const sandbox: Context = {
-        inputData,
+        ...inputData,
         console: {
           log: (...args: any[]) => logs.push(args.map(a => JSON.stringify(a)).join(' ')),
           error: (...args: any[]) => logs.push(`[ERROR] ${args.map(a => JSON.stringify(a)).join(' ')}`),
@@ -75,25 +75,29 @@ export class ScriptRunner {
   /**
    * Execute Python code via subprocess
    */
-  static async executePython(code: string, inputData: Record<string, any>, timeout = 30000): Promise<ScriptResult> {
+  static async executePython(code: string, context: { variables: Record<string, any>, inputData: Record<string, any>, steps: Record<string, any> }, timeout = 30000): Promise<ScriptResult> {
     return new Promise((resolve) => {
       const logs: string[] = [];
       let output = '';
       let errorOutput = '';
 
-      // Prepare Python script with input data
+      // Prepare Python script with input data and steps (Zero-Config access)
       const pythonScript = `
 import json
 import sys
 
-# Input data
-input_data = json.loads('''${JSON.stringify(inputData)}''')
+# Input data (legacy)
+input_data = json.loads('''${JSON.stringify(context.inputData)}''')
+
+# Steps (Zero-Config access) - access via steps['Step Name']['output']
+steps = json.loads('''${JSON.stringify(context.steps)}''')
 
 # User code
 ${code}
 `;
 
-      const python = spawn('python', ['-c', pythonScript], {
+      const pythonCmd = process.env.PYTHON_CMD || 'python';
+      const python = spawn(pythonCmd, ['-c', pythonScript], {
         timeout
       });
 
@@ -236,15 +240,18 @@ ${code}
    * Replaces ${path.to.value} with actual values from context
    */
   static interpolateVariables(template: string, context: Record<string, any>): string {
-    return template.replace(/\$\{([^}]+)\}/g, (match, path) => {
+    // Handle both ${var} and {{var}}
+    const regex = /\$\{([^}]+)\}|\{\{([^}]+)\}\}/g;
+    return template.replace(regex, (match, path1, path2) => {
+      const path = (path1 || path2).trim();
       try {
-        const value = this.getValueByPath(context, path.trim());
+        const value = this.getValueByPath(context, path);
         if (typeof value === 'object') {
           return JSON.stringify(value);
         }
-        return String(value ?? '');
+        return String(value ?? match);
       } catch {
-        return match; // Keep original if can't resolve
+        return match;
       }
     });
   }

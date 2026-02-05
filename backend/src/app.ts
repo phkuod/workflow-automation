@@ -4,6 +4,7 @@ import workflowRoutes from './routes/workflows';
 import executionRoutes from './routes/executions';
 import scheduleRoutes from './routes/schedules';
 import metricsRoutes from './routes/metrics';
+import webhookRoutes from './routes/webhooks';
 import { requestLogger } from './utils/logger';
 
 const app = express();
@@ -18,6 +19,7 @@ app.use('/api/workflows', workflowRoutes);
 app.use('/api/executions', executionRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/metrics', metricsRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

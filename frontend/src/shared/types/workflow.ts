@@ -1,4 +1,4 @@
-// Workflow Types
+// Shared types between frontend and backend
 
 export interface Workflow {
   id: string;
@@ -22,13 +22,11 @@ export interface Station {
   steps: Step[];
   position: { x: number; y: number };
   condition?: StationCondition;
-  iterator?: StationIterator;
-}
-
-export interface StationIterator {
-  enabled: boolean;
-  sourceVariable: string;
-  itemVariableName?: string;
+  iterator?: {
+    enabled: boolean;
+    sourceVariable: string;
+    itemVariableName: string;
+  };
 }
 
 export interface StationCondition {
@@ -45,71 +43,54 @@ export interface Step {
   inputVars?: VariableMapping[];
   outputVars?: VariableDefinition[];
   timeout?: number;
-  retryPolicy?: RetryPolicy;
-}
-
-export interface RetryPolicy {
-  maxAttempts: number;
-  initialInterval: number;
-  backoffCoefficient?: number;
-  maxInterval?: number;
+  retryPolicy?: {
+    maxAttempts: number;
+    initialInterval: number;
+    backoffCoefficient: number;
+    maxInterval?: number;
+  };
 }
 
 export type StepType = 
   | 'trigger-manual'
   | 'trigger-cron'
-  | 'trigger-webhook'
   | 'script-js'
   | 'script-python'
   | 'http-request'
   | 'if-else'
   | 'set-variable'
   | 'wait'
-  | 'notification-email'
-  | 'notification-slack'
+  | 'trigger-webhook'
   | 'action-email'
   | 'action-slack';
 
 export interface StepConfig {
-  // Script nodes
   code?: string;
-  
-  // HTTP Request
   url?: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   headers?: Record<string, string>;
   body?: string;
-  
-  // If/Else
   condition?: string;
-  
-  // Set Variable
   variableName?: string;
   variableValue?: string;
-  
-  // Cron
   cronExpression?: string;
-  
-  // Webhook Trigger
-  webhookMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'any';
-  
-  // Wait Node
   duration?: number;
   unit?: 'seconds' | 'minutes' | 'hours';
-  
-  // Email Notification
+  webhookMethod?: 'GET' | 'POST' | 'PUT';
+  // Email fields
   emailTo?: string;
   emailSubject?: string;
   emailBody?: string;
-  
-  // Slack Notification
+  smtpHost?: string;
+  smtpPort?: number;
+  // Slack fields
   slackWebhookUrl?: string;
   slackMessage?: string;
 }
 
 export interface VariableMapping {
   name: string;
-  source: string; // e.g., "${step1.output.data}"
+  source: string;
 }
 
 export interface VariableDefinition {
@@ -117,8 +98,6 @@ export interface VariableDefinition {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array';
   description?: string;
 }
-
-// Execution Types
 
 export interface Execution {
   id: string;
@@ -165,8 +144,6 @@ export interface ErrorInfo {
   code?: string;
 }
 
-// Log Types
-
 export interface ExecutionLog {
   id: string;
   executionId: string;
@@ -178,29 +155,28 @@ export interface ExecutionLog {
   timestamp: string;
 }
 
-// API Types
-
-export interface CreateWorkflowRequest {
-  name: string;
-  description?: string;
-  status?: 'draft' | 'active' | 'paused';
-  definition: WorkflowDefinition;
-}
-
-export interface UpdateWorkflowRequest {
-  name?: string;
-  description?: string;
-  status?: 'draft' | 'active' | 'paused';
-  definition?: WorkflowDefinition;
-}
-
-export interface ExecuteWorkflowRequest {
-  triggeredBy?: 'manual' | 'schedule' | 'webhook' | 'api';
-  inputData?: Record<string, any>;
-}
-
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
 }
+
+// Node types for React Flow
+export interface NodeData {
+  step: Step;
+  status?: 'pending' | 'running' | 'completed' | 'failed';
+}
+
+export const STEP_TYPE_INFO: Record<StepType, { label: string; icon: string; color: string }> = {
+  'trigger-manual': { label: 'Manual Trigger', icon: '🔘', color: '#22c55e' },
+  'trigger-cron': { label: 'Cron Trigger', icon: '⏰', color: '#22c55e' },
+  'script-js': { label: 'JavaScript', icon: '📜', color: '#f59e0b' },
+  'script-python': { label: 'Python', icon: '🐍', color: '#3b82f6' },
+  'http-request': { label: 'HTTP Request', icon: '🔗', color: '#8b5cf6' },
+  'if-else': { label: 'If/Else', icon: '🔀', color: '#ec4899' },
+  'set-variable': { label: 'Set Variable', icon: '📝', color: '#6366f1' },
+  'wait': { label: 'Wait', icon: '⏳', color: '#64748b' },
+  'trigger-webhook': { label: 'Webhook Trigger', icon: '⚡', color: '#22c55e' },
+  'action-email': { label: 'Send Email', icon: '📧', color: '#3b82f6' },
+  'action-slack': { label: 'Slack Message', icon: '💬', color: '#4a154b' },
+};

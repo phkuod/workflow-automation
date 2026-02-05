@@ -2,7 +2,9 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const DB_PATH = path.join(__dirname, '../../data/workflow.db');
+const DB_PATH = process.env.DB_PATH 
+  ? path.resolve(process.env.DB_PATH) 
+  : path.join(__dirname, '../../data/workflow.db');
 
 // Ensure data directory exists
 const dataDir = path.dirname(DB_PATH);

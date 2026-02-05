@@ -1,10 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import DashboardPage from './pages/DashboardPage';
-import EditorPage from './pages/EditorPage';
-import MonitoringPage from './pages/MonitoringPage';
-import Sidebar from './components/common/Sidebar';
-import ToastContainer from './components/common/ToastContainer';
-import { ConfirmProvider } from './components/common/ConfirmDialog';
+import DashboardPage from './features/dashboard/DashboardPage';
+import EditorPage from './features/editor/EditorPage';
+import MonitoringPage from './features/monitoring/MonitoringPage';
+import Sidebar from './shared/components/Sidebar';
+import ToastContainer from './shared/components/ToastContainer';
+import { ConfirmProvider } from './shared/components/ConfirmDialog';
+import { InputProvider } from './shared/components/InputDialog';
 
 // Layout with sidebar for main pages
 function MainLayout({ children }: { children: React.ReactNode }) {
@@ -14,19 +15,22 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <ConfirmProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<MainLayout><DashboardPage /></MainLayout>} />
-          <Route path="/monitoring" element={<MainLayout><MonitoringPage /></MainLayout>} />
-          {/* Editor pages without sidebar for full-screen editing */}
-          <Route path="/editor/:id" element={<EditorPage />} />
-          <Route path="/editor" element={<EditorPage />} />
-        </Routes>
-      </BrowserRouter>
-      <ToastContainer />
+      <InputProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<MainLayout><DashboardPage /></MainLayout>} />
+            <Route path="/monitoring" element={<MainLayout><MonitoringPage /></MainLayout>} />
+            {/* Editor pages without sidebar for full-screen editing */}
+            <Route path="/editor/:id" element={<EditorPage />} />
+            <Route path="/editor" element={<EditorPage />} />
+          </Routes>
+        </BrowserRouter>
+        <ToastContainer />
+      </InputProvider>
     </ConfirmProvider>
   );
 }
 
 export default App;
+

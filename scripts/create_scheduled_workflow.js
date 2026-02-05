@@ -35,8 +35,7 @@ async function createScheduledWorkflow() {
               id: uuidv4(),
               name: 'Log Execution',
               type: 'script-js',
-              config: {
-                code: 'console.log("Scheduled workflow executed at: " + new Date().toISOString());\nreturn { success: true, time: new Date().toISOString() };'
+                code: 'console.log("Scheduled workflow executed triggered by: " + steps["Every Minute Trigger"].output.timestamp);\nreturn { success: true, time: new Date().toISOString() };'
               },
               position: { x: 0, y: 150 },
               inputVars: [],
