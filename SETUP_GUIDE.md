@@ -67,7 +67,30 @@ VITE_API_URL=http://localhost:3001
 
 You can run the frontend and backend servers separately or concurrently.
 
-### Option 1: Separate Terminals
+### Option 1: Quick Start Scripts (Recommended)
+
+**On Linux/macOS:**
+
+```bash
+# Make the script executable (first time only)
+chmod +x start-dev.sh
+
+# Start the servers
+./start-dev.sh
+
+# Other commands
+./start-dev.sh stop     # Stop all servers
+./start-dev.sh restart  # Restart servers
+./start-dev.sh status   # Check server status
+```
+
+**On Windows (PowerShell):**
+
+```powershell
+.\start-dev.ps1
+```
+
+### Option 2: Separate Terminals
 
 **Backend:**
 Open a terminal in the `backend` directory:
