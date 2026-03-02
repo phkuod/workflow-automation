@@ -11,6 +11,19 @@ import {
 } from '../types/workflow';
 import { ExecutionModel, LogModel } from '../models/execution';
 import { ScriptRunner, ScriptResult } from './scriptRunner';
+import { DbConnectorService } from './dbConnector';
+import nodemailer from 'nodemailer';
+
+// Initialize email transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 interface ExecutionContext {
   executionId: string;
@@ -364,12 +377,52 @@ export class ExecutionEngine {
             
             this.log(context, 'info', `Sending Email to ${to}`, { subject, body: emailBody }, undefined, step.id);
             
-            // Mocking email success as we don't have nodemailer in environment
-            result = {
-              success: true,
-              output: { sent: true, to, subject, timestamp: new Date().toISOString() },
-              logs: [`Email successfully queued for ${to} (Mock)`]
-            };
+            try {
+              const info = await transporter.sendMail({
+                from: process.env.SMTP_FROM || '"Workflow Automation" <no-reply@localhost>',
+                to,
+                subject,
+                text: emailBody, // Assuming plain text for now, could support HTML later
+              });
+              
+              result = {
+                success: true,
+                output: { sent: true, to, subject, messageId: info.messageId, timestamp: new Date().toISOString() },
+                logs: [`Email successfully sent to ${to} (MessageId: ${info.messageId})`]
+              };
+            } catch (err: any) {
+               result = {
+                success: false,
+                error: `Failed to send email: ${err.message}`,
+                output: { sent: false, to, subject, timestamp: new Date().toISOString() },
+                logs: [`Email sending failed: ${err.message}`]
+              };
+            }
+            break;
+
+          case 'connector-db':
+            const dbQuery = ScriptRunner.interpolateVariables(
+              step.config.dbQuery || '', 
+              { ...context.variables, inputData: stepResult.input }
+            );
+
+            this.log(context, 'info', `Executing ${step.config.dbType} query...`, { query: dbQuery }, undefined, step.id);
+
+            try {
+              const rows = await DbConnectorService.executeQuery(step.config, dbQuery);
+              result = {
+                success: true,
+                output: { rows, count: rows.length },
+                logs: [`Query executed successfully, returned ${rows.length} rows`]
+              };
+            } catch (err: any) {
+              result = {
+                success: false,
+                error: `Database connection or query failed: ${err.message}`,
+                output: { error: err.message },
+                logs: [`Database error: ${err.message}`]
+              };
+            }
             break;
 
           default:

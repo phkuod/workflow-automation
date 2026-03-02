@@ -1,0 +1,45 @@
+# docker-compose.yml — Workflow Automation (Production Simulation)
+# Usage:
+#   docker compose up --build        # Build and start
+#   docker compose up -d             # Start in background
+#   docker compose down              # Stop and remove containers
+#   docker compose logs -f           # Follow logs
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: workflow-automation
+    ports:
+      - "3001:3001"
+    volumes:
+      - workflow-data:/var/data
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_PATH: /var/data/workflow.db
+      PYTHON_CMD: python3
+      SMTP_HOST: smtp.example.com
+      SMTP_PORT: 587
+      SMTP_SECURE: "false"
+      SMTP_USER: user
+      SMTP_PASS: pass
+      SMTP_FROM: no-reply@localhost
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const http=require('http');const r=http.get('http://localhost:3001/api/health',res=>{process.exit(res.statusCode===200?0:1)});r.on('error',()=>process.exit(1));",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  workflow-data:
+    driver: local

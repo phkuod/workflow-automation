@@ -65,10 +65,10 @@ export type StepType =
   | 'if-else'
   | 'set-variable'
   | 'wait'
-  | 'notification-email'
   | 'notification-slack'
   | 'action-email'
-  | 'action-slack';
+  | 'action-slack'
+  | 'connector-db';
 
 export interface StepConfig {
   // Script nodes
@@ -105,6 +105,15 @@ export interface StepConfig {
   // Slack Notification
   slackWebhookUrl?: string;
   slackMessage?: string;
+  
+  // DB Connector
+  dbType?: 'postgres' | 'mysql';
+  dbHost?: string;
+  dbPort?: number;
+  dbName?: string;
+  dbUser?: string;
+  dbPassword?: string;
+  dbQuery?: string;
 }
 
 export interface VariableMapping {

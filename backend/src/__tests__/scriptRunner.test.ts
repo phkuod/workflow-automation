@@ -17,7 +17,7 @@ describe('ScriptRunner', () => {
     it('should access inputData in JavaScript code', async () => {
       const result = await ScriptRunner.executeJS(
         'return inputData.value * 2;',
-        { value: 5 },
+        { inputData: { value: 5 } },
         5000
       );
       

@@ -1,0 +1,49 @@
+# Dependencies (will be installed fresh in Docker)
+node_modules
+backend/node_modules
+frontend/node_modules
+
+# Build outputs (will be rebuilt in Docker)
+dist
+backend/dist
+frontend/dist
+
+# Git
+.git
+.gitignore
+
+# Environment files (use docker-compose env instead)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# IDE / Editor
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and runtime data
+logs
+*.log
+.pids
+backend/data
+
+# AI/Agent configs
+.agent
+.agents
+.claude
+.gemini
+.shared
+
+# Test artifacts
+coverage
+test-results
+playwright-report

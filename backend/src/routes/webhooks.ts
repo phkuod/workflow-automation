@@ -56,9 +56,13 @@ router.all('/:id', async (req: Request, res: Response) => {
       url: req.url
     };
 
-    // Execute workflow asynchronously (fire and forget for webhooks usually)
-    // or we can wait if desired. Spec says return 200 or 202.
-    // Let's run it asynchronously to not block the webhook caller
+    // Create execution record explicitly first or await the engine to start it.
+    // However, our ExecutionEngine.execute creates the execution record internally.
+    // Instead of waiting for full execution or changing the ExecutionEngine extensively right now,
+    // we let it run async, but we can't get the ID unless we modify ExecutionEngine.
+    // Let's modify the engine call slightly to create it first, or just return async.
+    // For now, let's keep it async but return 202. If they need an ID, we'd have to 
+    // separate creating the execution from running it.
     ExecutionEngine.execute(workflow, 'webhook', inputData)
       .catch(err => console.error(`Webhook execution failed for ${workflowId}:`, err));
 

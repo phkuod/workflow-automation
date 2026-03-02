@@ -81,16 +81,21 @@ export class ScriptRunner {
       let output = '';
       let errorOutput = '';
 
+      // Helper to escape JSON string for safe Python multiline string injection
+      const escapeForPython = (obj: any) => {
+        return JSON.stringify(obj || {}).replace(/\\/g, '\\\\').replace(/'''/g, "\\'\\'\\'");
+      };
+
       // Prepare Python script with input data and steps (Zero-Config access)
       const pythonScript = `
 import json
 import sys
 
 # Input data (legacy)
-input_data = json.loads('''${JSON.stringify(context.inputData)}''')
+input_data = json.loads('''${escapeForPython(context.inputData)}''')
 
 # Steps (Zero-Config access) - access via steps['Step Name']['output']
-steps = json.loads('''${JSON.stringify(context.steps)}''')
+steps = json.loads('''${escapeForPython(context.steps)}''')
 
 # User code
 ${code}
@@ -249,7 +254,7 @@ ${code}
         if (typeof value === 'object') {
           return JSON.stringify(value);
         }
-        return String(value ?? match);
+        return value !== undefined && value !== null ? String(value) : '';
       } catch {
         return match;
       }

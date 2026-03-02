@@ -1,4 +1,5 @@
 import cron, { ScheduledTask } from 'node-cron';
+import { CronExpressionParser } from 'cron-parser';
 import { WorkflowModel } from '../models/workflow';
 import { ExecutionEngine } from './executionEngine';
 import type { Workflow, Execution } from '../types/workflow';
@@ -196,10 +197,10 @@ class SchedulerService {
    */
   private getNextRunDate(cronExpression: string): Date | undefined {
     try {
-      // Simple next run calculation (approximate)
-      const now = new Date();
-      // This is a simplified version - for production, use a proper cron parser
-      return new Date(now.getTime() + 60000); // Placeholder
+      const interval = CronExpressionParser.parse(cronExpression, {
+        tz: 'Asia/Taipei'
+      });
+      return interval.next().toDate();
     } catch {
       return undefined;
     }

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import workflowRoutes from './routes/workflows';
 import executionRoutes from './routes/executions';
 import scheduleRoutes from './routes/schedules';
@@ -25,6 +26,18 @@ app.use('/api/webhooks', webhookRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Serve frontend static files in production
+if (process.env.NODE_ENV === 'production') {
+  const publicDir = path.join(__dirname, '../public');
+  app.use(express.static(publicDir));
+
+  // SPA fallback: all non-API routes serve index.html
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(publicDir, 'index.html'));
+  });
+}
 
 // Error handling
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
