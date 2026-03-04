@@ -28,6 +28,8 @@ class SqlJsAdapter {
     if (this.inTransaction) return;
     const data = this.sqlDb.export();
     fs.writeFileSync(this.dbPath, Buffer.from(data));
+    // sql.js export() resets connection-level PRAGMAs; restore foreign keys
+    this.sqlDb.run('PRAGMA foreign_keys = ON');
   }
 
   exec(sql: string): this {
