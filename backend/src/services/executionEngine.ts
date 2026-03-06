@@ -32,6 +32,7 @@ interface ExecutionContext {
   stations: Record<string, StationResult>;
   steps: Record<string, StepResult>;
   logs: Omit<ExecutionLog, 'id' | 'timestamp'>[];
+  simulate: boolean;
 }
 
 export class ExecutionEngine {
@@ -39,13 +40,16 @@ export class ExecutionEngine {
    * Execute a workflow
    */
   static async execute(
-    workflow: Workflow, 
+    workflow: Workflow,
     triggeredBy: Execution['triggeredBy'] = 'manual',
-    inputData: Record<string, any> = {}
+    inputData: Record<string, any> = {},
+    simulate: boolean = false
   ): Promise<Execution> {
-    // Create execution record
-    const execution = ExecutionModel.create(workflow.id, workflow.name, triggeredBy);
-    
+    // Create execution record (skip DB write in simulate mode)
+    const execution = simulate
+      ? { id: uuidv4(), workflowId: workflow.id, workflowName: workflow.name, status: 'running' as const, triggeredBy, startTime: new Date().toISOString(), successRate: 0 }
+      : ExecutionModel.create(workflow.id, workflow.name, triggeredBy);
+
     // Initialize context
     const context: ExecutionContext = {
       executionId: execution.id,
@@ -53,10 +57,11 @@ export class ExecutionEngine {
       variables: { ...inputData },
       stations: {},
       steps: {},
-      logs: []
+      logs: [],
+      simulate
     };
 
-    this.log(context, 'info', `Starting workflow: ${workflow.name}`);
+    this.log(context, 'info', `${simulate ? '[SIMULATE] ' : ''}Starting workflow: ${workflow.name}`);
 
     const result: ExecutionResult = {
       stations: []
@@ -107,9 +112,21 @@ export class ExecutionEngine {
     // Calculate success rate
     const successRate = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
 
-    // Save logs
-    if (context.logs.length > 0) {
+    // Save logs (skip DB write in simulate mode)
+    if (!simulate && context.logs.length > 0) {
       LogModel.createMany(context.logs);
+    }
+
+    if (simulate) {
+      // Return synthetic execution object without writing to DB
+      this.log(context, 'info', `[SIMULATE] Workflow ${failed ? 'failed' : 'completed'}. Success rate: ${successRate.toFixed(1)}%`);
+      return {
+        ...execution,
+        status: failed ? 'failed' : 'completed',
+        endTime: new Date().toISOString(),
+        successRate,
+        result
+      } as Execution;
     }
 
     // Update execution record
@@ -297,25 +314,39 @@ export class ExecutionEngine {
             break;
 
           case 'http-request':
-            result = await ScriptRunner.executeHttpRequest(
-              step.config,
-              { ...context.variables, inputData: stepResult.input }
-            );
+            if (context.simulate) {
+              this.log(context, 'info', `[SIMULATE] Skipping HTTP request to ${step.config.url}`, undefined, undefined, step.id);
+              result = {
+                success: true,
+                output: { simulated: true, status: 200, statusText: 'OK (simulated)', data: null },
+                logs: ['[SIMULATE] HTTP request skipped']
+              };
+            } else {
+              result = await ScriptRunner.executeHttpRequest(
+                step.config,
+                { ...context.variables, inputData: stepResult.input }
+              );
+            }
             break;
 
-          case 'wait':
+          case 'wait': {
             const duration = step.config.duration || 0;
             const unit = step.config.unit || 'seconds';
             const multiplier = unit === 'hours' ? 3600000 : unit === 'minutes' ? 60000 : 1000;
             const waitMs = duration * multiplier;
-            this.log(context, 'info', `Waiting for ${duration} ${unit} (${waitMs}ms)...`, undefined, undefined, step.id);
-            await new Promise(resolve => setTimeout(resolve, waitMs));
+            if (context.simulate) {
+              this.log(context, 'info', `[SIMULATE] Skipping wait of ${duration} ${unit}`, undefined, undefined, step.id);
+            } else {
+              this.log(context, 'info', `Waiting for ${duration} ${unit} (${waitMs}ms)...`, undefined, undefined, step.id);
+              await new Promise(resolve => setTimeout(resolve, waitMs));
+            }
             result = {
               success: true,
-              output: { waited: true, duration, unit, ms: waitMs },
-              logs: [`Waited for ${duration} ${unit}`]
+              output: { waited: !context.simulate, simulated: context.simulate, duration, unit, ms: waitMs },
+              logs: [context.simulate ? `[SIMULATE] Wait skipped (${duration} ${unit})` : `Waited for ${duration} ${unit}`]
             };
             break;
+          }
 
           case 'if-else':
             const condition = step.config.condition || 'true';
@@ -354,76 +385,105 @@ export class ExecutionEngine {
             };
             break;
 
-          case 'action-slack':
+          case 'action-slack': {
             const slackUrl = ScriptRunner.interpolateVariables(step.config.slackWebhookUrl || '', { ...context.variables, inputData: stepResult.input });
             const slackMsg = ScriptRunner.interpolateVariables(step.config.slackMessage || '', { ...context.variables, inputData: stepResult.input });
-            
-            this.log(context, 'info', `Sending Slack message to ${slackUrl.substring(0, 20)}...`, undefined, undefined, step.id);
-            
-            result = await ScriptRunner.executeHttpRequest(
-              { 
-                url: slackUrl, 
-                method: 'POST', 
-                body: JSON.stringify({ text: slackMsg }) 
-              },
-              { ...context.variables, inputData: stepResult.input }
-            );
-            break;
 
-          case 'action-email':
+            if (context.simulate) {
+              this.log(context, 'info', `[SIMULATE] Skipping Slack message`, { message: slackMsg }, undefined, step.id);
+              result = {
+                success: true,
+                output: { simulated: true, sent: false, message: slackMsg },
+                logs: ['[SIMULATE] Slack message skipped']
+              };
+            } else {
+              this.log(context, 'info', `Sending Slack message to ${slackUrl.substring(0, 20)}...`, undefined, undefined, step.id);
+              result = await ScriptRunner.executeHttpRequest(
+                {
+                  url: slackUrl,
+                  method: 'POST',
+                  body: JSON.stringify({ text: slackMsg })
+                },
+                { ...context.variables, inputData: stepResult.input }
+              );
+            }
+            break;
+          }
+
+          case 'action-email': {
             const to = ScriptRunner.interpolateVariables(step.config.emailTo || '', { ...context.variables, inputData: stepResult.input });
             const subject = ScriptRunner.interpolateVariables(step.config.emailSubject || '', { ...context.variables, inputData: stepResult.input });
             const emailBody = ScriptRunner.interpolateVariables(step.config.emailBody || '', { ...context.variables, inputData: stepResult.input });
-            
-            this.log(context, 'info', `Sending Email to ${to}`, { subject, body: emailBody }, undefined, step.id);
-            
-            try {
-              const info = await transporter.sendMail({
-                from: process.env.SMTP_FROM || '"Workflow Automation" <no-reply@localhost>',
-                to,
-                subject,
-                text: emailBody, // Assuming plain text for now, could support HTML later
-              });
-              
+
+            if (context.simulate) {
+              this.log(context, 'info', `[SIMULATE] Skipping email to ${to}`, { subject }, undefined, step.id);
               result = {
                 success: true,
-                output: { sent: true, to, subject, messageId: info.messageId, timestamp: new Date().toISOString() },
-                logs: [`Email successfully sent to ${to} (MessageId: ${info.messageId})`]
+                output: { simulated: true, sent: false, to, subject, timestamp: new Date().toISOString() },
+                logs: [`[SIMULATE] Email to ${to} skipped`]
               };
-            } catch (err: any) {
-               result = {
-                success: false,
-                error: `Failed to send email: ${err.message}`,
-                output: { sent: false, to, subject, timestamp: new Date().toISOString() },
-                logs: [`Email sending failed: ${err.message}`]
-              };
+            } else {
+              this.log(context, 'info', `Sending Email to ${to}`, { subject, body: emailBody }, undefined, step.id);
+
+              try {
+                const info = await transporter.sendMail({
+                  from: process.env.SMTP_FROM || '"Workflow Automation" <no-reply@localhost>',
+                  to,
+                  subject,
+                  text: emailBody,
+                });
+
+                result = {
+                  success: true,
+                  output: { sent: true, to, subject, messageId: info.messageId, timestamp: new Date().toISOString() },
+                  logs: [`Email successfully sent to ${to} (MessageId: ${info.messageId})`]
+                };
+              } catch (err: any) {
+                result = {
+                  success: false,
+                  error: `Failed to send email: ${err.message}`,
+                  output: { sent: false, to, subject, timestamp: new Date().toISOString() },
+                  logs: [`Email sending failed: ${err.message}`]
+                };
+              }
             }
             break;
+          }
 
-          case 'connector-db':
+          case 'connector-db': {
             const dbQuery = ScriptRunner.interpolateVariables(
-              step.config.dbQuery || '', 
+              step.config.dbQuery || '',
               { ...context.variables, inputData: stepResult.input }
             );
 
-            this.log(context, 'info', `Executing ${step.config.dbType} query...`, { query: dbQuery }, undefined, step.id);
-
-            try {
-              const rows = await DbConnectorService.executeQuery(step.config, dbQuery);
+            if (context.simulate) {
+              this.log(context, 'info', `[SIMULATE] Skipping ${step.config.dbType} query`, { query: dbQuery }, undefined, step.id);
               result = {
                 success: true,
-                output: { rows, count: rows.length },
-                logs: [`Query executed successfully, returned ${rows.length} rows`]
+                output: { simulated: true, rows: [], count: 0 },
+                logs: [`[SIMULATE] Database query skipped`]
               };
-            } catch (err: any) {
-              result = {
-                success: false,
-                error: `Database connection or query failed: ${err.message}`,
-                output: { error: err.message },
-                logs: [`Database error: ${err.message}`]
-              };
+            } else {
+              this.log(context, 'info', `Executing ${step.config.dbType} query...`, { query: dbQuery }, undefined, step.id);
+
+              try {
+                const rows = await DbConnectorService.executeQuery(step.config, dbQuery);
+                result = {
+                  success: true,
+                  output: { rows, count: rows.length },
+                  logs: [`Query executed successfully, returned ${rows.length} rows`]
+                };
+              } catch (err: any) {
+                result = {
+                  success: false,
+                  error: `Database connection or query failed: ${err.message}`,
+                  output: { error: err.message },
+                  logs: [`Database error: ${err.message}`]
+                };
+              }
             }
             break;
+          }
 
           default:
             result = {

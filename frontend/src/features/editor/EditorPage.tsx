@@ -12,6 +12,7 @@ import NodeLibrary from './components/NodeLibrary';
 import NodeConfigPanel from './components/NodeConfigPanel';
 import StationConfigPanel from './components/StationConfigPanel';
 import SimulationPanel from './components/SimulationPanel';
+import { toast } from '../../shared/stores/toastStore';
 import type { StepType } from '../../shared/types/workflow';
 import { 
   ArrowLeft, 
@@ -209,11 +210,15 @@ function EditorPage() {
   }, [addStep, showInputDialog]);
 
   const handleSave = useCallback(async () => {
-    await saveWorkflow();
-    // Reset change tracking after save
-    if (currentWorkflow) {
-      originalWorkflowRef.current = JSON.stringify(currentWorkflow.definition);
-      setHasUnsavedChanges(false);
+    try {
+      await saveWorkflow();
+      if (currentWorkflow) {
+        originalWorkflowRef.current = JSON.stringify(currentWorkflow.definition);
+        setHasUnsavedChanges(false);
+      }
+      toast.success('Workflow saved');
+    } catch {
+      toast.error('Failed to save workflow');
     }
   }, [saveWorkflow, currentWorkflow]);
 

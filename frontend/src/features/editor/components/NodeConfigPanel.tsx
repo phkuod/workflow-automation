@@ -42,7 +42,16 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
   // Slack fields
   const [slackWebhookUrl, setSlackWebhookUrl] = useState(step.config.slackWebhookUrl || '');
   const [slackMessage, setSlackMessage] = useState(step.config.slackMessage || '');
-  
+
+  // Database connector fields
+  const [dbType, setDbType] = useState(step.config.dbType || 'postgres');
+  const [dbHost, setDbHost] = useState(step.config.dbHost || '');
+  const [dbPort, setDbPort] = useState(step.config.dbPort || 5432);
+  const [dbName, setDbName] = useState(step.config.dbName || '');
+  const [dbUser, setDbUser] = useState(step.config.dbUser || '');
+  const [dbPassword, setDbPassword] = useState(step.config.dbPassword || '');
+  const [dbQuery, setDbQuery] = useState(step.config.dbQuery || '');
+
   // Picker state
   const [activePicker, setActivePicker] = useState<string | null>(null);
 
@@ -72,6 +81,13 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
     setEmailBody(step.config.emailBody || '');
     setSlackWebhookUrl(step.config.slackWebhookUrl || '');
     setSlackMessage(step.config.slackMessage || '');
+    setDbType(step.config.dbType || 'postgres');
+    setDbHost(step.config.dbHost || '');
+    setDbPort(step.config.dbPort || 5432);
+    setDbName(step.config.dbName || '');
+    setDbUser(step.config.dbUser || '');
+    setDbPassword(step.config.dbPassword || '');
+    setDbQuery(step.config.dbQuery || '');
     setRetryEnabled(!!step.retryPolicy);
     setMaxAttempts(step.retryPolicy?.maxAttempts || 3);
     setInitialInterval(step.retryPolicy?.initialInterval || 1000);
@@ -117,6 +133,15 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
       case 'action-slack':
         config.slackWebhookUrl = slackWebhookUrl;
         config.slackMessage = slackMessage;
+        break;
+      case 'connector-db':
+        config.dbType = dbType as any;
+        config.dbHost = dbHost;
+        config.dbPort = Number(dbPort);
+        config.dbName = dbName;
+        config.dbUser = dbUser;
+        config.dbPassword = dbPassword;
+        config.dbQuery = dbQuery;
         break;
     }
 
@@ -640,6 +665,88 @@ print(json.dumps({'result': result}))`}
                   />
                 </div>
               )}
+            </div>
+          </>
+        );
+
+      case 'connector-db':
+        return (
+          <>
+            <div className="form-group">
+              <label className="form-label">Database Type</label>
+              <select
+                className="form-select"
+                value={dbType}
+                onChange={(e) => setDbType(e.target.value as any)}
+              >
+                <option value="postgres">PostgreSQL</option>
+                <option value="mysql">MySQL</option>
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <div className="form-group" style={{ flex: 3 }}>
+                <label className="form-label">Host</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={dbHost}
+                  onChange={(e) => setDbHost(e.target.value)}
+                  placeholder="localhost"
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Port</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={dbPort}
+                  onChange={(e) => setDbPort(Number(e.target.value))}
+                  placeholder="5432"
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Database Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={dbName}
+                onChange={(e) => setDbName(e.target.value)}
+                placeholder="my_database"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Username</label>
+              <input
+                type="text"
+                className="form-input"
+                value={dbUser}
+                onChange={(e) => setDbUser(e.target.value)}
+                placeholder="db_user"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <input
+                type="password"
+                className="form-input"
+                value={dbPassword}
+                onChange={(e) => setDbPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">SQL Query</label>
+              <textarea
+                className="form-textarea"
+                value={dbQuery}
+                onChange={(e) => setDbQuery(e.target.value)}
+                placeholder="SELECT * FROM users WHERE active = true"
+                style={{ minHeight: '120px', fontFamily: 'monospace' }}
+              />
+              <p className="text-xs text-muted mt-2">
+                Use <code>{'${variable}'}</code> syntax for dynamic values.
+              </p>
             </div>
           </>
         );
