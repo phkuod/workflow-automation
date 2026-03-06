@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Activity, 
-  ChevronLeft, 
+import {
+  LayoutDashboard,
+  Activity,
+  List,
+  ChevronLeft,
   ChevronRight,
   Menu,
   X
@@ -15,6 +16,7 @@ interface SidebarProps {
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/executions', label: 'Executions', icon: List },
   { path: '/monitoring', label: 'Monitoring', icon: Activity },
 ];
 

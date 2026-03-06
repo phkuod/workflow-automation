@@ -20,7 +20,7 @@ const NODE_CATEGORIES = {
   },
   actions: {
     label: '⚙️ Actions',
-    types: ['script-js', 'script-python', 'http-request', 'set-variable', 'action-email', 'action-slack'] as StepType[],
+    types: ['script-js', 'script-python', 'http-request', 'set-variable', 'action-email', 'action-slack', 'connector-db'] as StepType[],
   },
   flow: {
     label: '🔀 Flow Control',

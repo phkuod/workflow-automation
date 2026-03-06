@@ -62,7 +62,8 @@ export type StepType =
   | 'wait'
   | 'trigger-webhook'
   | 'action-email'
-  | 'action-slack';
+  | 'action-slack'
+  | 'connector-db';
 
 export interface StepConfig {
   code?: string;
@@ -86,6 +87,14 @@ export interface StepConfig {
   // Slack fields
   slackWebhookUrl?: string;
   slackMessage?: string;
+  // Database connector fields
+  dbType?: 'postgres' | 'mysql';
+  dbHost?: string;
+  dbPort?: number;
+  dbName?: string;
+  dbUser?: string;
+  dbPassword?: string;
+  dbQuery?: string;
 }
 
 export interface VariableMapping {
@@ -179,4 +188,5 @@ export const STEP_TYPE_INFO: Record<StepType, { label: string; icon: string; col
   'trigger-webhook': { label: 'Webhook Trigger', icon: '⚡', color: '#22c55e' },
   'action-email': { label: 'Send Email', icon: '📧', color: '#3b82f6' },
   'action-slack': { label: 'Slack Message', icon: '💬', color: '#4a154b' },
+  'connector-db': { label: 'Database Query', icon: '🗄️', color: '#0ea5e9' },
 };

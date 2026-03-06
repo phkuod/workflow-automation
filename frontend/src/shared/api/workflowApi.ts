@@ -103,3 +103,21 @@ export const executionApi = {
     if (!response.data.success) throw new Error(response.data.error);
   },
 };
+
+// Metrics API
+export interface ExecutionHistoryEntry {
+  date: string;
+  completed: number;
+  failed: number;
+  total: number;
+}
+
+export const metricsApi = {
+  getExecutionHistory: async (days = 7): Promise<ExecutionHistoryEntry[]> => {
+    const response = await api.get<ApiResponse<ExecutionHistoryEntry[]>>('/metrics/executions/history', {
+      params: { days },
+    });
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+};

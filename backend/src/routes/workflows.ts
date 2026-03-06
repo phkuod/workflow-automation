@@ -159,8 +159,8 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
     }
 
     const { inputData = {} }: ExecuteWorkflowRequest = req.body;
-    
-    const execution = await ExecutionEngine.execute(workflow, 'manual', inputData);
+
+    const execution = await ExecutionEngine.execute(workflow, 'manual', inputData, true);
     res.json({ success: true, data: execution });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

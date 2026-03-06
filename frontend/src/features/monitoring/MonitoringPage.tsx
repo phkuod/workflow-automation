@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Activity, 
-  CheckCircle, 
-  XCircle, 
+import {
+  ArrowLeft,
+  Activity,
+  CheckCircle,
+  XCircle,
   Clock,
   Cpu,
   HardDrive,
@@ -25,6 +25,7 @@ import {
   Cell,
   Legend
 } from 'recharts';
+import { metricsApi, type ExecutionHistoryEntry } from '../../shared/api/workflowApi';
 
 interface Metrics {
   timestamp: string;
@@ -70,28 +71,10 @@ const CHART_COLORS = {
   purple: '#8b5cf6',
 };
 
-// Generate mock execution trend data for last 7 days
-const generateTrendData = (total: number, successRate: number) => {
-  const data = [];
-  const today = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const dayTotal = Math.floor(total / 7 + (Math.random() - 0.5) * 5);
-    const success = Math.floor(dayTotal * (successRate / 100));
-    data.push({
-      date: date.toLocaleDateString('en-US', { weekday: 'short' }),
-      total: Math.max(0, dayTotal),
-      success: Math.max(0, success),
-      failed: Math.max(0, dayTotal - success),
-    });
-  }
-  return data;
-};
-
 export default function MonitoringPage() {
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [trendData, setTrendData] = useState<{ date: string; success: number; failed: number; total: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -99,14 +82,22 @@ export default function MonitoringPage() {
   const fetchMetrics = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_BASE}/metrics`);
-      const data = await response.json();
-      if (data.success) {
-        setMetrics(data.data);
+      const [metricsResponse, historyData] = await Promise.all([
+        fetch(`${API_BASE}/metrics`).then(r => r.json()),
+        metricsApi.getExecutionHistory(7).catch(() => []),
+      ]);
+      if (metricsResponse.success) {
+        setMetrics(metricsResponse.data);
+        setTrendData(historyData.map((entry: ExecutionHistoryEntry) => ({
+          date: new Date(entry.date).toLocaleDateString('en-US', { weekday: 'short' }),
+          success: entry.completed,
+          failed: entry.failed,
+          total: entry.total,
+        })));
         setLastUpdate(new Date());
         setError(null);
       } else {
-        setError(data.error || 'Failed to fetch metrics');
+        setError(metricsResponse.error || 'Failed to fetch metrics');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to connect to server');
@@ -129,12 +120,6 @@ export default function MonitoringPage() {
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
   }, []);
-
-  // Memoized chart data
-  const trendData = useMemo(() => {
-    if (!metrics) return [];
-    return generateTrendData(metrics.executions.total, metrics.executions.successRate);
-  }, [metrics?.executions.total, metrics?.executions.successRate]);
 
   const pieData = useMemo(() => {
     if (!metrics) return [];
