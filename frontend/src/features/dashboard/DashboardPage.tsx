@@ -17,6 +17,7 @@ import {
   Upload
 } from 'lucide-react';
 import { useConfirm } from '../../shared/components/ConfirmDialog';
+import { toast } from '../../shared/stores/toastStore';
 
 function DashboardPage() {
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ function DashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState('');
   const [newWorkflowDesc, setNewWorkflowDesc] = useState('');
+  const [nameTouched, setNameTouched] = useState(false);
 
   useEffect(() => {
     fetchWorkflows();
@@ -58,6 +60,7 @@ function DashboardPage() {
       setShowCreateModal(false);
       setNewWorkflowName('');
       setNewWorkflowDesc('');
+      setNameTouched(false);
       navigate(`/editor/${workflow.id}`);
     } catch (err) {
       console.error('Failed to create workflow:', err);
@@ -122,12 +125,13 @@ function DashboardPage() {
       const text = await file.text();
       const data = JSON.parse(text);
       if (!data.name || !data.definition) {
-        alert('Invalid workflow file');
+        toast.error('Invalid workflow file: missing name or definition');
         return;
       }
       await createWorkflow(data.name, data.description, data.definition);
+      toast.success('Workflow imported successfully');
     } catch (err) {
-      alert('Failed to import workflow: Invalid JSON');
+      toast.error('Failed to import workflow: Invalid JSON');
     }
     e.target.value = '';
   }, [createWorkflow]);
@@ -247,7 +251,7 @@ function DashboardPage() {
                       )}
                     </td>
                     <td>{getStatusBadge(workflow.status)}</td>
-                    <td>{workflow.definition.stations.length} stations</td>
+                    <td>{workflow.definition.stations.length} {workflow.definition.stations.length === 1 ? 'station' : 'stations'}</td>
                     <td className="text-muted text-sm">
                       {new Date(workflow.updatedAt).toLocaleDateString()}
                     </td>
@@ -303,13 +307,13 @@ function DashboardPage() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+        <div className="modal-overlay" onClick={() => { setShowCreateModal(false); setNameTouched(false); }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">Create New Workflow</h3>
-              <button 
+              <button
                 className="btn btn-ghost btn-icon"
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => { setShowCreateModal(false); setNameTouched(false); }}
               >
                 ✕
               </button>
@@ -323,8 +327,14 @@ function DashboardPage() {
                   placeholder="e.g., Daily Report Generator"
                   value={newWorkflowName}
                   onChange={(e) => setNewWorkflowName(e.target.value)}
+                  onBlur={() => setNameTouched(true)}
                   autoFocus
                 />
+                {nameTouched && !newWorkflowName.trim() && (
+                  <p className="text-sm" style={{ color: 'var(--accent-error)', marginTop: '4px' }}>
+                    Workflow name is required
+                  </p>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Description (optional)</label>
@@ -338,9 +348,9 @@ function DashboardPage() {
               </div>
             </div>
             <div className="modal-footer">
-              <button 
+              <button
                 className="btn btn-secondary"
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => { setShowCreateModal(false); setNameTouched(false); }}
               >
                 Cancel
               </button>
