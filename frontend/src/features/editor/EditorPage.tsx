@@ -12,14 +12,19 @@ import NodeLibrary from './components/NodeLibrary';
 import NodeConfigPanel from './components/NodeConfigPanel';
 import StationConfigPanel from './components/StationConfigPanel';
 import SimulationPanel from './components/SimulationPanel';
+import VersionHistoryPanel from './components/VersionHistoryPanel';
+import ExecuteDialog from './components/ExecuteDialog';
 import { toast } from '../../shared/stores/toastStore';
 import type { StepType } from '../../shared/types/workflow';
-import { 
-  ArrowLeft, 
-  Save, 
-  Play, 
+import InputParametersEditor from './components/InputParametersEditor';
+import {
+  ArrowLeft,
+  Save,
+  Play,
   Plus,
-  Layers
+  Layers,
+  Clock,
+  Settings
 } from 'lucide-react';
 
 // Editor view state
@@ -45,7 +50,9 @@ function EditorPage() {
     selectStation,
     updateStation,
     deleteStation,
+    connectSteps,
     simulateWorkflow,
+    executeWorkflow,
     isSimulating,
     currentExecution,
     executionLogs,
@@ -61,6 +68,9 @@ function EditorPage() {
   const [editorView, setEditorView] = useState<EditorView>({ type: 'stage-view' });
   const [showLibrary, setShowLibrary] = useState(true);
   const [showSimulation, setShowSimulation] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showExecuteDialog, setShowExecuteDialog] = useState<'execute' | 'simulate' | null>(null);
+  const [showInputParams, setShowInputParams] = useState(false);
   
   // Track unsaved changes
   const originalWorkflowRef = useRef<string | null>(null);
@@ -223,13 +233,33 @@ function EditorPage() {
   }, [saveWorkflow, currentWorkflow]);
 
   const handleSimulate = useCallback(async () => {
+    const params = currentWorkflow?.definition.inputParameters;
+    if (params && params.length > 0) {
+      setShowExecuteDialog('simulate');
+      return;
+    }
     setShowSimulation(true);
     try {
       await simulateWorkflow();
     } catch (err) {
       console.error('Simulation failed:', err);
     }
-  }, [simulateWorkflow]);
+  }, [simulateWorkflow, currentWorkflow]);
+
+  const handleExecuteWithParams = useCallback(async (inputData: Record<string, any>) => {
+    const mode = showExecuteDialog;
+    setShowExecuteDialog(null);
+    setShowSimulation(true);
+    try {
+      if (mode === 'simulate') {
+        await simulateWorkflow(inputData);
+      } else {
+        await executeWorkflow(inputData);
+      }
+    } catch (err) {
+      console.error('Execution failed:', err);
+    }
+  }, [showExecuteDialog, simulateWorkflow, executeWorkflow]);
 
   const handleStepClick = useCallback((stepId: string) => {
     selectStep(stepId);
@@ -363,7 +393,24 @@ function EditorPage() {
             </select>
           )}
 
-          <button 
+          <button
+            className={`btn btn-secondary ${showInputParams ? 'btn-active' : ''}`}
+            onClick={() => setShowInputParams(!showInputParams)}
+            title="Input Parameters"
+          >
+            <Settings size={18} />
+            Params
+          </button>
+
+          <button
+            className="btn btn-secondary btn-icon"
+            onClick={() => setShowVersionHistory(!showVersionHistory)}
+            title="Version History"
+          >
+            <Clock size={18} />
+          </button>
+
+          <button
             className={`btn ${hasUnsavedChanges ? 'btn-primary' : 'btn-secondary'}`}
             onClick={handleSave}
             disabled={isLoading}
@@ -435,6 +482,9 @@ function EditorPage() {
               selectedStepId={selectedStepId}
               onStepClick={handleStepClick}
               onStepUpdate={updateStep}
+              onStepConnect={(sourceId, targetId, sourceHandle) =>
+                connectSteps(currentStage.id, sourceId, targetId, sourceHandle)
+              }
             />
           )}
         </div>
@@ -463,16 +513,63 @@ function EditorPage() {
           />
         )}
 
+        {/* Input Parameters Panel */}
+        {showInputParams && currentWorkflow && (
+          <div style={{
+            width: '320px',
+            background: 'var(--bg-secondary)',
+            borderLeft: '1px solid var(--border-color)',
+            padding: '16px',
+            overflowY: 'auto',
+          }}>
+            <h3 style={{ fontWeight: 600, fontSize: '14px', marginBottom: '12px' }}>Input Parameters</h3>
+            <InputParametersEditor
+              parameters={currentWorkflow.definition.inputParameters || []}
+              onChange={(params) => {
+                setCurrentWorkflow({
+                  ...currentWorkflow,
+                  definition: {
+                    ...currentWorkflow.definition,
+                    inputParameters: params,
+                  },
+                });
+              }}
+            />
+          </div>
+        )}
+
         {/* Simulation Panel */}
         {showSimulation && (
-          <SimulationPanel 
+          <SimulationPanel
             execution={currentExecution}
             logs={executionLogs}
             isRunning={isSimulating}
             onClose={() => setShowSimulation(false)}
           />
         )}
+
+        {/* Version History Panel */}
+        {showVersionHistory && currentWorkflow && (
+          <VersionHistoryPanel
+            workflowId={currentWorkflow.id}
+            onRestore={() => {
+              if (id) fetchWorkflow(id);
+              setShowVersionHistory(false);
+            }}
+            onClose={() => setShowVersionHistory(false)}
+          />
+        )}
       </div>
+
+      {/* Execute Dialog (for workflows with input parameters) */}
+      {showExecuteDialog && currentWorkflow?.definition.inputParameters && (
+        <ExecuteDialog
+          parameters={currentWorkflow.definition.inputParameters}
+          mode={showExecuteDialog}
+          onSubmit={handleExecuteWithParams}
+          onCancel={() => setShowExecuteDialog(null)}
+        />
+      )}
     </div>
   );
 }

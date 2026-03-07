@@ -231,9 +231,10 @@ ${code}
   static evaluateCondition(condition: string, context: Record<string, any>): boolean {
     try {
       const interpolated = this.interpolateVariables(condition, context);
-      // Safe evaluation using Function constructor
-      const fn = new Function('context', `with(context) { return ${interpolated}; }`);
-      return Boolean(fn(context));
+      // Use VM sandbox instead of new Function + with() for safer evaluation
+      const sandbox = createContext({ ...context });
+      const result = runInContext(`(${interpolated})`, sandbox, { timeout: 1000 });
+      return Boolean(result);
     } catch (error) {
       console.error('Condition evaluation error:', error);
       return false;

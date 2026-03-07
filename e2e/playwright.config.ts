@@ -2,24 +2,36 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
-  retries: 0,
+  fullyParallel: false,
+  retries: 1,
   reporter: 'html',
+  timeout: 30000,
   use: {
-    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'dev',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5173',
+      },
+    },
+    {
+      name: 'docker-production',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:3001',
+      },
     },
   ],
-  webServer: {
-    command: 'npm run dev:frontend',
-    url: 'http://localhost:5173',
-    cwd: '../',
-    reuseExistingServer: true,
-  },
+  webServer: process.env.CI
+    ? undefined
+    : {
+        command: 'npm run dev:frontend',
+        url: 'http://localhost:5173',
+        cwd: '../',
+        reuseExistingServer: true,
+      },
 });

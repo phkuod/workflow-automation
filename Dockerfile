@@ -10,9 +10,8 @@ FROM registry.access.redhat.com/ubi8/nodejs-18:latest AS builder
 
 USER root
 
-# Install build tools for native modules (better-sqlite3 v11+ needs C++20)
-# gcc-toolset-12 provides GCC 12.x with C++20 support on RHEL/UBI 8
-RUN dnf install -y gcc-toolset-12-gcc-c++ make python3 && \
+# sql.js is pure JavaScript — no native compilation needed
+RUN dnf install -y make python3 && \
     dnf clean all
 
 WORKDIR /app
@@ -23,8 +22,7 @@ RUN npm ci --ignore-scripts
 
 # --- Backend ---
 COPY backend/package.json backend/package-lock.json ./backend/
-# Enable gcc-toolset-12 so node-gyp uses GCC 12 (C++20 support)
-RUN scl enable gcc-toolset-12 -- bash -c 'cd backend && npm ci'
+RUN cd backend && npm ci
 
 # --- Frontend ---
 COPY frontend/package.json frontend/package-lock.json ./frontend/

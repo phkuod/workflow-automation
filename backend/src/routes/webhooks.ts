@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { WorkflowModel } from '../models/workflow';
+import { ExecutionModel } from '../models/execution';
 import { ExecutionEngine } from '../services/executionEngine';
 
 const router = Router();
@@ -56,20 +57,17 @@ router.all('/:id', async (req: Request, res: Response) => {
       url: req.url
     };
 
-    // Create execution record explicitly first or await the engine to start it.
-    // However, our ExecutionEngine.execute creates the execution record internally.
-    // Instead of waiting for full execution or changing the ExecutionEngine extensively right now,
-    // we let it run async, but we can't get the ID unless we modify ExecutionEngine.
-    // Let's modify the engine call slightly to create it first, or just return async.
-    // For now, let's keep it async but return 202. If they need an ID, we'd have to 
-    // separate creating the execution from running it.
-    ExecutionEngine.execute(workflow, 'webhook', inputData)
+    // Create execution record synchronously to get the ID before responding
+    const execution = ExecutionModel.create(workflow.id, workflow.name, 'webhook');
+
+    // Fire-and-forget: run the execution asynchronously, passing the pre-created execution ID
+    ExecutionEngine.executeWithId(execution.id, workflow, 'webhook', inputData)
       .catch(err => console.error(`Webhook execution failed for ${workflowId}:`, err));
 
-    res.status(202).json({ 
-      success: true, 
+    res.status(202).json({
+      success: true,
       message: 'Webhook received and execution started',
-      executionId: 'async' // We don't have the ID immediately if we don't await
+      executionId: execution.id
     });
 
   } catch (error: any) {

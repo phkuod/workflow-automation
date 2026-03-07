@@ -116,17 +116,66 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
         )}
       </div>
 
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{
-          width: '12px',
-          height: '12px',
-          background: 'var(--accent-primary)',
-          border: '2px solid var(--bg-secondary)',
-          bottom: '-6px',
-        }}
-      />
+      {step.type === 'if-else' ? (
+        <>
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="true"
+            style={{
+              width: '12px',
+              height: '12px',
+              background: '#22c55e',
+              border: '2px solid var(--bg-secondary)',
+              bottom: '-6px',
+              left: '35%',
+            }}
+          />
+          <div style={{
+            position: 'absolute',
+            bottom: '-20px',
+            left: '35%',
+            transform: 'translateX(-50%)',
+            fontSize: '10px',
+            fontWeight: 700,
+            color: '#22c55e',
+          }}>T</div>
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="false"
+            style={{
+              width: '12px',
+              height: '12px',
+              background: '#ef4444',
+              border: '2px solid var(--bg-secondary)',
+              bottom: '-6px',
+              left: '65%',
+            }}
+          />
+          <div style={{
+            position: 'absolute',
+            bottom: '-20px',
+            left: '65%',
+            transform: 'translateX(-50%)',
+            fontSize: '10px',
+            fontWeight: 700,
+            color: '#ef4444',
+          }}>F</div>
+        </>
+      ) : (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          style={{
+            width: '12px',
+            height: '12px',
+            background: 'var(--accent-primary)',
+            border: '2px solid var(--bg-secondary)',
+            bottom: '-6px',
+          }}
+        />
+      )}
     </div>
   );
 });

@@ -1,10 +1,11 @@
 import axios from 'axios';
-import type { 
-  Workflow, 
-  WorkflowDefinition, 
-  Execution, 
+import type {
+  Workflow,
+  WorkflowDefinition,
+  Execution,
   ExecutionLog,
-  ApiResponse 
+  WorkflowVersion,
+  ApiResponse
 } from '../types/workflow';
 
 const api = axios.create({
@@ -102,6 +103,11 @@ export const executionApi = {
     const response = await api.delete<ApiResponse<{ deleted: boolean }>>(`/executions/${id}`);
     if (!response.data.success) throw new Error(response.data.error);
   },
+
+  cancel: async (id: string): Promise<void> => {
+    const response = await api.post<ApiResponse<{ cancelled: boolean }>>(`/executions/${id}/cancel`);
+    if (!response.data.success) throw new Error(response.data.error);
+  },
 };
 
 // Metrics API
@@ -111,6 +117,26 @@ export interface ExecutionHistoryEntry {
   failed: number;
   total: number;
 }
+
+export const versionApi = {
+  getVersions: async (workflowId: string): Promise<WorkflowVersion[]> => {
+    const response = await api.get<ApiResponse<WorkflowVersion[]>>(`/workflows/${workflowId}/versions`);
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+
+  getVersion: async (workflowId: string, version: number): Promise<WorkflowVersion> => {
+    const response = await api.get<ApiResponse<WorkflowVersion>>(`/workflows/${workflowId}/versions/${version}`);
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+
+  restore: async (workflowId: string, version: number): Promise<Workflow> => {
+    const response = await api.post<ApiResponse<Workflow>>(`/workflows/${workflowId}/versions/${version}/restore`);
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+};
 
 export const metricsApi = {
   getExecutionHistory: async (days = 7): Promise<ExecutionHistoryEntry[]> => {

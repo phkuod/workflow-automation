@@ -1,5 +1,6 @@
-import { useRef, useEffect } from 'react';
-import type { Execution, ExecutionLog } from '../../../shared/types/workflow';
+import { useRef, useEffect, useMemo } from 'react';
+import type { Execution, ExecutionLog, ExecutionEvent } from '../../../shared/types/workflow';
+import { useExecutionStream } from '../../../shared/hooks/useExecutionStream';
 import X from 'lucide-react/dist/esm/icons/x';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
 import XCircle from 'lucide-react/dist/esm/icons/x-circle';
@@ -18,11 +19,30 @@ interface SimulationPanelProps {
 function SimulationPanel({ execution, logs, isRunning, onClose }: SimulationPanelProps) {
   const logContainerRef = useRef<HTMLDivElement>(null);
 
+  // SSE real-time updates
+  const { events } = useExecutionStream(isRunning && execution?.id ? execution.id : null);
+
+  // Convert SSE events to log-like entries for display
+  const streamLogs = useMemo(() => {
+    return events.map((event: ExecutionEvent, idx: number) => ({
+      id: `sse-${idx}`,
+      executionId: event.executionId,
+      level: event.type.includes('failed') ? 'error' as const : 'info' as const,
+      message: formatEventMessage(event),
+      timestamp: event.data.timestamp,
+      stationId: event.data.stationId,
+      stepId: event.data.stepId,
+    }));
+  }, [events]);
+
+  // Merge persisted logs with SSE stream logs (SSE takes precedence while running)
+  const displayLogs = isRunning && streamLogs.length > 0 ? streamLogs : logs;
+
   useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [displayLogs]);
 
   const getStatusBadge = () => {
     if (isRunning) {
@@ -175,7 +195,7 @@ function SimulationPanel({ execution, logs, isRunning, onClose }: SimulationPane
               ) : station.status === 'failed' ? (
                 <XCircle size={14} color="var(--accent-error)" />
               ) : station.status === 'running' ? (
-                <Clock size={14} color="var(--accent-primary)" />
+                <Clock size={14} color="var(--accent-primary)" style={{ animation: 'pulse 1.5s ease-in-out infinite' }} />
               ) : (
                 <Clock size={14} color="var(--text-muted)" />
               )}
@@ -191,7 +211,7 @@ function SimulationPanel({ execution, logs, isRunning, onClose }: SimulationPane
       {/* Logs */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
-          <div className="text-xs text-muted">Execution Log ({logs.length} entries)</div>
+          <div className="text-xs text-muted">Execution Log ({displayLogs.length} entries)</div>
         </div>
         <div
           ref={logContainerRef}
@@ -204,12 +224,12 @@ function SimulationPanel({ execution, logs, isRunning, onClose }: SimulationPane
             background: 'var(--bg-primary)',
           }}
         >
-          {logs.length === 0 ? (
+          {displayLogs.length === 0 ? (
             <div className="text-muted text-center p-4">
               {isRunning ? 'Waiting for logs...' : 'No logs available'}
             </div>
           ) : (
-            logs.map((log) => (
+            displayLogs.map((log) => (
               <div
                 key={log.id}
                 style={{
@@ -252,6 +272,32 @@ function SimulationPanel({ execution, logs, isRunning, onClose }: SimulationPane
       )}
     </div>
   );
+}
+
+function formatEventMessage(event: ExecutionEvent): string {
+  const { type, data } = event;
+  switch (type) {
+    case 'step:start':
+      return `Step started: ${data.stepName}`;
+    case 'step:complete':
+      return `Step completed: ${data.stepName}`;
+    case 'step:failed':
+      return `Step failed: ${data.stepName} — ${data.error || 'unknown error'}`;
+    case 'station:start':
+      return `Station started: ${data.stationName}`;
+    case 'station:complete':
+      return `Station completed: ${data.stationName}`;
+    case 'station:failed':
+      return `Station failed: ${data.stationName} — ${data.error || 'unknown error'}`;
+    case 'execution:complete':
+      return `Execution completed (${data.progress?.completed}/${data.progress?.total} steps)`;
+    case 'execution:failed':
+      return `Execution failed`;
+    case 'execution:cancelled':
+      return `Execution cancelled`;
+    default:
+      return type;
+  }
 }
 
 export default SimulationPanel;

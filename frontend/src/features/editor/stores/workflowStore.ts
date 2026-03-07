@@ -51,6 +51,7 @@ interface WorkflowState {
   addStep: (stationId: string, type: StepType, name: string) => void;
   updateStep: (stepId: string, data: Partial<Step>) => void;
   deleteStep: (stepId: string) => void;
+  connectSteps: (stationId: string, sourceId: string, targetId: string, sourceHandle?: string) => void;
   selectStep: (stepId: string | null) => void;
   selectStation: (stationId: string | null) => void;
   
@@ -278,7 +279,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     });
   },
 
-  // Delete step
+  // Delete step (also cleans up related edges)
   deleteStep: (stepId: string) => {
     const { currentWorkflow, selectedStepId } = get();
     if (!currentWorkflow) return;
@@ -291,10 +292,38 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           stations: currentWorkflow.definition.stations.map((station) => ({
             ...station,
             steps: station.steps.filter((step) => step.id !== stepId),
+            edges: station.edges?.filter((edge) => edge.source !== stepId && edge.target !== stepId),
           })),
         },
       },
       selectedStepId: selectedStepId === stepId ? null : selectedStepId,
+    });
+  },
+
+  // Connect steps (persist edge to station)
+  connectSteps: (stationId: string, sourceId: string, targetId: string, sourceHandle?: string) => {
+    const { currentWorkflow } = get();
+    if (!currentWorkflow) return;
+
+    const newEdge = {
+      id: `edge-${sourceId}-${sourceHandle || 'default'}-${targetId}`,
+      source: sourceId,
+      target: targetId,
+      sourceHandle,
+    };
+
+    set({
+      currentWorkflow: {
+        ...currentWorkflow,
+        definition: {
+          ...currentWorkflow.definition,
+          stations: currentWorkflow.definition.stations.map((station) => {
+            if (station.id !== stationId) return station;
+            const existing = station.edges || [];
+            return { ...station, edges: [...existing, newEdge] };
+          }),
+        },
+      },
     });
   },
 

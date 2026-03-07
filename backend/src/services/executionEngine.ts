@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  Workflow, 
-  Station, 
-  Step, 
-  Execution, 
+import {
+  Workflow,
+  Station,
+  Step,
+  Execution,
   ExecutionResult,
   StationResult,
   StepResult,
@@ -12,6 +12,8 @@ import {
 import { ExecutionModel, LogModel } from '../models/execution';
 import { ScriptRunner, ScriptResult } from './scriptRunner';
 import { DbConnectorService } from './dbConnector';
+import { executionManager } from './executionManager';
+import { executionEventBus, ExecutionEvent } from './executionEventBus';
 import nodemailer from 'nodemailer';
 
 // Initialize email transporter
@@ -33,9 +35,22 @@ interface ExecutionContext {
   steps: Record<string, StepResult>;
   logs: Omit<ExecutionLog, 'id' | 'timestamp'>[];
   simulate: boolean;
+  signal?: AbortSignal;
 }
 
 export class ExecutionEngine {
+  /**
+   * Execute a workflow with a pre-created execution record (used by webhooks)
+   */
+  static async executeWithId(
+    executionId: string,
+    workflow: Workflow,
+    triggeredBy: Execution['triggeredBy'] = 'manual',
+    inputData: Record<string, any> = {},
+  ): Promise<Execution> {
+    return this.executeInternal(executionId, workflow, triggeredBy, inputData, false);
+  }
+
   /**
    * Execute a workflow
    */
@@ -49,16 +64,42 @@ export class ExecutionEngine {
     const execution = simulate
       ? { id: uuidv4(), workflowId: workflow.id, workflowName: workflow.name, status: 'running' as const, triggeredBy, startTime: new Date().toISOString(), successRate: 0 }
       : ExecutionModel.create(workflow.id, workflow.name, triggeredBy);
+    return this.executeInternal(execution.id, workflow, triggeredBy, inputData, simulate);
+  }
+
+  private static async executeInternal(
+    executionId: string,
+    workflow: Workflow,
+    triggeredBy: Execution['triggeredBy'],
+    inputData: Record<string, any>,
+    simulate: boolean,
+  ): Promise<Execution> {
+    const execution = { id: executionId, workflowId: workflow.id, workflowName: workflow.name, status: 'running' as const, triggeredBy, startTime: new Date().toISOString(), successRate: 0 };
+
+    // Validate input parameters
+    if (workflow.definition.inputParameters?.length) {
+      for (const param of workflow.definition.inputParameters) {
+        if (inputData[param.name] === undefined && param.defaultValue !== undefined) {
+          inputData[param.name] = param.defaultValue;
+        } else if (param.required && inputData[param.name] === undefined) {
+          throw new Error(`Missing required input parameter: ${param.name}`);
+        }
+      }
+    }
+
+    // Register with execution manager for cancellation support
+    const signal = executionManager.register(execution.id);
 
     // Initialize context
     const context: ExecutionContext = {
       executionId: execution.id,
       workflow,
-      variables: { ...inputData },
+      variables: { ...inputData, input: { ...inputData } },
       stations: {},
       steps: {},
       logs: [],
-      simulate
+      simulate,
+      signal
     };
 
     this.log(context, 'info', `${simulate ? '[SIMULATE] ' : ''}Starting workflow: ${workflow.name}`);
@@ -72,8 +113,17 @@ export class ExecutionEngine {
     let failed = false;
 
     // Execute stations sequentially
+    let cancelled = false;
     for (const station of workflow.definition.stations) {
       if (failed) break;
+
+      // Check for cancellation
+      if (signal.aborted) {
+        cancelled = true;
+        failed = true;
+        result.error = { message: 'Execution cancelled', code: 'CANCELLED' };
+        break;
+      }
 
       // Check station condition
       if (!this.shouldExecuteStation(station, context)) {
@@ -84,6 +134,7 @@ export class ExecutionEngine {
       }
 
       this.log(context, 'info', `Starting station: ${station.name}`, undefined, station.id);
+      this.emitEvent(context, 'station:start', { stationId: station.id, stationName: station.name });
 
       const stationResult = await this.executeStation(station, context);
       result.stations.push(stationResult);
@@ -95,13 +146,21 @@ export class ExecutionEngine {
       // Check if station failed
       if (stationResult.status === 'failed') {
         failed = true;
-        result.error = {
-          message: `Workflow stopped at station: ${station.name}`,
-          code: 'STATION_FAILED'
-        };
+        // Check if it was due to cancellation
+        if (signal.aborted) {
+          cancelled = true;
+          result.error = { message: 'Execution cancelled', code: 'CANCELLED' };
+        } else {
+          result.error = {
+            message: `Workflow stopped at station: ${station.name}`,
+            code: 'STATION_FAILED'
+          };
+        }
         this.log(context, 'error', `Station failed: ${station.name}`, undefined, station.id);
+        this.emitEvent(context, 'station:failed', { stationId: station.id, stationName: station.name, error: result.error.message });
       } else {
         this.log(context, 'info', `Station completed: ${station.name}`, stationResult.output, station.id);
+        this.emitEvent(context, 'station:complete', { stationId: station.id, stationName: station.name, output: stationResult.output });
       }
 
       // Store station result for variable access
@@ -112,17 +171,30 @@ export class ExecutionEngine {
     // Calculate success rate
     const successRate = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
 
+    // Determine final status
+    const finalStatus = cancelled ? 'cancelled' : (failed ? 'failed' : 'completed');
+
     // Save logs (skip DB write in simulate mode)
     if (!simulate && context.logs.length > 0) {
       LogModel.createMany(context.logs);
     }
 
+    // Unregister from execution manager
+    executionManager.unregister(execution.id);
+
+    // Emit terminal event
+    const terminalEventType: ExecutionEvent['type'] = cancelled ? 'execution:cancelled' : (failed ? 'execution:failed' : 'execution:complete');
+    this.emitEvent(context, terminalEventType, {
+      status: finalStatus,
+      progress: { completed: completedSteps, total: totalSteps }
+    });
+
     if (simulate) {
       // Return synthetic execution object without writing to DB
-      this.log(context, 'info', `[SIMULATE] Workflow ${failed ? 'failed' : 'completed'}. Success rate: ${successRate.toFixed(1)}%`);
+      this.log(context, 'info', `[SIMULATE] Workflow ${finalStatus}. Success rate: ${successRate.toFixed(1)}%`);
       return {
         ...execution,
-        status: failed ? 'failed' : 'completed',
+        status: finalStatus,
         endTime: new Date().toISOString(),
         successRate,
         result
@@ -131,13 +203,13 @@ export class ExecutionEngine {
 
     // Update execution record
     const updatedExecution = ExecutionModel.update(execution.id, {
-      status: failed ? 'failed' : 'completed',
+      status: finalStatus,
       endTime: new Date().toISOString(),
       successRate,
       result
     });
 
-    this.log(context, 'info', `Workflow ${failed ? 'failed' : 'completed'}. Success rate: ${successRate.toFixed(1)}%`);
+    this.log(context, 'info', `Workflow ${finalStatus}. Success rate: ${successRate.toFixed(1)}%`);
 
     return updatedExecution!;
   }
@@ -230,29 +302,124 @@ export class ExecutionEngine {
   private static async executeStationSteps(station: Station, context: ExecutionContext): Promise<{ status: StationResult['status'], steps: StepResult[], output: any }> {
     const steps: StepResult[] = [];
 
-    // Execute steps sequentially
-    for (const step of station.steps) {
-      const stepResult = await this.executeStep(step, context);
-      steps.push(stepResult);
+    // If edges defined, use graph-based execution with if-else routing
+    if (station.edges && station.edges.length > 0) {
+      const stepMap = new Map(station.steps.map(s => [s.id, s]));
+      const executed = new Set<string>();
 
-      // Store step result for variable access
-      context.steps[step.id] = stepResult;
-      context.steps[step.name] = stepResult;
+      // Find start steps (no incoming edges)
+      const targetIds = new Set(station.edges.map(e => e.target));
+      const startStepIds = station.steps
+        .filter(s => !targetIds.has(s.id))
+        .map(s => s.id);
 
-      // If step failed, stop the station
-      if (stepResult.status === 'failed') {
-        return { status: 'failed', steps, output: {} };
+      const queue: string[] = [...startStepIds];
+
+      while (queue.length > 0) {
+        const stepId = queue.shift()!;
+        if (executed.has(stepId)) continue;
+
+        const step = stepMap.get(stepId);
+        if (!step) continue;
+
+        if (context.signal?.aborted) {
+          return { status: 'failed', steps, output: {} };
+        }
+
+        const stepResult = await this.executeStep(step, context);
+        steps.push(stepResult);
+        executed.add(stepId);
+
+        context.steps[step.id] = stepResult;
+        context.steps[step.name] = stepResult;
+
+        if (stepResult.status === 'failed') {
+          return { status: 'failed', steps, output: {} };
+        }
+
+        if (stepResult.output) {
+          context.variables[step.id] = { output: stepResult.output };
+          context.variables[step.name] = { output: stepResult.output };
+        }
+
+        // Find next steps based on edges
+        const outEdges = station.edges!.filter(e => e.source === stepId);
+
+        if (step.type === 'if-else' && stepResult.output?.branch) {
+          const branch = stepResult.output.branch as string;
+          const nextEdges = outEdges.filter(e => e.sourceHandle === branch);
+          for (const edge of nextEdges) {
+            if (!executed.has(edge.target)) queue.push(edge.target);
+          }
+          // Mark skipped branch steps
+          const skippedEdges = outEdges.filter(e => e.sourceHandle !== branch);
+          for (const edge of skippedEdges) {
+            this.markBranchSkipped(edge.target, station, executed, steps, context);
+          }
+        } else {
+          for (const edge of outEdges) {
+            if (!executed.has(edge.target)) queue.push(edge.target);
+          }
+        }
       }
+    } else {
+      // Linear execution (backward compatible)
+      for (const step of station.steps) {
+        if (context.signal?.aborted) {
+          return { status: 'failed', steps, output: {} };
+        }
 
-      // Add step output to context variables
-      if (stepResult.output) {
-        context.variables[step.id] = { output: stepResult.output };
-        context.variables[step.name] = { output: stepResult.output };
+        const stepResult = await this.executeStep(step, context);
+        steps.push(stepResult);
+
+        context.steps[step.id] = stepResult;
+        context.steps[step.name] = stepResult;
+
+        if (stepResult.status === 'failed') {
+          return { status: 'failed', steps, output: {} };
+        }
+
+        if (stepResult.output) {
+          context.variables[step.id] = { output: stepResult.output };
+          context.variables[step.name] = { output: stepResult.output };
+        }
       }
     }
 
     const output = this.aggregateStationOutput(station, steps, context);
     return { status: 'completed', steps, output };
+  }
+
+  /**
+   * Recursively mark steps in a skipped branch as 'skipped'
+   */
+  private static markBranchSkipped(
+    stepId: string,
+    station: Station,
+    executed: Set<string>,
+    steps: StepResult[],
+    context: ExecutionContext
+  ): void {
+    if (executed.has(stepId)) return;
+    executed.add(stepId);
+
+    const step = station.steps.find(s => s.id === stepId);
+    if (!step) return;
+
+    const skippedResult: StepResult = {
+      stepId: step.id,
+      stepName: step.name,
+      stepType: step.type,
+      status: 'skipped',
+    };
+    steps.push(skippedResult);
+    context.steps[step.id] = skippedResult;
+    context.steps[step.name] = skippedResult;
+
+    const downstreamEdges = (station.edges || []).filter(e => e.source === stepId);
+    for (const edge of downstreamEdges) {
+      this.markBranchSkipped(edge.target, station, executed, steps, context);
+    }
   }
 
   /**
@@ -267,6 +434,8 @@ export class ExecutionEngine {
       startTime: new Date().toISOString(),
       input: this.resolveInputVariables(step, context)
     };
+
+    this.emitEvent(context, 'step:start', { stepId: step.id, stepName: step.name });
 
     const startTime = new Date().toISOString();
     let retryAttempts = 0;
@@ -385,6 +554,7 @@ export class ExecutionEngine {
             };
             break;
 
+          case 'notification-slack':
           case 'action-slack': {
             const slackUrl = ScriptRunner.interpolateVariables(step.config.slackWebhookUrl || '', { ...context.variables, inputData: stepResult.input });
             const slackMsg = ScriptRunner.interpolateVariables(step.config.slackMessage || '', { ...context.variables, inputData: stepResult.input });
@@ -526,6 +696,14 @@ export class ExecutionEngine {
     }
 
     stepResult.endTime = new Date().toISOString();
+
+    // Emit step completion/failure event
+    if (stepResult.status === 'completed') {
+      this.emitEvent(context, 'step:complete', { stepId: step.id, stepName: step.name, output: stepResult.output });
+    } else if (stepResult.status === 'failed') {
+      this.emitEvent(context, 'step:failed', { stepId: step.id, stepName: step.name, error: stepResult.error?.message });
+    }
+
     return stepResult;
   }
 
@@ -614,6 +792,20 @@ export class ExecutionEngine {
         status: 'skipped'
       }))
     };
+  }
+
+  /**
+   * Emit a real-time execution event via the event bus
+   */
+  private static emitEvent(context: ExecutionContext, type: ExecutionEvent['type'], data: Partial<ExecutionEvent['data']> = {}): void {
+    executionEventBus.emitExecutionEvent({
+      executionId: context.executionId,
+      type,
+      data: {
+        timestamp: new Date().toISOString(),
+        ...data,
+      },
+    });
   }
 
   /**

@@ -13,6 +13,15 @@ export interface Workflow {
 export interface WorkflowDefinition {
   stations: Station[];
   variables?: Record<string, any>;
+  inputParameters?: InputParameter[];
+}
+
+export interface InputParameter {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'json';
+  description?: string;
+  defaultValue?: any;
+  required?: boolean;
 }
 
 export interface Station {
@@ -23,6 +32,14 @@ export interface Station {
   position: { x: number; y: number };
   condition?: StationCondition;
   iterator?: StationIterator;
+  edges?: StationEdge[];
+}
+
+export interface StationEdge {
+  id: string;
+  source: string;      // source step ID
+  target: string;      // target step ID
+  sourceHandle?: string; // 'true' | 'false' for if-else branches
 }
 
 export interface StationIterator {
