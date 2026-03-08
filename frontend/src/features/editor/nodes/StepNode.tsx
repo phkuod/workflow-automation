@@ -11,11 +11,12 @@ interface StepNodeData extends Record<string, unknown> {
   step: Step;
   status?: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
   isSelected?: boolean;
+  hasInspectableData?: boolean;
 }
 
 // Using a more generic props type for compatibility with Xyflow v12
 const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: boolean }) => {
-  const { step, status, isSelected } = data;
+  const { step, status, isSelected, hasInspectableData } = data;
   const activeSelected = isSelected || selected;
   const typeInfo = (STEP_TYPE_INFO as any)[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
 
@@ -109,9 +110,25 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
           </div>
         </div>
 
-        {status && (
-          <div style={{ marginLeft: 'auto' }}>
-            {getStatusIcon()}
+        {(status || hasInspectableData) && (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {hasInspectableData && (
+              <span
+                title="Click to inspect data"
+                style={{
+                  fontSize: '10px',
+                  background: 'var(--accent-primary)',
+                  color: '#fff',
+                  borderRadius: '3px',
+                  padding: '1px 4px',
+                  fontWeight: 600,
+                  lineHeight: '1.4',
+                }}
+              >
+                DATA
+              </span>
+            )}
+            {status && getStatusIcon()}
           </div>
         )}
       </div>
