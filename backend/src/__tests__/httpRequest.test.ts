@@ -1,23 +1,53 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ScriptRunner } from '../services/scriptRunner';
+import { EventEmitter } from 'events';
+
+// Mock both http and https modules
+vi.mock('http', async () => {
+  const actual = await vi.importActual<typeof import('http')>('http');
+  return { ...actual, request: vi.fn() };
+});
+vi.mock('https', async () => {
+  const actual = await vi.importActual<typeof import('https')>('https');
+  return { ...actual, request: vi.fn() };
+});
+
+import * as http from 'http';
+import * as https from 'https';
+
+// Helper to create a mock response
+function createMockResponse(statusCode: number, statusMessage: string, body: string) {
+  const res = new EventEmitter() as any;
+  res.statusCode = statusCode;
+  res.statusMessage = statusMessage;
+  process.nextTick(() => {
+    res.emit('data', Buffer.from(body));
+    res.emit('end');
+  });
+  return res;
+}
+
+// Helper to create a mock request
+function createMockRequest() {
+  const req = new EventEmitter() as any;
+  req.write = vi.fn();
+  req.end = vi.fn();
+  req.destroy = vi.fn();
+  return req;
+}
 
 describe('HTTP Request Step', () => {
-  const originalFetch = globalThis.fetch;
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-  });
-
   it('makes a GET request and returns response', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      text: () => Promise.resolve(JSON.stringify({ data: 'hello' })),
+    const mockRes = createMockResponse(200, 'OK', JSON.stringify({ data: 'hello' }));
+    const mockReq = createMockRequest();
+
+    vi.mocked(https.request).mockImplementation((_opts: any, cb: any) => {
+      cb(mockRes);
+      return mockReq;
     });
 
     const result = await ScriptRunner.executeHttpRequest(
@@ -28,18 +58,20 @@ describe('HTTP Request Step', () => {
     expect(result.success).toBe(true);
     expect(result.output.status).toBe(200);
     expect(result.output.data).toEqual({ data: 'hello' });
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.example.com/data',
-      expect.objectContaining({ method: 'GET' })
-    );
+    expect(https.request).toHaveBeenCalled();
+    const callOpts = vi.mocked(https.request).mock.calls[0][0] as any;
+    expect(callOpts.method).toBe('GET');
+    expect(callOpts.hostname).toBe('api.example.com');
+    expect(callOpts.path).toBe('/data');
   });
 
   it('makes a POST request with body', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 201,
-      statusText: 'Created',
-      text: () => Promise.resolve(JSON.stringify({ id: 1 })),
+    const mockRes = createMockResponse(201, 'Created', JSON.stringify({ id: 1 }));
+    const mockReq = createMockRequest();
+
+    vi.mocked(https.request).mockImplementation((_opts: any, cb: any) => {
+      cb(mockRes);
+      return mockReq;
     });
 
     const result = await ScriptRunner.executeHttpRequest(
@@ -49,18 +81,18 @@ describe('HTTP Request Step', () => {
 
     expect(result.success).toBe(true);
     expect(result.output.status).toBe(201);
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.example.com/items',
-      expect.objectContaining({ method: 'POST', body: '{"name":"test"}' })
-    );
+    const callOpts = vi.mocked(https.request).mock.calls[0][0] as any;
+    expect(callOpts.method).toBe('POST');
+    expect(mockReq.write).toHaveBeenCalledWith('{"name":"test"}');
   });
 
   it('handles non-ok response as failure', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found',
-      text: () => Promise.resolve('Not found'),
+    const mockRes = createMockResponse(404, 'Not Found', 'Not found');
+    const mockReq = createMockRequest();
+
+    vi.mocked(https.request).mockImplementation((_opts: any, cb: any) => {
+      cb(mockRes);
+      return mockReq;
     });
 
     const result = await ScriptRunner.executeHttpRequest(
@@ -73,7 +105,12 @@ describe('HTTP Request Step', () => {
   });
 
   it('handles network errors', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'));
+    const mockReq = createMockRequest();
+
+    vi.mocked(https.request).mockImplementation((_opts: any, _cb: any) => {
+      process.nextTick(() => mockReq.emit('error', new Error('Network failure')));
+      return mockReq;
+    });
 
     const result = await ScriptRunner.executeHttpRequest(
       { url: 'https://api.example.com/down', method: 'GET' },
@@ -85,11 +122,12 @@ describe('HTTP Request Step', () => {
   });
 
   it('interpolates variables in URL', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      text: () => Promise.resolve('{}'),
+    const mockRes = createMockResponse(200, 'OK', '{}');
+    const mockReq = createMockRequest();
+
+    vi.mocked(https.request).mockImplementation((_opts: any, cb: any) => {
+      cb(mockRes);
+      return mockReq;
     });
 
     await ScriptRunner.executeHttpRequest(
@@ -97,18 +135,17 @@ describe('HTTP Request Step', () => {
       { userId: '123' }
     );
 
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.example.com/users/123',
-      expect.any(Object)
-    );
+    const callOpts = vi.mocked(https.request).mock.calls[0][0] as any;
+    expect(callOpts.path).toBe('/users/123');
   });
 
   it('passes custom headers', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      text: () => Promise.resolve('{}'),
+    const mockRes = createMockResponse(200, 'OK', '{}');
+    const mockReq = createMockRequest();
+
+    vi.mocked(https.request).mockImplementation((_opts: any, cb: any) => {
+      cb(mockRes);
+      return mockReq;
     });
 
     await ScriptRunner.executeHttpRequest(
@@ -116,20 +153,17 @@ describe('HTTP Request Step', () => {
       {}
     );
 
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.example.com',
-      expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: 'Bearer token123' }),
-      })
-    );
+    const callOpts = vi.mocked(https.request).mock.calls[0][0] as any;
+    expect(callOpts.headers.Authorization).toBe('Bearer token123');
   });
 
   it('handles non-JSON response text', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      text: () => Promise.resolve('plain text response'),
+    const mockRes = createMockResponse(200, 'OK', 'plain text response');
+    const mockReq = createMockRequest();
+
+    vi.mocked(https.request).mockImplementation((_opts: any, cb: any) => {
+      cb(mockRes);
+      return mockReq;
     });
 
     const result = await ScriptRunner.executeHttpRequest(

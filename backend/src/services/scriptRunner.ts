@@ -1,5 +1,8 @@
 import { createContext, runInContext, Context } from 'vm';
 import { spawn } from 'child_process';
+import * as http from 'http';
+import * as https from 'https';
+import { URL } from 'url';
 import { StepConfig } from '../types/workflow';
 
 export interface ScriptResult {
@@ -170,49 +173,28 @@ ${code}
 
       logs.push(`Making ${method} request to ${url}`);
 
-      const fetchOptions: RequestInit = {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers
-        }
-      };
+      const { status, statusText, data } = await this.httpRequest(url, method, headers, body);
 
-      if (body && method !== 'GET') {
-        fetchOptions.body = body;
-      }
-
-      const response = await fetch(url, fetchOptions);
-      const responseText = await response.text();
-      
       let responseData: any;
       try {
-        responseData = JSON.parse(responseText);
+        responseData = JSON.parse(data);
       } catch {
-        responseData = responseText;
+        responseData = data;
       }
 
-      logs.push(`Response status: ${response.status}`);
+      logs.push(`Response status: ${status}`);
 
-      if (response.ok) {
+      if (status >= 200 && status < 300) {
         return {
           success: true,
-          output: {
-            status: response.status,
-            statusText: response.statusText,
-            data: responseData
-          },
+          output: { status, statusText, data: responseData },
           logs
         };
       } else {
         return {
           success: false,
-          error: `HTTP ${response.status}: ${response.statusText}`,
-          output: {
-            status: response.status,
-            statusText: response.statusText,
-            data: responseData
-          },
+          error: `HTTP ${status}: ${statusText}`,
+          output: { status, statusText, data: responseData },
           logs
         };
       }
@@ -223,6 +205,56 @@ ${code}
         logs
       };
     }
+  }
+
+  /**
+   * Node 16-compatible HTTP request using built-in http/https modules
+   */
+  private static httpRequest(
+    url: string,
+    method: string,
+    headers: Record<string, string>,
+    body?: string
+  ): Promise<{ status: number; statusText: string; data: string }> {
+    return new Promise((resolve, reject) => {
+      const parsed = new URL(url);
+      const transport = parsed.protocol === 'https:' ? https : http;
+
+      const options: http.RequestOptions = {
+        method,
+        hostname: parsed.hostname,
+        port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers
+        },
+        timeout: 30000
+      };
+
+      const req = transport.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          resolve({
+            status: res.statusCode || 0,
+            statusText: res.statusMessage || '',
+            data
+          });
+        });
+      });
+
+      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error(`Request to ${url} timed out`));
+      });
+
+      if (body && method !== 'GET') {
+        req.write(body);
+      }
+      req.end();
+    });
   }
 
   /**
