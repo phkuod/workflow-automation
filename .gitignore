@@ -59,6 +59,13 @@ ehthumbs.db
 .claude/
 .vscode/
 
+# Release artifacts
+releases/
+.release-staging/
+.rollback/
+.build-manifest.json
+.pids/
+
 # Build artifacts
 *.tsbuildinfo
 *.d.ts
