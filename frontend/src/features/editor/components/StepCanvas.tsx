@@ -29,7 +29,7 @@ interface StepCanvasProps {
   selectedStepId?: string | null;
   onStepClick: (stepId: string) => void;
   onStepUpdate?: (stepId: string, data: Partial<Step>) => void;
-  onStepConnect?: (sourceId: string, targetId: string) => void;
+  onStepConnect?: (sourceId: string, targetId: string, sourceHandle?: string) => void;
   onAddStep?: (type: StepType, name: string) => void;
 }
 
@@ -56,25 +56,45 @@ export default function StepCanvas({
     }));
   }, [station.steps, execution, selectedStepId, station.id]);
 
-  // Create edges between steps (auto-connect by order)
+  // Create edges: use persisted station.edges if available, else auto-connect by order
   const initialEdges = useMemo(() => {
+    if (station.edges && station.edges.length > 0) {
+      return station.edges.map((edge) => {
+        const isTrue = edge.sourceHandle === 'true';
+        const isFalse = edge.sourceHandle === 'false';
+        const color = isTrue ? '#22c55e' : isFalse ? '#ef4444' : '#22c55e';
+        return {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          sourceHandle: edge.sourceHandle,
+          type: 'smoothstep',
+          animated: isSimulating,
+          style: { stroke: color, strokeWidth: 2 },
+          label: isTrue ? 'T' : isFalse ? 'F' : undefined,
+          labelStyle: { fill: color, fontWeight: 700, fontSize: 12 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color,
+            width: 16,
+            height: 16,
+          },
+        } as Edge;
+      });
+    }
+
     const edges: Edge[] = [];
     const steps = station.steps;
-
     for (let i = 1; i < steps.length; i++) {
       const prevStep = steps[i - 1];
       const currentStep = steps[i];
-      
       edges.push({
         id: `step-edge-${prevStep.id}-${currentStep.id}`,
         source: prevStep.id,
         target: currentStep.id,
         type: 'smoothstep',
         animated: isSimulating,
-        style: { 
-          stroke: '#22c55e', 
-          strokeWidth: 2,
-        },
+        style: { stroke: '#22c55e', strokeWidth: 2 },
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: '#22c55e',
@@ -83,9 +103,8 @@ export default function StepCanvas({
         },
       });
     }
-
     return edges;
-  }, [station.steps, isSimulating]);
+  }, [station.steps, station.edges, isSimulating]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -100,20 +119,26 @@ export default function StepCanvas({
   const onConnect = useCallback(
     (params: Connection) => {
       if (params.source && params.target) {
+        const isTrue = params.sourceHandle === 'true';
+        const isFalse = params.sourceHandle === 'false';
+        const color = isTrue ? '#22c55e' : isFalse ? '#ef4444' : '#22c55e';
+
         setEdges((eds) => addEdge({
           ...params,
           type: 'smoothstep',
           animated: isSimulating,
-          style: { stroke: '#22c55e', strokeWidth: 2 },
+          style: { stroke: color, strokeWidth: 2 },
+          label: isTrue ? 'T' : isFalse ? 'F' : undefined,
+          labelStyle: { fill: color, fontWeight: 700, fontSize: 12 },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: '#22c55e',
+            color,
             width: 16,
             height: 16,
           },
         }, eds));
-        
-        onStepConnect?.(params.source, params.target);
+
+        onStepConnect?.(params.source, params.target, params.sourceHandle ?? undefined);
       }
     },
     [setEdges, isSimulating, onStepConnect]

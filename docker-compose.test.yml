@@ -1,0 +1,36 @@
+# docker-compose.test.yml — Ephemeral test environment
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d --build
+#   docker compose -f docker-compose.test.yml down -v
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: workflow-automation-test
+    ports:
+      - "3001:3001"
+    volumes:
+      - test-data:/var/data
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_PATH: /var/data/workflow.db
+      PYTHON_CMD: python3
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const http=require('http');const r=http.get('http://localhost:3001/api/health',res=>{process.exit(res.statusCode===200?0:1)});r.on('error',()=>process.exit(1));",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  test-data:
+    driver: local

@@ -11,7 +11,12 @@ import { requestLogger } from './utils/logger';
 const app = express();
 
 // Middleware
-app.use(cors());
+const corsOrigins = process.env.CORS_ORIGINS;
+app.use(cors(
+  corsOrigins
+    ? { origin: corsOrigins.split(',').map(o => o.trim()), credentials: true }
+    : undefined
+));
 app.use(express.json({ limit: '10mb' }));
 app.use(requestLogger);
 

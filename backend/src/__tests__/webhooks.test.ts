@@ -3,6 +3,7 @@ import request from 'supertest';
 import express from 'express';
 import webhooksRouter from '../routes/webhooks';
 import { WorkflowModel } from '../models/workflow';
+import { ExecutionModel } from '../models/execution';
 import { ExecutionEngine } from '../services/executionEngine';
 import { Workflow } from '../types/workflow';
 
@@ -13,9 +14,15 @@ vi.mock('../models/workflow', () => ({
   },
 }));
 
+vi.mock('../models/execution', () => ({
+  ExecutionModel: {
+    create: vi.fn().mockReturnValue({ id: 'mock-exec-id' }),
+  },
+}));
+
 vi.mock('../services/executionEngine', () => ({
   ExecutionEngine: {
-    execute: vi.fn().mockResolvedValue({ id: 'mock-exec-id' }),
+    executeWithId: vi.fn().mockResolvedValue({ id: 'mock-exec-id' }),
   },
 }));
 
@@ -116,7 +123,7 @@ describe('Webhooks Route', () => {
 
     const response = await request(app).patch('/api/webhooks/workflow-123').send({ data: 'hello' });
     expect(response.status).toBe(202);
-    expect(ExecutionEngine.execute).toHaveBeenCalled();
+    expect(ExecutionEngine.executeWithId).toHaveBeenCalled();
   });
 
   it('should return 202 and trigger ExecutionEngine on success', async () => {
@@ -129,11 +136,12 @@ describe('Webhooks Route', () => {
     expect(response.body).toEqual({
       success: true,
       message: 'Webhook received and execution started',
-      executionId: 'async',
+      executionId: 'mock-exec-id',
     });
 
     // Check that ExecutionEngine was called with the correct inputData
-    expect(ExecutionEngine.execute).toHaveBeenCalledWith(
+    expect(ExecutionEngine.executeWithId).toHaveBeenCalledWith(
+      'mock-exec-id',
       mockActiveWorkflow,
       'webhook',
       expect.objectContaining({

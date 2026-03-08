@@ -117,6 +117,15 @@ export default function ExecutionsPage() {
     }
   };
 
+  const handleCancel = async (id: string) => {
+    try {
+      await executionApi.cancel(id);
+      await fetchExecutions();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   return (
     <div className="layout">
       <header className="header">
@@ -184,6 +193,7 @@ export default function ExecutionsPage() {
                     logs={logs[exec.id]}
                     onToggle={() => toggleExpand(exec.id)}
                     onDelete={() => handleDelete(exec.id)}
+                    onCancel={() => handleCancel(exec.id)}
                   />
                 ))}
               </tbody>
@@ -206,13 +216,14 @@ const tdStyle: React.CSSProperties = {
 };
 
 function ExecutionRow({
-  execution, isExpanded, logs, onToggle, onDelete,
+  execution, isExpanded, logs, onToggle, onDelete, onCancel,
 }: {
   execution: Execution;
   isExpanded: boolean;
   logs?: ExecutionLog[];
   onToggle: () => void;
   onDelete: () => void;
+  onCancel: () => void;
 }) {
   return (
     <>
@@ -242,13 +253,23 @@ function ExecutionRow({
           </span>
         </td>
         <td style={tdStyle}>
-          <button
-            className="btn btn-ghost btn-icon btn-sm"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            title="Delete execution"
-          >
-            <Trash2 size={14} style={{ color: 'var(--accent-error)' }} />
-          </button>
+          {execution.status === 'running' ? (
+            <button
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={(e) => { e.stopPropagation(); onCancel(); }}
+              title="Cancel execution"
+            >
+              <XCircle size={14} style={{ color: 'var(--accent-warning)' }} />
+            </button>
+          ) : (
+            <button
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              title="Delete execution"
+            >
+              <Trash2 size={14} style={{ color: 'var(--accent-error)' }} />
+            </button>
+          )}
         </td>
       </tr>
       {isExpanded && (

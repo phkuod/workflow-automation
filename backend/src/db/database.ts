@@ -122,6 +122,18 @@ const SCHEMA_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);
   CREATE INDEX IF NOT EXISTS idx_execution_logs_execution_id ON execution_logs(execution_id);
+
+  CREATE TABLE IF NOT EXISTS workflow_versions (
+    id TEXT PRIMARY KEY,
+    workflow_id TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    definition TEXT NOT NULL,
+    change_summary TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_versions_workflow_id ON workflow_versions(workflow_id, version DESC);
 `;
 
 export async function initDatabase(): Promise<void> {

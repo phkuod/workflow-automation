@@ -13,6 +13,15 @@ export interface Workflow {
 export interface WorkflowDefinition {
   stations: Station[];
   variables?: Record<string, any>;
+  inputParameters?: InputParameter[];
+}
+
+export interface InputParameter {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'json';
+  description?: string;
+  defaultValue?: any;
+  required?: boolean;
 }
 
 export interface Station {
@@ -27,6 +36,14 @@ export interface Station {
     sourceVariable: string;
     itemVariableName: string;
   };
+  edges?: StationEdge[];
+}
+
+export interface StationEdge {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
 }
 
 export interface StationCondition {
@@ -168,6 +185,33 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+export interface ExecutionEvent {
+  executionId: string;
+  type: 'step:start' | 'step:complete' | 'step:failed'
+      | 'station:start' | 'station:complete' | 'station:failed'
+      | 'execution:complete' | 'execution:failed' | 'execution:cancelled';
+  data: {
+    stationId?: string;
+    stationName?: string;
+    stepId?: string;
+    stepName?: string;
+    status?: string;
+    output?: any;
+    error?: string;
+    progress?: { completed: number; total: number };
+    timestamp: string;
+  };
+}
+
+export interface WorkflowVersion {
+  id: string;
+  workflowId: string;
+  version: number;
+  definition: WorkflowDefinition;
+  changeSummary?: string;
+  createdAt: string;
 }
 
 // Node types for React Flow

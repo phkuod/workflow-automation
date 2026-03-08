@@ -1,7 +1,61 @@
 import { Router, Request, Response } from 'express';
 import { ExecutionModel, LogModel } from '../models/execution';
+import { executionManager } from '../services/executionManager';
+import { executionEventBus, type ExecutionEvent } from '../services/executionEventBus';
 
 const router = Router();
+
+/**
+ * GET /api/executions/:id/stream
+ * SSE stream for real-time execution updates
+ */
+router.get('/:id/stream', (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+
+  res.write('data: {"type":"connected"}\n\n');
+
+  const handler = (event: ExecutionEvent) => {
+    res.write(`data: ${JSON.stringify(event)}\n\n`);
+    if (['execution:complete', 'execution:failed', 'execution:cancelled'].includes(event.type)) {
+      res.end();
+    }
+  };
+
+  executionEventBus.on(`execution:${id}`, handler);
+  req.on('close', () => {
+    executionEventBus.off(`execution:${id}`, handler);
+  });
+});
+
+/**
+ * POST /api/executions/:id/cancel
+ * Cancel a running execution
+ */
+router.post('/:id/cancel', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const cancelled = executionManager.cancel(id);
+    if (!cancelled) {
+      return res.status(404).json({
+        success: false,
+        error: 'Execution not found or already completed'
+      });
+    }
+    ExecutionModel.update(id, {
+      status: 'cancelled',
+      endTime: new Date().toISOString()
+    });
+    res.json({ success: true, data: { cancelled: true } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 /**
  * GET /api/executions

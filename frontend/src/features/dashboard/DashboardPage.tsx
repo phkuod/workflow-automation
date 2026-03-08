@@ -1,15 +1,17 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkflowStore } from '../editor/stores/workflowStore';
+import ExecuteDialog from '../editor/components/ExecuteDialog';
 import type { Workflow } from '../../shared/types/workflow';
-import { 
-  Plus, 
-  Play, 
-  Edit, 
-  Trash2, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import { workflowApi } from '../../shared/api/workflowApi';
+import {
+  Plus,
+  Play,
+  Edit,
+  Trash2,
+  Clock,
+  CheckCircle,
+  XCircle,
   Pause,
   LayoutDashboard,
   Copy,
@@ -36,6 +38,7 @@ function DashboardPage() {
   const [newWorkflowName, setNewWorkflowName] = useState('');
   const [newWorkflowDesc, setNewWorkflowDesc] = useState('');
   const [nameTouched, setNameTouched] = useState(false);
+  const [executeTarget, setExecuteTarget] = useState<Workflow | null>(null);
 
   useEffect(() => {
     fetchWorkflows();
@@ -87,6 +90,32 @@ function DashboardPage() {
     const newStatus = workflow.status === 'active' ? 'paused' : 'active';
     await updateWorkflow(workflow.id, { status: newStatus });
   }, [updateWorkflow]);
+
+  const handleExecute = useCallback(async (workflow: Workflow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const params = workflow.definition.inputParameters;
+    if (params && params.length > 0) {
+      setExecuteTarget(workflow);
+      return;
+    }
+    try {
+      await workflowApi.execute(workflow.id);
+      toast.success(`Workflow "${workflow.name}" execution started`);
+    } catch (err: any) {
+      toast.error(`Execution failed: ${err.message}`);
+    }
+  }, []);
+
+  const handleExecuteWithParams = useCallback(async (inputData: Record<string, any>) => {
+    if (!executeTarget) return;
+    setExecuteTarget(null);
+    try {
+      await workflowApi.execute(executeTarget.id, inputData);
+      toast.success(`Workflow "${executeTarget.name}" execution started`);
+    } catch (err: any) {
+      toast.error(`Execution failed: ${err.message}`);
+    }
+  }, [executeTarget]);
 
   const handleCopy = useCallback(async (workflow: Workflow, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -257,12 +286,19 @@ function DashboardPage() {
                     </td>
                     <td>
                       <div className="flex gap-2">
-                        <button 
-                          className={`btn btn-sm btn-icon ${workflow.status === 'active' ? 'btn-warning' : 'btn-success'}`}
+                        <button
+                          className="btn btn-sm btn-success btn-icon"
+                          onClick={(e) => handleExecute(workflow, e)}
+                          title="Execute"
+                        >
+                          <Play size={14} />
+                        </button>
+                        <button
+                          className={`btn btn-sm btn-icon ${workflow.status === 'active' ? 'btn-warning' : 'btn-secondary'}`}
                           onClick={(e) => handleToggleStatus(workflow, e)}
                           title={workflow.status === 'active' ? 'Pause' : 'Activate'}
                         >
-                          {workflow.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
+                          {workflow.status === 'active' ? <Pause size={14} /> : <CheckCircle size={14} />}
                         </button>
                         <button 
                           className="btn btn-sm btn-secondary btn-icon"
@@ -304,6 +340,16 @@ function DashboardPage() {
           )}
         </div>
       </main>
+
+      {/* Execute Dialog */}
+      {executeTarget && executeTarget.definition.inputParameters && (
+        <ExecuteDialog
+          parameters={executeTarget.definition.inputParameters}
+          mode="execute"
+          onSubmit={handleExecuteWithParams}
+          onCancel={() => setExecuteTarget(null)}
+        />
+      )}
 
       {/* Create Modal */}
       {showCreateModal && (

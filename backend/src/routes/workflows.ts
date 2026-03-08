@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { WorkflowModel } from '../models/workflow';
 import { ExecutionModel } from '../models/execution';
+import { VersionModel } from '../models/version';
 import { ExecutionEngine } from '../services/executionEngine';
-import { scheduler } from '../services/scheduler'; // Import scheduler
-import { 
-  CreateWorkflowRequest, 
-  UpdateWorkflowRequest, 
+import { scheduler } from '../services/scheduler';
+import {
+  CreateWorkflowRequest,
+  UpdateWorkflowRequest,
   ExecuteWorkflowRequest,
   ApiResponse,
   Workflow
@@ -94,13 +95,24 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const data: UpdateWorkflowRequest = req.body;
+
+    // Auto-version: save current definition before updating
+    if (data.definition) {
+      const current = WorkflowModel.getById(req.params.id);
+      if (current) {
+        const nextVersion = VersionModel.getLatestVersion(req.params.id) + 1;
+        VersionModel.create(req.params.id, nextVersion, current.definition);
+        VersionModel.deleteOldVersions(req.params.id);
+      }
+    }
+
     const workflow = WorkflowModel.update(req.params.id, data);
-    
+
     if (!workflow) {
       return res.status(404).json({ success: false, error: 'Workflow not found' });
     }
-    
-    await syncSchedule(workflow); // Sync with scheduler
+
+    await syncSchedule(workflow);
 
     res.json({ success: true, data: workflow });
   } catch (error: any) {
@@ -139,17 +151,17 @@ router.post('/:id/execute', async (req: Request, res: Response) => {
     }
 
     const { triggeredBy = 'manual', inputData = {} }: ExecuteWorkflowRequest = req.body;
-    
+
     const execution = await ExecutionEngine.execute(workflow, triggeredBy, inputData);
     res.json({ success: true, data: execution });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    const status = error.message?.startsWith('Missing required input parameter') ? 400 : 500;
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 
 /**
  * POST /api/workflows/:id/simulate
- * Simulate workflow execution
  */
 router.post('/:id/simulate', async (req: Request, res: Response) => {
   try {
@@ -163,13 +175,13 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
     const execution = await ExecutionEngine.execute(workflow, 'manual', inputData, true);
     res.json({ success: true, data: execution });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    const status = error.message?.startsWith('Missing required input parameter') ? 400 : 500;
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 
 /**
  * GET /api/workflows/:id/executions
- * Get execution history for a workflow
  */
 router.get('/:id/executions', (req: Request, res: Response) => {
   try {
@@ -181,6 +193,58 @@ router.get('/:id/executions', (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const executions = ExecutionModel.getByWorkflowId(req.params.id, limit);
     res.json({ success: true, data: executions });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/workflows/:id/versions
+ */
+router.get('/:id/versions', (req: Request, res: Response) => {
+  try {
+    const versions = VersionModel.getByWorkflowId(req.params.id);
+    res.json({ success: true, data: versions });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/workflows/:id/versions/:version
+ */
+router.get('/:id/versions/:version', (req: Request, res: Response) => {
+  try {
+    const version = VersionModel.getByVersion(req.params.id, parseInt(req.params.version));
+    if (!version) {
+      return res.status(404).json({ success: false, error: 'Version not found' });
+    }
+    res.json({ success: true, data: version });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/workflows/:id/versions/:version/restore
+ */
+router.post('/:id/versions/:version/restore', async (req: Request, res: Response) => {
+  try {
+    const version = VersionModel.getByVersion(req.params.id, parseInt(req.params.version));
+    if (!version) {
+      return res.status(404).json({ success: false, error: 'Version not found' });
+    }
+    // Save current as new version before restoring
+    const current = WorkflowModel.getById(req.params.id);
+    if (current) {
+      const nextVer = VersionModel.getLatestVersion(req.params.id) + 1;
+      VersionModel.create(req.params.id, nextVer, current.definition, `Before restore to v${version.version}`);
+    }
+    const updated = WorkflowModel.update(req.params.id, { definition: version.definition });
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'Workflow not found' });
+    }
+    res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
