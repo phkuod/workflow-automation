@@ -32,9 +32,9 @@ function SimulationPanel({ execution, logs, isRunning, selectedStepId, onStepDes
       executionId: event.executionId,
       level: event.type.includes('failed') ? 'error' as const : 'info' as const,
       message: formatEventMessage(event),
-      timestamp: event.data.timestamp,
-      stationId: event.data.stationId,
-      stepId: event.data.stepId,
+      timestamp: event.data?.timestamp || new Date().toISOString(),
+      stationId: event.data?.stationId,
+      stepId: event.data?.stepId,
     }));
   }, [events]);
 

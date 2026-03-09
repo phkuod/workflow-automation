@@ -72,22 +72,6 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/executions/:id
- * Get a specific execution
- */
-router.get('/:id', (req: Request, res: Response) => {
-  try {
-    const execution = ExecutionModel.getById(req.params.id);
-    if (!execution) {
-      return res.status(404).json({ success: false, error: 'Execution not found' });
-    }
-    res.json({ success: true, data: execution });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
  * GET /api/executions/:id/logs
  * Get logs for a specific execution
  */
@@ -100,6 +84,22 @@ router.get('/:id/logs', (req: Request, res: Response) => {
 
     const logs = LogModel.getByExecutionId(req.params.id);
     res.json({ success: true, data: logs });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/executions/:id
+ * Get a specific execution
+ */
+router.get('/:id', (req: Request, res: Response) => {
+  try {
+    const execution = ExecutionModel.getById(req.params.id);
+    if (!execution) {
+      return res.status(404).json({ success: false, error: 'Execution not found' });
+    }
+    res.json({ success: true, data: execution });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

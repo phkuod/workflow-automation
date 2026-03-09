@@ -60,10 +60,8 @@ export class ExecutionEngine {
     inputData: Record<string, any> = {},
     simulate: boolean = false
   ): Promise<Execution> {
-    // Create execution record (skip DB write in simulate mode)
-    const execution = simulate
-      ? { id: uuidv4(), workflowId: workflow.id, workflowName: workflow.name, status: 'running' as const, triggeredBy, startTime: new Date().toISOString(), successRate: 0 }
-      : ExecutionModel.create(workflow.id, workflow.name, triggeredBy);
+    // Create execution record
+    const execution = ExecutionModel.create(workflow.id, workflow.name, triggeredBy);
     return this.executeInternal(execution.id, workflow, triggeredBy, inputData, simulate);
   }
 
@@ -174,8 +172,8 @@ export class ExecutionEngine {
     // Determine final status
     const finalStatus = cancelled ? 'cancelled' : (failed ? 'failed' : 'completed');
 
-    // Save logs (skip DB write in simulate mode)
-    if (!simulate && context.logs.length > 0) {
+    // Save logs
+    if (context.logs.length > 0) {
       LogModel.createMany(context.logs);
     }
 
@@ -189,18 +187,6 @@ export class ExecutionEngine {
       progress: { completed: completedSteps, total: totalSteps }
     });
 
-    if (simulate) {
-      // Return synthetic execution object without writing to DB
-      this.log(context, 'info', `[SIMULATE] Workflow ${finalStatus}. Success rate: ${successRate.toFixed(1)}%`);
-      return {
-        ...execution,
-        status: finalStatus,
-        endTime: new Date().toISOString(),
-        successRate,
-        result
-      } as Execution;
-    }
-
     // Update execution record
     const updatedExecution = ExecutionModel.update(execution.id, {
       status: finalStatus,
@@ -209,7 +195,11 @@ export class ExecutionEngine {
       result
     });
 
-    this.log(context, 'info', `Workflow ${finalStatus}. Success rate: ${successRate.toFixed(1)}%`);
+    if (simulate) {
+      this.log(context, 'info', `[SIMULATE] Workflow ${finalStatus}. Success rate: ${successRate.toFixed(1)}%`);
+    } else {
+      this.log(context, 'info', `Workflow ${finalStatus}. Success rate: ${successRate.toFixed(1)}%`);
+    }
 
     return updatedExecution!;
   }
@@ -483,14 +473,18 @@ export class ExecutionEngine {
             break;
 
           case 'http-request':
-            if (context.simulate) {
-              this.log(context, 'info', `[SIMULATE] Skipping HTTP request to ${step.config.url}`, undefined, undefined, step.id);
+            const method = (step.config.method || 'GET').toUpperCase();
+            if (context.simulate && method !== 'GET') {
+              this.log(context, 'info', `[SIMULATE] Skipping mutating HTTP request (${method}) to ${step.config.url}`, undefined, undefined, step.id);
               result = {
                 success: true,
                 output: { simulated: true, status: 200, statusText: 'OK (simulated)', data: null },
-                logs: ['[SIMULATE] HTTP request skipped']
+                logs: [`[SIMULATE] HTTP ${method} request skipped to prevent side effects`]
               };
             } else {
+              if (context.simulate) {
+                this.log(context, 'info', `[SIMULATE] Executing GET request to fetch real data for simulation`, undefined, undefined, step.id);
+              }
               result = await ScriptRunner.executeHttpRequest(
                 step.config,
                 { ...context.variables, inputData: stepResult.input }
