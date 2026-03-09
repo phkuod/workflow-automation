@@ -52,6 +52,7 @@ export default function StepCanvas({
         step,
         status: getStepStatus(step.id, station.id, execution),
         isSelected: selectedStepId === step.id,
+        hasInspectableData: hasStepData(step.id, station.id, execution),
       },
     }));
   }, [station.steps, execution, selectedStepId, station.id]);
@@ -217,10 +218,23 @@ export default function StepCanvas({
 // Helper function to get step execution status
 function getStepStatus(stepId: string, stationId: string, execution?: Execution | null): string | undefined {
   if (!execution?.result) return undefined;
-  
+
   const stationResult = execution.result.stations.find(s => s.stationId === stationId);
   if (!stationResult) return undefined;
-  
+
   const stepResult = stationResult.steps.find(s => s.stepId === stepId);
   return stepResult?.status;
+}
+
+function hasStepData(stepId: string, stationId: string, execution?: Execution | null): boolean {
+  if (!execution?.result) return false;
+
+  const stationResult = execution.result.stations.find(s => s.stationId === stationId);
+  if (!stationResult) return false;
+
+  const stepResult = stationResult.steps.find(s => s.stepId === stepId);
+  if (!stepResult) return false;
+
+  return !!(stepResult.input && Object.keys(stepResult.input).length > 0) ||
+         !!(stepResult.output && Object.keys(stepResult.output).length > 0);
 }

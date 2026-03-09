@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo } from 'react';
-import type { Execution, ExecutionLog, ExecutionEvent } from '../../../shared/types/workflow';
+import type { Execution, ExecutionLog, ExecutionEvent, StepResult } from '../../../shared/types/workflow';
 import { useExecutionStream } from '../../../shared/hooks/useExecutionStream';
+import StepDataInspector from './StepDataInspector';
 import X from 'lucide-react/dist/esm/icons/x';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
 import XCircle from 'lucide-react/dist/esm/icons/x-circle';
@@ -13,10 +14,12 @@ interface SimulationPanelProps {
   execution: Execution | null;
   logs: ExecutionLog[];
   isRunning: boolean;
+  selectedStepId?: string | null;
+  onStepDeselect?: () => void;
   onClose: () => void;
 }
 
-function SimulationPanel({ execution, logs, isRunning, onClose }: SimulationPanelProps) {
+function SimulationPanel({ execution, logs, isRunning, selectedStepId, onStepDeselect, onClose }: SimulationPanelProps) {
   const logContainerRef = useRef<HTMLDivElement>(null);
 
   // SSE real-time updates
@@ -37,6 +40,16 @@ function SimulationPanel({ execution, logs, isRunning, onClose }: SimulationPane
 
   // Merge persisted logs with SSE stream logs (SSE takes precedence while running)
   const displayLogs = isRunning && streamLogs.length > 0 ? streamLogs : logs;
+
+  // Find selected step result from execution data
+  const selectedStepResult: StepResult | undefined = useMemo(() => {
+    if (!selectedStepId || !execution?.result?.stations) return undefined;
+    for (const station of execution.result.stations) {
+      const step = station.steps.find(s => s.stepId === selectedStepId);
+      if (step) return step;
+    }
+    return undefined;
+  }, [selectedStepId, execution]);
 
   useEffect(() => {
     if (logContainerRef.current) {
@@ -208,53 +221,62 @@ function SimulationPanel({ execution, logs, isRunning, onClose }: SimulationPane
         </div>
       )}
 
-      {/* Logs */}
+      {/* Content area: Step Inspector or Logs */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
-          <div className="text-xs text-muted">Execution Log ({displayLogs.length} entries)</div>
-        </div>
-        <div
-          ref={logContainerRef}
-          style={{
-            flex: 1,
-            overflow: 'auto',
-            padding: '12px',
-            fontFamily: 'monospace',
-            fontSize: '12px',
-            background: 'var(--bg-primary)',
-          }}
-        >
-          {displayLogs.length === 0 ? (
-            <div className="text-muted text-center p-4">
-              {isRunning ? 'Waiting for logs...' : 'No logs available'}
+        {selectedStepResult ? (
+          <StepDataInspector
+            stepResult={selectedStepResult}
+            onClose={() => onStepDeselect?.()}
+          />
+        ) : (
+          <>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
+              <div className="text-xs text-muted">Execution Log ({displayLogs.length} entries)</div>
             </div>
-          ) : (
-            displayLogs.map((log) => (
-              <div
-                key={log.id}
-                style={{
-                  display: 'flex',
-                  gap: '8px',
-                  marginBottom: '6px',
-                  color: getLevelColor(log.level),
-                }}
-              >
-                <span className="text-muted" style={{ flexShrink: 0 }}>
-                  {new Date(log.timestamp).toLocaleTimeString()}
-                </span>
-                {getLevelIcon(log.level)}
-                <span style={{ flex: 1, wordBreak: 'break-word' }}>{log.message}</span>
-              </div>
-            ))
-          )}
-          
-          {isRunning && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
-              <span className="loading-spinner" style={{ width: '12px', height: '12px' }} />
-              <span>Running...</span>
+            <div
+              ref={logContainerRef}
+              style={{
+                flex: 1,
+                overflow: 'auto',
+                padding: '12px',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                background: 'var(--bg-primary)',
+              }}
+            >
+              {displayLogs.length === 0 ? (
+                <div className="text-muted text-center p-4">
+                  {isRunning ? 'Waiting for logs...' : 'No logs available'}
+                </div>
+              ) : (
+                displayLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    style={{
+                      display: 'flex',
+                      gap: '8px',
+                      marginBottom: '6px',
+                      color: getLevelColor(log.level),
+                    }}
+                  >
+                    <span className="text-muted" style={{ flexShrink: 0 }}>
+                      {new Date(log.timestamp).toLocaleTimeString()}
+                    </span>
+                    {getLevelIcon(log.level)}
+                    <span style={{ flex: 1, wordBreak: 'break-word' }}>{log.message}</span>
+                  </div>
+                ))
+              )}
+
+              {isRunning && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
+                  <span className="loading-spinner" style={{ width: '12px', height: '12px' }} />
+                  <span>Running...</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Error Details */}

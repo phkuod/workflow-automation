@@ -489,8 +489,8 @@ function EditorPage() {
           )}
         </div>
 
-        {/* Config Panel */}
-        {selectedStep && currentWorkflow && (
+        {/* Config Panel (hidden when simulation results are showing) */}
+        {selectedStep && currentWorkflow && !(showSimulation && currentExecution?.result) && (
           <NodeConfigPanel 
             step={selectedStep}
             workflow={currentWorkflow}
@@ -544,6 +544,8 @@ function EditorPage() {
             execution={currentExecution}
             logs={executionLogs}
             isRunning={isSimulating}
+            selectedStepId={selectedStepId}
+            onStepDeselect={() => selectStep(null)}
             onClose={() => setShowSimulation(false)}
           />
         )}
