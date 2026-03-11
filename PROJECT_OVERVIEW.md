@@ -66,6 +66,31 @@ graph TD
 |              | better-sqlite3 | SQLite driver                   |
 |              | vm2 / vm       | Sandboxed JS execution          |
 
+## Operations & CLI
+
+The project is managed via a unified, cross-platform Node.js script (`manager.js`). This eliminates the need for OS-specific shell or PowerShell scripts.
+
+You can run these commands via `npm`:
+
+```bash
+# First-time setup (Installs dependencies and initializes .env files)
+npm run setup
+
+# Start local development servers (Frontend & Backend concurrently)
+npm run dev
+
+# Build the project for production
+npm run build
+
+# Start the production server (Frontend served by Backend)
+npm run prod
+
+# Deep clean node_modules and build artifacts
+npm run clean
+```
+
+For advanced server deployments, `manager.js` also provides `preflight`, `deploy`, `backup`, `rollback`, `smoke`, and `status` capabilities (accessible via `node manager.js [cmd]`).
+
 ## Future Roadmap
 
 - **Authentication**: Multi-user support.

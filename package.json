@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "start": "npm run dev",
+    "setup": "node manager.js setup",
+    "dev": "node manager.js dev",
+    "start": "node manager.js prod",
+    "build": "node manager.js build",
+    "prod": "node manager.js prod",
+    "clean": "node manager.js clean",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "build": "npm run build:backend && npm run build:frontend",
     "build:backend": "cd backend && npm run build",
     "build:frontend": "cd frontend && npm run build",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
