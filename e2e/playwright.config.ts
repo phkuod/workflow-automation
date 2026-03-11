@@ -22,7 +22,7 @@ export default defineConfig({
       name: 'docker-production',
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: 'http://localhost:3001',
+        baseURL: 'http://localhost:3002',
       },
     },
   ],

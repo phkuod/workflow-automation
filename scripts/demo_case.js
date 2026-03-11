@@ -7,7 +7,7 @@ function uuidv4() {
   });
 }
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = 'http://localhost:3002/api';
 const POLLING_INTERVAL = 1000;
 const MAX_RETRIES = 30;
 

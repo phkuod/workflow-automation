@@ -47,7 +47,7 @@ const postData = async (workflow) => {
   const data = JSON.stringify(workflow);
   const options = {
     hostname: 'localhost',
-    port: 3001,
+    port: 3002,
     path: '/api/workflows',
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
@@ -68,7 +68,7 @@ const postData = async (workflow) => {
 const executeWorkflow = async (id) => {
   const options = {
     hostname: 'localhost',
-    port: 3001,
+    port: 3002,
     path: `/api/workflows/${id}/execute`,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Content-Length': 2 }

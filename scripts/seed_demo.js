@@ -23,7 +23,7 @@ const workflows = [
               id: "step-2",
               name: "HTTP GET Local",
               type: "http-request", // fixed to match engine
-              config: { method: "GET", url: "http://localhost:3001/api/health" }
+              config: { method: "GET", url: "http://localhost:3002/api/health" }
             }
           ]
         }
@@ -66,7 +66,7 @@ const workflows = [
 const postData = async (workflow) => {
   const data = JSON.stringify(workflow);
   const options = {
-    hostname: 'localhost', port: 3001, path: '/api/workflows', method: 'POST',
+    hostname: 'localhost', port: 3002, path: '/api/workflows', method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
   };
   return new Promise((resolve, reject) => {

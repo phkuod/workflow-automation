@@ -3,7 +3,7 @@ const http = require('http');
 const executeWorkflow = async (workflowId) => {
   const options = {
     hostname: 'localhost',
-    port: 3001,
+    port: 3002,
     path: `/api/workflows/${workflowId}/execute`,
     method: 'POST',
     headers: {

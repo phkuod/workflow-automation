@@ -28,7 +28,7 @@ const complexWorkflow = {
             type: "http-request",
             config: {
               method: "GET",
-              url: "http://localhost:3001/api/workflows"
+              url: "http://localhost:3002/api/workflows"
             },
             outputVars: [
               { name: "api_response", type: "object" }
@@ -88,7 +88,7 @@ const complexWorkflow = {
 const postData = async (workflow) => {
   const data = JSON.stringify(workflow);
   const options = {
-    hostname: 'localhost', port: 3001, path: '/api/workflows', method: 'POST',
+    hostname: 'localhost', port: 3002, path: '/api/workflows', method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
   };
   return new Promise((resolve, reject) => {
@@ -104,7 +104,7 @@ const postData = async (workflow) => {
 
 const executeWorkflow = async (id) => {
   const options = {
-    hostname: 'localhost', port: 3001, path: `/api/workflows/${id}/execute`, method: 'POST',
+    hostname: 'localhost', port: 3002, path: `/api/workflows/${id}/execute`, method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Content-Length': 2 }
   };
   return new Promise((resolve, reject) => {

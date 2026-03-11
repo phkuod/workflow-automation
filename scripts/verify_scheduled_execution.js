@@ -1,5 +1,5 @@
 async function verify() {
-  const API_URL = 'http://localhost:3001/api';
+  const API_URL = 'http://localhost:3002/api';
   try {
     const listRes = await fetch(`${API_URL}/workflows`);
     const list = await listRes.json();

@@ -1,6 +1,6 @@
 import { test, expect, request as playwrightRequest } from '@playwright/test';
 
-const API = process.env.API_URL || 'http://localhost:3001/api';
+const API = process.env.API_URL || 'http://localhost:3002/api';
 
 test.describe('Dashboard Page', () => {
   test('loads and redirects to /dashboard', async ({ page }) => {
