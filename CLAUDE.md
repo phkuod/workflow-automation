@@ -44,7 +44,7 @@ workflow-automation/
 
 ### Running Locally
 ```bash
-npm run dev         # Run backend (port 3001) + frontend (port 5173) concurrently
+npm run dev         # Run backend (port 3002) + frontend (port 5173) concurrently
 
 # Or separately:
 cd backend && npm run dev    # ts-node-dev with auto-reload
@@ -218,7 +218,7 @@ CREATE TABLE execution_logs (
 ### Backend
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `PORT` | `3001` | HTTP server port |
+| `PORT` | `3002` | HTTP server port |
 | `DB_PATH` | `./data/workflow.db` | SQLite file path |
 | `PYTHON_CMD` | `python` | Python executable name |
 | `NODE_ENV` | — | `development` or `production` |
@@ -227,7 +227,7 @@ CREATE TABLE execution_logs (
 ### Frontend
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `VITE_API_URL` | `http://localhost:3001` | Backend API base URL |
+| `VITE_API_URL` | `http://localhost:3002` | Backend API base URL |
 
 ### Environment Files
 - `.env.development` — Loaded by `start-dev.sh`

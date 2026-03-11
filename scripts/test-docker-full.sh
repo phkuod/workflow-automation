@@ -95,7 +95,7 @@ if should_run 2; then
   echo -e "${CYAN}Waiting for container to be healthy...${NC}"
   RETRIES=0
   MAX_RETRIES=30
-  until curl -sf http://localhost:3001/api/health > /dev/null 2>&1; do
+  until curl -sf http://localhost:3002/api/health > /dev/null 2>&1; do
     RETRIES=$((RETRIES + 1))
     if [ $RETRIES -ge $MAX_RETRIES ]; then
       echo -e "${RED}Container failed to start within ${MAX_RETRIES}s${NC}"
@@ -126,12 +126,12 @@ if should_run 3; then
   section "Stage 3: Playwright E2E Tests (Docker Production)"
 
   # Ensure container is running (may already be up from Stage 2)
-  if ! curl -sf http://localhost:3001/api/health > /dev/null 2>&1; then
+  if ! curl -sf http://localhost:3002/api/health > /dev/null 2>&1; then
     echo -e "${CYAN}Starting Docker container...${NC}"
     docker compose -f "$COMPOSE_FILE" up -d --build
 
     RETRIES=0
-    until curl -sf http://localhost:3001/api/health > /dev/null 2>&1; do
+    until curl -sf http://localhost:3002/api/health > /dev/null 2>&1; do
       RETRIES=$((RETRIES + 1))
       if [ $RETRIES -ge 30 ]; then
         echo -e "${RED}Container failed to start${NC}"

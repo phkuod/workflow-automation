@@ -76,18 +76,18 @@ RUN mkdir -p /app/logs && chown -R 1001:0 /app/logs && \
 
 # Environment
 ENV NODE_ENV=production \
-    PORT=3001 \
+    PORT=3002 \
     DB_PATH=/var/data/workflow.db \
     PYTHON_CMD=python3
 
-EXPOSE 3001
+EXPOSE 3002
 
 # Switch to non-root user
 USER 1001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD node -e "const http=require('http');const r=http.get('http://localhost:3001/api/health',res=>{process.exit(res.statusCode===200?0:1)});r.on('error',()=>process.exit(1));"
+    CMD node -e "const http=require('http');const r=http.get('http://localhost:3002/api/health',res=>{process.exit(res.statusCode===200?0:1)});r.on('error',()=>process.exit(1));"
 
 # Start the application
 CMD ["node", "backend/dist/index.js"]

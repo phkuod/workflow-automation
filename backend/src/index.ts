@@ -2,7 +2,7 @@ import app from './app';
 import { scheduler } from './services/scheduler';
 import { initDatabase } from './db/database';
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 async function main() {
   // Database must be ready before accepting any requests

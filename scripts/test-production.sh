@@ -18,7 +18,7 @@ NC='\033[0m'
 
 PASS=0
 FAIL=0
-PORT="${PORT:-3001}"
+PORT="${PORT:-3002}"
 BASE_URL="http://localhost:${PORT}"
 
 pass() {

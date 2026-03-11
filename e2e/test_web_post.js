@@ -4,7 +4,7 @@ function apiCall(method, path, body) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : '';
     const req = http.request({
-      hostname: 'localhost', port: 3001, path, method,
+      hostname: 'localhost', port: 3002, path, method,
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
     }, (res) => {
       let chunks = '';

@@ -5,12 +5,12 @@
  *
  * Usage:
  *   node scripts/test-api-integration.js
- *   BASE_URL=http://localhost:3001 node scripts/test-api-integration.js
+ *   BASE_URL=http://localhost:3002 node scripts/test-api-integration.js
  */
 
 const http = require('http');
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3002';
 let pass = 0;
 let fail = 0;
 const failures = [];

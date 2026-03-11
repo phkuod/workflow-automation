@@ -3,7 +3,7 @@ import { test, expect, request as playwrightRequest } from '@playwright/test';
 // Run sequentially — later tests depend on state created by earlier ones
 test.describe.configure({ mode: 'serial' });
 
-const API = 'http://localhost:3001/api';
+const API = 'http://localhost:3002/api';
 const WORKFLOW_NAME = 'Demo Workflow';
 
 test.describe('Demo: Frontend & Backend Integration', () => {

@@ -8,10 +8,10 @@
  * Usage:
  *   node scripts/demo_verify.js
  *
- * Prerequisite: backend running on http://localhost:3001
+ * Prerequisite: backend running on http://localhost:3002
  */
 
-const API = 'http://localhost:3001/api';
+const API = 'http://localhost:3002/api';
 const WORKFLOW_NAME = 'Demo: 3-Station Data Pipeline';
 
 const WORKFLOW = {
@@ -50,7 +50,7 @@ const WORKFLOW = {
             id: 'stp-health',
             name: 'Health Check',
             type: 'http-request',
-            config: { method: 'GET', url: 'http://localhost:3001/api/health' },
+            config: { method: 'GET', url: 'http://localhost:3002/api/health' },
             position: { x: 0, y: 150 },
             outputVars: [{ name: 'healthData', type: 'object' }]
           }
@@ -188,7 +188,7 @@ async function run() {
     console.log('  View in Web UI:');
     console.log('    Dashboard  → http://localhost:5173');
     console.log('    Monitoring → http://localhost:5173  (Monitoring tab)');
-    console.log('    API check  → http://localhost:3001/api/workflows\n');
+    console.log('    API check  → http://localhost:3002/api/workflows\n');
   } else {
     console.log('\n  Some checks failed. Review the output above.\n');
     process.exit(1);

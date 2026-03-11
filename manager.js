@@ -266,7 +266,7 @@ const commands = {
 
     smoke: () => {
         console.log('\x1b[36m[SMOKE] Running basic health checks...\x1b[0m');
-        const port = process.env.PORT || 3001;
+        const port = process.env.PORT || 3002;
         const endpoints = ['/api/health', '/api/workflows'];
         const http = require('http');
 
