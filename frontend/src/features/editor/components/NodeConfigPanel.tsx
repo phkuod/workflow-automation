@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Step, Workflow } from '../../../shared/types/workflow';
+import type { Step, StepConfig, Workflow } from '../../../shared/types/workflow';
 import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
 import X from 'lucide-react/dist/esm/icons/x';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
@@ -104,7 +104,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
         break;
       case 'http-request':
         config.url = url;
-        config.method = method as any;
+        config.method = method as StepConfig['method'];
         config.body = body;
         config.headers = headers.length > 0 ? Object.fromEntries(headers.filter(h => h.key).map(h => [h.key, h.value])) : undefined;
         break;
@@ -120,10 +120,10 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
         break;
       case 'wait':
         config.duration = Number(duration);
-        config.unit = unit as any;
+        config.unit = unit as StepConfig['unit'];
         break;
       case 'trigger-webhook':
-        config.webhookMethod = webhookMethod as any;
+        config.webhookMethod = webhookMethod as StepConfig['webhookMethod'];
         break;
       case 'action-email':
         config.emailTo = emailTo;
@@ -135,7 +135,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
         config.slackMessage = slackMessage;
         break;
       case 'connector-db':
-        config.dbType = dbType as any;
+        config.dbType = dbType as StepConfig['dbType'];
         config.dbHost = dbHost;
         config.dbPort = Number(dbPort);
         config.dbName = dbName;
@@ -257,7 +257,7 @@ print(json.dumps({'result': result}))`}
               <select
                 className="form-select"
                 value={method}
-                onChange={(e) => setMethod(e.target.value as any)}
+                onChange={(e) => setMethod(e.target.value)}
               >
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
@@ -501,7 +501,7 @@ print(json.dumps({'result': result}))`}
               <select
                 className="form-select"
                 value={unit}
-                onChange={(e) => setUnit(e.target.value as any)}
+                onChange={(e) => setUnit(e.target.value)}
               >
                 <option value="seconds">Seconds</option>
                 <option value="minutes">Minutes</option>
@@ -537,7 +537,7 @@ print(json.dumps({'result': result}))`}
               <select
                 className="form-select"
                 value={webhookMethod}
-                onChange={(e) => setWebhookMethod(e.target.value as any)}
+                onChange={(e) => setWebhookMethod(e.target.value)}
               >
                 <option value="POST">POST</option>
                 <option value="GET">GET</option>
@@ -677,7 +677,7 @@ print(json.dumps({'result': result}))`}
               <select
                 className="form-select"
                 value={dbType}
-                onChange={(e) => setDbType(e.target.value as any)}
+                onChange={(e) => setDbType(e.target.value)}
               >
                 <option value="postgres">PostgreSQL</option>
                 <option value="mysql">MySQL</option>
@@ -797,7 +797,7 @@ print(json.dumps({'result': result}))`}
             <div style={{ fontSize: '12px', color: typeInfo.color }}>{typeInfo.label}</div>
           </div>
         </div>
-        <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose}>
+        <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label="Close configuration panel">
           <X size={16} />
         </button>
       </div>

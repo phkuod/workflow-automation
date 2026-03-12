@@ -11,8 +11,9 @@ router.get('/', (req, res) => {
   try {
     const schedules = scheduler.getScheduledWorkflows();
     res.json({ success: true, data: schedules });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -30,8 +31,9 @@ router.get('/:workflowId', (req, res) => {
       });
     }
     res.json({ success: true, data: schedule });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -49,8 +51,9 @@ router.put('/:workflowId/pause', (req, res) => {
       });
     }
     res.json({ success: true, message: 'Schedule paused' });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -68,8 +71,9 @@ router.put('/:workflowId/resume', (req, res) => {
       });
     }
     res.json({ success: true, message: 'Schedule resumed' });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -87,8 +91,9 @@ router.delete('/:workflowId', (req, res) => {
       });
     }
     res.json({ success: true, message: 'Schedule removed' });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 

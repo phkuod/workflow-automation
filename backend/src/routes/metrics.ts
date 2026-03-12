@@ -43,11 +43,11 @@ interface Metrics {
  * GET /api/metrics
  * Get system metrics and statistics
  */
-router.get('/', async (req, res) => {
+router.get('/', (req, res) => {
   try {
     // Fetch data
-    const workflows = await WorkflowModel.getAll();
-    const executions = await ExecutionModel.getAll();
+    const workflows = WorkflowModel.getAll();
+    const executions = ExecutionModel.getAll();
     const schedules = scheduler.getScheduledWorkflows();
 
     // Calculate workflow stats
@@ -119,8 +119,9 @@ router.get('/', async (req, res) => {
     };
 
     res.json({ success: true, data: metrics });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -128,10 +129,10 @@ router.get('/', async (req, res) => {
  * GET /api/metrics/executions/history
  * Get execution history over time
  */
-router.get('/executions/history', async (req, res) => {
+router.get('/executions/history', (req, res) => {
   try {
-    const days = parseInt(req.query.days as string) || 7;
-    const executions = await ExecutionModel.getAll();
+    const days = Math.max(1, Math.min(365, parseInt(req.query.days as string) || 7));
+    const executions = ExecutionModel.getAll();
     
     const now = new Date();
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -161,8 +162,9 @@ router.get('/executions/history', async (req, res) => {
       .sort((a, b) => a.date.localeCompare(b.date));
 
     res.json({ success: true, data });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 

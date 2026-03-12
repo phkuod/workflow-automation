@@ -99,8 +99,8 @@ export default function MonitoringPage() {
       } else {
         setError(metricsResponse.error || 'Failed to fetch metrics');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to connect to server');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to connect to server');
     } finally {
       setIsLoading(false);
     }

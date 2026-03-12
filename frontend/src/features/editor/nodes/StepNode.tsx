@@ -18,7 +18,7 @@ interface StepNodeData extends Record<string, unknown> {
 const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: boolean }) => {
   const { step, status, isSelected, hasInspectableData } = data;
   const activeSelected = isSelected || selected;
-  const typeInfo = (STEP_TYPE_INFO as any)[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
+  const typeInfo = STEP_TYPE_INFO[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
 
   const getStatusIcon = () => {
     switch (status) {

@@ -62,6 +62,7 @@ function ToastItem({ toast }: { toast: Toast }) {
         {toast.message}
       </span>
       <button
+        aria-label="Dismiss notification"
         onClick={() => removeToast(toast.id)}
         style={{
           background: 'transparent',
@@ -87,6 +88,9 @@ export default function ToastContainer() {
 
   return (
     <div
+      role="region"
+      aria-label="Notifications"
+      aria-live="polite"
       style={{
         position: 'fixed',
         top: '20px',

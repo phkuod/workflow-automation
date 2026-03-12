@@ -72,8 +72,8 @@ export default function ExecutionsPage() {
       const data = await executionApi.getAll(50);
       setExecutions(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch executions');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch executions');
     } finally {
       setIsLoading(false);
     }
@@ -112,8 +112,8 @@ export default function ExecutionsPage() {
       await executionApi.delete(id);
       setExecutions(prev => prev.filter(e => e.id !== id));
       if (expandedId === id) setExpandedId(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete execution');
     }
   };
 
@@ -121,8 +121,8 @@ export default function ExecutionsPage() {
     try {
       await executionApi.cancel(id);
       await fetchExecutions();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel execution');
     }
   };
 

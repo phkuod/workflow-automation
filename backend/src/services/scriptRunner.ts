@@ -4,10 +4,13 @@ import * as http from 'http';
 import * as https from 'https';
 import { URL } from 'url';
 import { StepConfig } from '../types/workflow';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('scriptRunner');
 
 export interface ScriptResult {
   success: boolean;
-  output?: any;
+  output?: unknown;
   error?: string;
   logs: string[];
 }
@@ -16,7 +19,7 @@ export class ScriptRunner {
   /**
    * Execute JavaScript code in a sandboxed VM
    */
-  static async executeJS(code: string, inputData: Record<string, any>, timeout = 30000): Promise<ScriptResult> {
+  static async executeJS(code: string, inputData: Record<string, unknown>, timeout = 30000): Promise<ScriptResult> {
     const logs: string[] = [];
     
     try {
@@ -24,9 +27,9 @@ export class ScriptRunner {
       const sandbox: Context = {
         ...inputData,
         console: {
-          log: (...args: any[]) => logs.push(args.map(a => JSON.stringify(a)).join(' ')),
-          error: (...args: any[]) => logs.push(`[ERROR] ${args.map(a => JSON.stringify(a)).join(' ')}`),
-          warn: (...args: any[]) => logs.push(`[WARN] ${args.map(a => JSON.stringify(a)).join(' ')}`)
+          log: (...args: unknown[]) => logs.push(args.map(a => JSON.stringify(a)).join(' ')),
+          error: (...args: unknown[]) => logs.push(`[ERROR] ${args.map(a => JSON.stringify(a)).join(' ')}`),
+          warn: (...args: unknown[]) => logs.push(`[WARN] ${args.map(a => JSON.stringify(a)).join(' ')}`)
         },
         JSON,
         Math,
@@ -66,10 +69,10 @@ export class ScriptRunner {
         output: result,
         logs
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message || String(error),
+        error: error instanceof Error ? error.message : String(error),
         logs
       };
     }
@@ -78,14 +81,14 @@ export class ScriptRunner {
   /**
    * Execute Python code via subprocess
    */
-  static async executePython(code: string, context: { variables: Record<string, any>, inputData: Record<string, any>, steps: Record<string, any> }, timeout = 30000): Promise<ScriptResult> {
+  static async executePython(code: string, context: { variables: Record<string, unknown>, inputData: Record<string, unknown>, steps: Record<string, unknown> }, timeout = 30000): Promise<ScriptResult> {
     return new Promise((resolve) => {
       const logs: string[] = [];
       let output = '';
       let errorOutput = '';
 
       // Helper to escape JSON string for safe Python multiline string injection
-      const escapeForPython = (obj: any) => {
+      const escapeForPython = (obj: unknown) => {
         return JSON.stringify(obj || {}).replace(/\\/g, '\\\\').replace(/'''/g, "\\'\\'\\'");
       };
 
@@ -109,20 +112,20 @@ ${code}
         timeout
       });
 
-      python.stdout.on('data', (data) => {
+      python.stdout.on('data', (data: Buffer) => {
         const str = data.toString();
         output += str;
         logs.push(str.trim());
       });
 
-      python.stderr.on('data', (data) => {
+      python.stderr.on('data', (data: Buffer) => {
         errorOutput += data.toString();
       });
 
-      python.on('close', (exitCode) => {
+      python.on('close', (exitCode: number | null) => {
         if (exitCode === 0) {
           // Try to parse the last line as JSON output
-          let parsedOutput: any;
+          let parsedOutput: unknown;
           try {
             const lines = output.trim().split('\n');
             const lastLine = lines[lines.length - 1];
@@ -145,7 +148,7 @@ ${code}
         }
       });
 
-      python.on('error', (err) => {
+      python.on('error', (err: Error) => {
         resolve({
           success: false,
           error: `Failed to start Python: ${err.message}`,
@@ -158,7 +161,7 @@ ${code}
   /**
    * Execute HTTP Request
    */
-  static async executeHttpRequest(config: StepConfig, inputData: Record<string, any>): Promise<ScriptResult> {
+  static async executeHttpRequest(config: StepConfig, inputData: Record<string, unknown>): Promise<ScriptResult> {
     const logs: string[] = [];
 
     try {
@@ -175,7 +178,7 @@ ${code}
 
       const { status, statusText, data } = await this.httpRequest(url, method, headers, body);
 
-      let responseData: any;
+      let responseData: unknown;
       try {
         responseData = JSON.parse(data);
       } catch {
@@ -198,10 +201,10 @@ ${code}
           logs
         };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message || String(error),
+        error: error instanceof Error ? error.message : String(error),
         logs
       };
     }
@@ -232,9 +235,9 @@ ${code}
         timeout: 30000
       };
 
-      const req = transport.request(options, (res) => {
+      const req = transport.request(options, (res: http.IncomingMessage) => {
         let data = '';
-        res.on('data', (chunk) => { data += chunk; });
+        res.on('data', (chunk: Buffer | string) => { data += chunk; });
         res.on('end', () => {
           resolve({
             status: res.statusCode || 0,
@@ -260,7 +263,7 @@ ${code}
   /**
    * Evaluate condition expression
    */
-  static evaluateCondition(condition: string, context: Record<string, any>): boolean {
+  static evaluateCondition(condition: string, context: Record<string, unknown>): boolean {
     try {
       const interpolated = this.interpolateVariables(condition, context);
       // Use VM sandbox instead of new Function + with() for safer evaluation
@@ -268,7 +271,7 @@ ${code}
       const result = runInContext(`(${interpolated})`, sandbox, { timeout: 1000 });
       return Boolean(result);
     } catch (error) {
-      console.error('Condition evaluation error:', error);
+      log.error({ err: error }, 'Condition evaluation error');
       return false;
     }
   }
@@ -277,7 +280,7 @@ ${code}
    * Interpolate variables in a string
    * Replaces ${path.to.value} with actual values from context
    */
-  static interpolateVariables(template: string, context: Record<string, any>): string {
+  static interpolateVariables(template: string, context: Record<string, unknown>): string {
     // Handle both ${var} and {{var}}
     const regex = /\$\{([^}]+)\}|\{\{([^}]+)\}\}/g;
     return template.replace(regex, (match, path1, path2) => {
@@ -297,7 +300,12 @@ ${code}
   /**
    * Get value from object by dot-notation path
    */
-  static getValueByPath(obj: Record<string, any>, path: string): any {
-    return path.split('.').reduce((current, key) => current?.[key], obj);
+  static getValueByPath(obj: Record<string, unknown>, path: string): unknown {
+    return path.split('.').reduce<unknown>((current, key) => {
+      if (current && typeof current === 'object' && key in (current as Record<string, unknown>)) {
+        return (current as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, obj);
   }
 }

@@ -241,12 +241,12 @@ function EditorPage() {
     setShowSimulation(true);
     try {
       await simulateWorkflow();
-    } catch (err) {
-      console.error('Simulation failed:', err);
+    } catch {
+      toast.error('Simulation failed');
     }
   }, [simulateWorkflow, currentWorkflow]);
 
-  const handleExecuteWithParams = useCallback(async (inputData: Record<string, any>) => {
+  const handleExecuteWithParams = useCallback(async (inputData: Record<string, unknown>) => {
     const mode = showExecuteDialog;
     setShowExecuteDialog(null);
     setShowSimulation(true);
@@ -256,8 +256,8 @@ function EditorPage() {
       } else {
         await executeWorkflow(inputData);
       }
-    } catch (err) {
-      console.error('Execution failed:', err);
+    } catch {
+      toast.error('Execution failed');
     }
   }, [showExecuteDialog, simulateWorkflow, executeWorkflow]);
 
@@ -317,7 +317,7 @@ function EditorPage() {
       {/* Header */}
       <header className="header">
         <div className="flex items-center gap-4">
-          <button className="btn btn-ghost btn-icon" onClick={handleNavigateBack}>
+          <button className="btn btn-ghost btn-icon" onClick={handleNavigateBack} aria-label="Back to dashboard">
             <ArrowLeft size={20} />
           </button>
           

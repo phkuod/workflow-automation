@@ -43,8 +43,9 @@ router.get('/', (req: Request, res: Response) => {
   try {
     const workflows = WorkflowModel.getAll();
     res.json({ success: true, data: workflows } as ApiResponse<typeof workflows>);
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -59,8 +60,9 @@ router.get('/:id', (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Workflow not found' });
     }
     res.json({ success: true, data: workflow });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -83,8 +85,9 @@ router.post('/', async (req: Request, res: Response) => {
     await syncSchedule(workflow); // Sync with scheduler
     
     res.status(201).json({ success: true, data: workflow });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -115,8 +118,9 @@ router.put('/:id', async (req: Request, res: Response) => {
     await syncSchedule(workflow);
 
     res.json({ success: true, data: workflow });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -134,8 +138,9 @@ router.delete('/:id', (req: Request, res: Response) => {
     scheduler.unscheduleWorkflow(req.params.id); // Remove from scheduler
 
     res.json({ success: true, data: { deleted: true } });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -154,9 +159,10 @@ router.post('/:id/execute', async (req: Request, res: Response) => {
 
     const execution = await ExecutionEngine.execute(workflow, triggeredBy, inputData);
     res.json({ success: true, data: execution });
-  } catch (error: any) {
-    const status = error.message?.startsWith('Missing required input parameter') ? 400 : 500;
-    res.status(status).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const status = message.startsWith('Missing required input parameter') ? 400 : 500;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
@@ -174,9 +180,10 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
 
     const execution = await ExecutionEngine.execute(workflow, 'manual', inputData, true);
     res.json({ success: true, data: execution });
-  } catch (error: any) {
-    const status = error.message?.startsWith('Missing required input parameter') ? 400 : 500;
-    res.status(status).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const status = message.startsWith('Missing required input parameter') ? 400 : 500;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
@@ -193,8 +200,9 @@ router.get('/:id/executions', (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const executions = ExecutionModel.getByWorkflowId(req.params.id, limit);
     res.json({ success: true, data: executions });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -205,8 +213,9 @@ router.get('/:id/versions', (req: Request, res: Response) => {
   try {
     const versions = VersionModel.getByWorkflowId(req.params.id);
     res.json({ success: true, data: versions });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -220,8 +229,9 @@ router.get('/:id/versions/:version', (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Version not found' });
     }
     res.json({ success: true, data: version });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -245,8 +255,9 @@ router.post('/:id/versions/:version/restore', async (req: Request, res: Response
       return res.status(404).json({ success: false, error: 'Workflow not found' });
     }
     res.json({ success: true, data: updated });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 

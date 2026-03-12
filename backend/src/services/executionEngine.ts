@@ -30,7 +30,7 @@ const transporter = nodemailer.createTransport({
 interface ExecutionContext {
   executionId: string;
   workflow: Workflow;
-  variables: Record<string, any>;
+  variables: Record<string, unknown>;
   stations: Record<string, StationResult>;
   steps: Record<string, StepResult>;
   logs: Omit<ExecutionLog, 'id' | 'timestamp'>[];
@@ -46,7 +46,7 @@ export class ExecutionEngine {
     executionId: string,
     workflow: Workflow,
     triggeredBy: Execution['triggeredBy'] = 'manual',
-    inputData: Record<string, any> = {},
+    inputData: Record<string, unknown> = {},
   ): Promise<Execution> {
     return this.executeInternal(executionId, workflow, triggeredBy, inputData, false);
   }
@@ -57,7 +57,7 @@ export class ExecutionEngine {
   static async execute(
     workflow: Workflow,
     triggeredBy: Execution['triggeredBy'] = 'manual',
-    inputData: Record<string, any> = {},
+    inputData: Record<string, unknown> = {},
     simulate: boolean = false
   ): Promise<Execution> {
     // Create execution record
@@ -220,7 +220,7 @@ export class ExecutionEngine {
     if (station.iterator?.enabled) {
       const sourceVar = station.iterator.sourceVariable;
       const resolvedSource = ScriptRunner.interpolateVariables(sourceVar, context.variables);
-      let items: any[] = [];
+      let items: unknown[] = [];
       
       try {
         items = JSON.parse(resolvedSource);
@@ -236,7 +236,7 @@ export class ExecutionEngine {
 
       this.log(context, 'info', `Starting iteration over ${items.length} items`, undefined, station.id);
       
-      const iterationResults: any[] = [];
+      const iterationResults: unknown[] = [];
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         
@@ -274,7 +274,7 @@ export class ExecutionEngine {
       const res = await this.executeStationSteps(station, context);
       stationResult.status = res.status;
       stationResult.steps = res.steps;
-      stationResult.output = res.output;
+      stationResult.output = res.output as Record<string, any>;
     }
 
     stationResult.endTime = new Date().toISOString();
@@ -289,7 +289,7 @@ export class ExecutionEngine {
   /**
    * Helper to execute a set of steps for a station
    */
-  private static async executeStationSteps(station: Station, context: ExecutionContext): Promise<{ status: StationResult['status'], steps: StepResult[], output: any }> {
+  private static async executeStationSteps(station: Station, context: ExecutionContext): Promise<{ status: StationResult['status'], steps: StepResult[], output: unknown }> {
     const steps: StepResult[] = [];
 
     // If edges defined, use graph-based execution with if-else routing
@@ -602,12 +602,13 @@ export class ExecutionEngine {
                   output: { sent: true, to, subject, messageId: info.messageId, timestamp: new Date().toISOString() },
                   logs: [`Email successfully sent to ${to} (MessageId: ${info.messageId})`]
                 };
-              } catch (err: any) {
+              } catch (err: unknown) {
+                const errMsg = err instanceof Error ? err.message : String(err);
                 result = {
                   success: false,
-                  error: `Failed to send email: ${err.message}`,
+                  error: `Failed to send email: ${errMsg}`,
                   output: { sent: false, to, subject, timestamp: new Date().toISOString() },
-                  logs: [`Email sending failed: ${err.message}`]
+                  logs: [`Email sending failed: ${errMsg}`]
                 };
               }
             }
@@ -637,12 +638,13 @@ export class ExecutionEngine {
                   output: { rows, count: rows.length },
                   logs: [`Query executed successfully, returned ${rows.length} rows`]
                 };
-              } catch (err: any) {
+              } catch (err: unknown) {
+                const errMsg = err instanceof Error ? err.message : String(err);
                 result = {
                   success: false,
-                  error: `Database connection or query failed: ${err.message}`,
-                  output: { error: err.message },
-                  logs: [`Database error: ${err.message}`]
+                  error: `Database connection or query failed: ${errMsg}`,
+                  output: { error: errMsg },
+                  logs: [`Database error: ${errMsg}`]
                 };
               }
             }
@@ -664,7 +666,7 @@ export class ExecutionEngine {
 
         if (result.success) {
           stepResult.status = 'completed';
-          stepResult.output = result.output;
+          stepResult.output = result.output as Record<string, any>;
           this.log(context, 'info', `Step completed: ${step.name}`, result.output, undefined, step.id);
           break; // Exit retry loop
         } else {
@@ -676,15 +678,17 @@ export class ExecutionEngine {
           }
         }
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         retryAttempts++;
         if (retryAttempts >= maxAttempts) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          const errStack = error instanceof Error ? error.stack : undefined;
           stepResult.status = 'failed';
           stepResult.error = {
-            message: error.message || String(error),
-            stack: error.stack
+            message: errMsg,
+            stack: errStack
           };
-          this.log(context, 'error', `Step error: ${step.name} - ${error.message}`, undefined, undefined, step.id);
+          this.log(context, 'error', `Step error: ${step.name} - ${errMsg}`, undefined, undefined, step.id);
         }
       }
     }
@@ -733,8 +737,8 @@ export class ExecutionEngine {
   /**
    * Resolve input variables for a step
    */
-  private static resolveInputVariables(step: Step, context: ExecutionContext): Record<string, any> {
-    const input: Record<string, any> = {};
+  private static resolveInputVariables(step: Step, context: ExecutionContext): Record<string, unknown> {
+    const input: Record<string, unknown> = {};
 
     if (step.inputVars) {
       for (const mapping of step.inputVars) {
@@ -757,7 +761,7 @@ export class ExecutionEngine {
     station: Station, 
     stepResults: StepResult[], 
     context: ExecutionContext
-  ): Record<string, any> {
+  ): Record<string, unknown> {
     return {
       allStepsCompleted: stepResults.every(s => s.status === 'completed'),
       stepCount: stepResults.length,
@@ -809,7 +813,7 @@ export class ExecutionEngine {
     context: ExecutionContext,
     level: ExecutionLog['level'],
     message: string,
-    data?: any,
+    data?: unknown,
     stationId?: string,
     stepId?: string
   ): void {
