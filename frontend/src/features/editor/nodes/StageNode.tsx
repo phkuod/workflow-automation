@@ -2,12 +2,7 @@ import { memo, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { Station } from '../../../shared/types/workflow';
 import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
-import Layers from 'lucide-react/dist/esm/icons/layers';
-import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
-import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
-import XCircle from 'lucide-react/dist/esm/icons/x-circle';
-import Clock from 'lucide-react/dist/esm/icons/clock';
-import Loader from 'lucide-react/dist/esm/icons/loader';
+import { Layers, ChevronRight, CheckCircle, XCircle, Clock, Loader } from 'lucide-react';
 
 interface StageNodeData extends Record<string, unknown> {
   station: Station;

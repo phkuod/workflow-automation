@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
-import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
-import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 
 interface JsonTreeViewProps {
   data: unknown;
