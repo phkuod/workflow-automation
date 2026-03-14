@@ -56,8 +56,8 @@ interface WorkflowState {
   selectStation: (stationId: string | null) => void;
   
   // Execution actions
-  executeWorkflow: (inputData?: Record<string, any>) => Promise<Execution>;
-  simulateWorkflow: (inputData?: Record<string, any>) => Promise<Execution>;
+  executeWorkflow: (inputData?: Record<string, unknown>) => Promise<Execution>;
+  simulateWorkflow: (inputData?: Record<string, unknown>) => Promise<Execution>;
   fetchExecutions: (workflowId: string) => Promise<void>;
   fetchExecutionLogs: (executionId: string) => Promise<void>;
   
@@ -84,8 +84,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     try {
       const workflows = await workflowApi.getAll();
       set({ workflows, isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error), isLoading: false });
     }
   },
 
@@ -95,8 +95,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     try {
       const workflow = await workflowApi.getById(id);
       set({ currentWorkflow: workflow, isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error), isLoading: false });
     }
   },
 
@@ -115,8 +115,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         isLoading: false,
       }));
       return workflow;
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error), isLoading: false });
       throw error;
     }
   },
@@ -129,8 +129,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         workflows: state.workflows.map((w) => (w.id === id ? workflow : w)),
         currentWorkflow: state.currentWorkflow?.id === id ? workflow : state.currentWorkflow,
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error) });
     }
   },
 
@@ -142,8 +142,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         workflows: state.workflows.filter((w) => w.id !== id),
         currentWorkflow: state.currentWorkflow?.id === id ? null : state.currentWorkflow,
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error) });
     }
   },
 
@@ -160,8 +160,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         definition: currentWorkflow.definition,
       });
       set({ isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error), isLoading: false });
     }
   },
 
@@ -347,8 +347,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       const execution = await workflowApi.execute(currentWorkflow.id, inputData);
       set({ currentExecution: execution, isSimulating: false });
       return execution;
-    } catch (error: any) {
-      set({ error: error.message, isSimulating: false });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error), isSimulating: false });
       throw error;
     }
   },
@@ -368,8 +368,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       set({ executionLogs: logs });
       
       return execution;
-    } catch (error: any) {
-      set({ error: error.message, isSimulating: false });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error), isSimulating: false });
       throw error;
     }
   },
@@ -379,8 +379,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     try {
       const executions = await workflowApi.getExecutions(workflowId);
       set({ executions });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error) });
     }
   },
 
@@ -389,8 +389,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     try {
       const logs = await executionApi.getLogs(executionId);
       set({ executionLogs: logs });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error) });
     }
   },
 

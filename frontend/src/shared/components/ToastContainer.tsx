@@ -1,9 +1,5 @@
 import { useToastStore, Toast } from '../stores/toastStore';
-import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
-import XCircle from 'lucide-react/dist/esm/icons/x-circle';
-import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
-import Info from 'lucide-react/dist/esm/icons/info';
-import X from 'lucide-react/dist/esm/icons/x';
+import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 const iconMap = {
   success: CheckCircle,
@@ -62,6 +58,7 @@ function ToastItem({ toast }: { toast: Toast }) {
         {toast.message}
       </span>
       <button
+        aria-label="Dismiss notification"
         onClick={() => removeToast(toast.id)}
         style={{
           background: 'transparent',
@@ -87,6 +84,9 @@ export default function ToastContainer() {
 
   return (
     <div
+      role="region"
+      aria-label="Notifications"
+      aria-live="polite"
       style={{
         position: 'fixed',
         top: '20px',

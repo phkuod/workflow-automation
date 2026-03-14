@@ -12,7 +12,7 @@ export interface Workflow {
 
 export interface WorkflowDefinition {
   stations: Station[];
-  variables?: Record<string, any>;
+  variables?: Record<string, unknown>;
   inputParameters?: InputParameter[];
 }
 
@@ -20,7 +20,7 @@ export interface InputParameter {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'json';
   description?: string;
-  defaultValue?: any;
+  defaultValue?: string | number | boolean | null;
   required?: boolean;
 }
 
@@ -149,7 +149,7 @@ export interface StationResult {
   startTime?: string;
   endTime?: string;
   steps: StepResult[];
-  output?: Record<string, any>;
+  output?: Record<string, unknown>;
 }
 
 export interface StepResult {
@@ -159,8 +159,8 @@ export interface StepResult {
   status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
   startTime?: string;
   endTime?: string;
-  input?: Record<string, any>;
-  output?: Record<string, any>;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
   error?: ErrorInfo;
 }
 
@@ -177,7 +177,7 @@ export interface ExecutionLog {
   stepId?: string;
   level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
-  data?: any;
+  data?: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -198,7 +198,7 @@ export interface ExecutionEvent {
     stepId?: string;
     stepName?: string;
     status?: string;
-    output?: any;
+    output?: unknown;
     error?: string;
     progress?: { completed: number; total: number };
     timestamp: string;

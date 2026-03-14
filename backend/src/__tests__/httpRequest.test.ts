@@ -56,8 +56,9 @@ describe('HTTP Request Step', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.output.status).toBe(200);
-    expect(result.output.data).toEqual({ data: 'hello' });
+    const output = result.output as Record<string, unknown>;
+    expect(output.status).toBe(200);
+    expect(output.data).toEqual({ data: 'hello' });
     expect(https.request).toHaveBeenCalled();
     const callOpts = vi.mocked(https.request).mock.calls[0][0] as any;
     expect(callOpts.method).toBe('GET');
@@ -80,7 +81,7 @@ describe('HTTP Request Step', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.output.status).toBe(201);
+    expect((result.output as Record<string, unknown>).status).toBe(201);
     const callOpts = vi.mocked(https.request).mock.calls[0][0] as any;
     expect(callOpts.method).toBe('POST');
     expect(mockReq.write).toHaveBeenCalledWith('{"name":"test"}');
@@ -172,6 +173,6 @@ describe('HTTP Request Step', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.output.data).toBe('plain text response');
+    expect((result.output as Record<string, unknown>).data).toBe('plain text response');
   });
 });

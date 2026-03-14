@@ -1,11 +1,7 @@
 import type { StepResult } from '../../../shared/types/workflow';
 import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
 import JsonTreeView from '../../../shared/components/JsonTreeView';
-import X from 'lucide-react/dist/esm/icons/x';
-import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
-import XCircle from 'lucide-react/dist/esm/icons/x-circle';
-import Clock from 'lucide-react/dist/esm/icons/clock';
-import Loader from 'lucide-react/dist/esm/icons/loader';
+import { X, CheckCircle, XCircle, Clock, Loader } from 'lucide-react';
 
 interface StepDataInspectorProps {
   stepResult: StepResult;

@@ -2,13 +2,7 @@ import { useRef, useEffect, useMemo } from 'react';
 import type { Execution, ExecutionLog, ExecutionEvent, StepResult } from '../../../shared/types/workflow';
 import { useExecutionStream } from '../../../shared/hooks/useExecutionStream';
 import StepDataInspector from './StepDataInspector';
-import X from 'lucide-react/dist/esm/icons/x';
-import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
-import XCircle from 'lucide-react/dist/esm/icons/x-circle';
-import Clock from 'lucide-react/dist/esm/icons/clock';
-import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
-import Info from 'lucide-react/dist/esm/icons/info';
-import Bug from 'lucide-react/dist/esm/icons/bug';
+import { X, CheckCircle, XCircle, Clock, AlertCircle, Info, Bug } from 'lucide-react';
 
 interface SimulationPanelProps {
   execution: Execution | null;

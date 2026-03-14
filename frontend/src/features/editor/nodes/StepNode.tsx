@@ -2,10 +2,7 @@ import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { Step } from '../../../shared/types/workflow';
 import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
-import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
-import XCircle from 'lucide-react/dist/esm/icons/x-circle';
-import Clock from 'lucide-react/dist/esm/icons/clock';
-import Loader from 'lucide-react/dist/esm/icons/loader';
+import { CheckCircle, XCircle, Clock, Loader } from 'lucide-react';
 
 interface StepNodeData extends Record<string, unknown> {
   step: Step;
@@ -18,7 +15,7 @@ interface StepNodeData extends Record<string, unknown> {
 const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: boolean }) => {
   const { step, status, isSelected, hasInspectableData } = data;
   const activeSelected = isSelected || selected;
-  const typeInfo = (STEP_TYPE_INFO as any)[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
+  const typeInfo = STEP_TYPE_INFO[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
 
   const getStatusIcon = () => {
     switch (status) {

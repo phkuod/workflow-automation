@@ -7,6 +7,7 @@ import Sidebar from './shared/components/Sidebar';
 import ToastContainer from './shared/components/ToastContainer';
 import { ConfirmProvider } from './shared/components/ConfirmDialog';
 import { InputProvider } from './shared/components/InputDialog';
+import { ErrorBoundary } from './shared/components/ErrorBoundary';
 
 // Layout with sidebar for main pages
 function MainLayout({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
+    <ErrorBoundary>
     <ConfirmProvider>
       <InputProvider>
         <BrowserRouter>
@@ -31,6 +33,7 @@ function App() {
         <ToastContainer />
       </InputProvider>
     </ConfirmProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { Step, Workflow } from '../../../shared/types/workflow';
+import type { Step, StepConfig, Workflow } from '../../../shared/types/workflow';
 import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
-import X from 'lucide-react/dist/esm/icons/x';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
-import Save from 'lucide-react/dist/esm/icons/save';
-import Database from 'lucide-react/dist/esm/icons/database';
-import Package from 'lucide-react/dist/esm/icons/package';
+import { X, Trash2, Save, Database, Package } from 'lucide-react';
 import { VariablePicker } from './VariablePicker';
 
 interface NodeConfigPanelProps {
@@ -25,7 +21,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
   const [headers, setHeaders] = useState<{key: string, value: string}[]>(
     step.config.headers ? Object.entries(step.config.headers).map(([key, value]) => ({ key, value: value as string })) : []
   );
-  const [timeout, setTimeout] = useState(step.timeout ? step.timeout / 1000 : 30);
+  const [timeout, setTimeoutValue] = useState(step.timeout ? step.timeout / 1000 : 30);
   const [condition, setCondition] = useState(step.config.condition || '');
   const [variableName, setVariableName] = useState(step.config.variableName || '');
   const [variableValue, setVariableValue] = useState(step.config.variableValue || '');
@@ -68,7 +64,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
     setMethod(step.config.method || 'GET');
     setBody(step.config.body || '');
     setHeaders(step.config.headers ? Object.entries(step.config.headers).map(([key, value]) => ({ key, value: value as string })) : []);
-    setTimeout(step.timeout ? step.timeout / 1000 : 30);
+    setTimeoutValue(step.timeout ? step.timeout / 1000 : 30);
     setCondition(step.config.condition || '');
     setVariableName(step.config.variableName || '');
     setVariableValue(step.config.variableValue || '');
@@ -104,7 +100,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
         break;
       case 'http-request':
         config.url = url;
-        config.method = method as any;
+        config.method = method as StepConfig['method'];
         config.body = body;
         config.headers = headers.length > 0 ? Object.fromEntries(headers.filter(h => h.key).map(h => [h.key, h.value])) : undefined;
         break;
@@ -120,10 +116,10 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
         break;
       case 'wait':
         config.duration = Number(duration);
-        config.unit = unit as any;
+        config.unit = unit as StepConfig['unit'];
         break;
       case 'trigger-webhook':
-        config.webhookMethod = webhookMethod as any;
+        config.webhookMethod = webhookMethod as StepConfig['webhookMethod'];
         break;
       case 'action-email':
         config.emailTo = emailTo;
@@ -135,7 +131,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
         config.slackMessage = slackMessage;
         break;
       case 'connector-db':
-        config.dbType = dbType as any;
+        config.dbType = dbType as StepConfig['dbType'];
         config.dbHost = dbHost;
         config.dbPort = Number(dbPort);
         config.dbName = dbName;
@@ -257,7 +253,7 @@ print(json.dumps({'result': result}))`}
               <select
                 className="form-select"
                 value={method}
-                onChange={(e) => setMethod(e.target.value as any)}
+                onChange={(e) => setMethod(e.target.value as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH')}
               >
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
@@ -364,7 +360,7 @@ print(json.dumps({'result': result}))`}
                     type="number"
                     className="form-input"
                     value={timeout}
-                    onChange={(e) => setTimeout(Number(e.target.value))}
+                    onChange={(e) => setTimeoutValue(Number(e.target.value))}
                     min={1}
                     max={300}
                   />
@@ -501,7 +497,7 @@ print(json.dumps({'result': result}))`}
               <select
                 className="form-select"
                 value={unit}
-                onChange={(e) => setUnit(e.target.value as any)}
+                onChange={(e) => setUnit(e.target.value as 'seconds' | 'minutes' | 'hours')}
               >
                 <option value="seconds">Seconds</option>
                 <option value="minutes">Minutes</option>
@@ -537,7 +533,7 @@ print(json.dumps({'result': result}))`}
               <select
                 className="form-select"
                 value={webhookMethod}
-                onChange={(e) => setWebhookMethod(e.target.value as any)}
+                onChange={(e) => setWebhookMethod(e.target.value as 'GET' | 'POST' | 'PUT')}
               >
                 <option value="POST">POST</option>
                 <option value="GET">GET</option>
@@ -677,7 +673,7 @@ print(json.dumps({'result': result}))`}
               <select
                 className="form-select"
                 value={dbType}
-                onChange={(e) => setDbType(e.target.value as any)}
+                onChange={(e) => setDbType(e.target.value as 'postgres' | 'mysql')}
               >
                 <option value="postgres">PostgreSQL</option>
                 <option value="mysql">MySQL</option>
@@ -797,7 +793,7 @@ print(json.dumps({'result': result}))`}
             <div style={{ fontSize: '12px', color: typeInfo.color }}>{typeInfo.label}</div>
           </div>
         </div>
-        <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose}>
+        <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label="Close configuration panel">
           <X size={16} />
         </button>
       </div>

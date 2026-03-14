@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Station, Workflow } from '../../../shared/types/workflow';
-import X from 'lucide-react/dist/esm/icons/x';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
-import Save from 'lucide-react/dist/esm/icons/save';
-import Repeat from 'lucide-react/dist/esm/icons/repeat';
+import { X, Trash2, Save, Repeat } from 'lucide-react';
 import { VariablePicker } from './VariablePicker';
 
 interface StationConfigPanelProps {

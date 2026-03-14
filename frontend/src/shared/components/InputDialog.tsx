@@ -1,6 +1,5 @@
 import { useState, useCallback, createContext, useContext, ReactNode, useEffect, useRef } from 'react';
-import Edit3 from 'lucide-react/dist/esm/icons/edit-3';
-import X from 'lucide-react/dist/esm/icons/x';
+import { Edit3, X } from 'lucide-react';
 
 interface InputOptions {
   title: string;

@@ -52,8 +52,9 @@ router.post('/:id/cancel', (req: Request, res: Response) => {
       endTime: new Date().toISOString()
     });
     res.json({ success: true, data: { cancelled: true } });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -63,11 +64,12 @@ router.post('/:id/cancel', (req: Request, res: Response) => {
  */
 router.get('/', (req: Request, res: Response) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limit = Math.max(1, Math.min(200, parseInt(req.query.limit as string) || 50));
     const executions = ExecutionModel.getAll(limit);
     res.json({ success: true, data: executions });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -84,8 +86,9 @@ router.get('/:id/logs', (req: Request, res: Response) => {
 
     const logs = LogModel.getByExecutionId(req.params.id);
     res.json({ success: true, data: logs });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -100,8 +103,9 @@ router.get('/:id', (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Execution not found' });
     }
     res.json({ success: true, data: execution });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
@@ -116,8 +120,9 @@ router.delete('/:id', (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Execution not found' });
     }
     res.json({ success: true, data: { deleted: true } });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 

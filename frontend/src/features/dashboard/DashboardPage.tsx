@@ -65,8 +65,8 @@ function DashboardPage() {
       setNewWorkflowDesc('');
       setNameTouched(false);
       navigate(`/editor/${workflow.id}`);
-    } catch (err) {
-      console.error('Failed to create workflow:', err);
+    } catch {
+      toast.error('Failed to create workflow');
     }
   }, [newWorkflowName, newWorkflowDesc, createWorkflow, navigate]);
 
@@ -101,19 +101,21 @@ function DashboardPage() {
     try {
       await workflowApi.execute(workflow.id);
       toast.success(`Workflow "${workflow.name}" execution started`);
-    } catch (err: any) {
-      toast.error(`Execution failed: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Execution failed: ${msg}`);
     }
   }, []);
 
-  const handleExecuteWithParams = useCallback(async (inputData: Record<string, any>) => {
+  const handleExecuteWithParams = useCallback(async (inputData: Record<string, unknown>) => {
     if (!executeTarget) return;
     setExecuteTarget(null);
     try {
       await workflowApi.execute(executeTarget.id, inputData);
       toast.success(`Workflow "${executeTarget.name}" execution started`);
-    } catch (err: any) {
-      toast.error(`Execution failed: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Execution failed: ${msg}`);
     }
   }, [executeTarget]);
 
@@ -125,8 +127,8 @@ function DashboardPage() {
         workflow.description,
         workflow.definition
       );
-    } catch (err) {
-      console.error('Failed to copy workflow:', err);
+    } catch {
+      toast.error('Failed to copy workflow');
     }
   }, [createWorkflow]);
 
@@ -354,7 +356,7 @@ function DashboardPage() {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={() => { setShowCreateModal(false); setNameTouched(false); }}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create New Workflow" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">Create New Workflow</h3>
               <button

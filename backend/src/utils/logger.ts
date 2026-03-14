@@ -1,4 +1,5 @@
 import pino from 'pino';
+import { Request, Response, NextFunction } from 'express';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -30,7 +31,7 @@ export const log = {
 };
 
 // Request logging middleware
-export const requestLogger = (req: any, res: any, next: any) => {
+export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   
   res.on('finish', () => {

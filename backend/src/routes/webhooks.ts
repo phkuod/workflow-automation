@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { WorkflowModel } from '../models/workflow';
 import { ExecutionModel } from '../models/execution';
 import { ExecutionEngine } from '../services/executionEngine';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
 
@@ -62,7 +63,7 @@ router.all('/:id', async (req: Request, res: Response) => {
 
     // Fire-and-forget: run the execution asynchronously, passing the pre-created execution ID
     ExecutionEngine.executeWithId(execution.id, workflow, 'webhook', inputData)
-      .catch(err => console.error(`Webhook execution failed for ${workflowId}:`, err));
+      .catch(err => createLogger('webhooks').error({ err }, `Webhook execution failed for ${workflowId}`));
 
     res.status(202).json({
       success: true,
@@ -70,8 +71,9 @@ router.all('/:id', async (req: Request, res: Response) => {
       executionId: execution.id
     });
 
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
