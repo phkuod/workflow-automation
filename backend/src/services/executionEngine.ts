@@ -12,6 +12,7 @@ import {
 import { ExecutionModel, LogModel } from '../models/execution';
 import { ScriptRunner, ScriptResult } from './scriptRunner';
 import { DbConnectorService } from './dbConnector';
+import { AiService } from './aiService';
 import { executionManager } from './executionManager';
 import { executionEventBus, ExecutionEvent } from './executionEventBus';
 import nodemailer from 'nodemailer';
@@ -647,6 +648,45 @@ export class ExecutionEngine {
                   logs: [`Database error: ${errMsg}`]
                 };
               }
+            }
+            break;
+          }
+
+          case 'ai-chat': {
+            if (context.simulate) {
+              this.log(context, 'info', `[SIMULATE] Skipping AI chat call`, undefined, undefined, step.id);
+              result = {
+                success: true,
+                output: { simulated: true, response: '[Simulated AI response]', model: step.config.aiModel },
+                logs: ['[SIMULATE] AI chat call skipped']
+              };
+            } else {
+              result = await AiService.executeChat(
+                step.config,
+                { ...context.variables, inputData: stepResult.input },
+                ScriptRunner.interpolateVariables.bind(ScriptRunner),
+                context.simulate
+              );
+            }
+            break;
+          }
+
+          case 'ai-agent': {
+            if (context.simulate) {
+              this.log(context, 'info', `[SIMULATE] Skipping AI agent execution`, undefined, undefined, step.id);
+              result = {
+                success: true,
+                output: { simulated: true, response: '[Simulated AI agent response]', iterations: 0, toolCalls: [] },
+                logs: ['[SIMULATE] AI agent execution skipped']
+              };
+            } else {
+              result = await AiService.executeAgent(
+                step.config,
+                { ...context.variables, inputData: stepResult.input },
+                ScriptRunner.interpolateVariables.bind(ScriptRunner),
+                context.simulate,
+                context.signal
+              );
             }
             break;
           }

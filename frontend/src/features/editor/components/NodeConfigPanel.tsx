@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Step, StepConfig, Workflow } from '../../../shared/types/workflow';
+import type { Step, StepConfig, Workflow, AiToolDefinition } from '../../../shared/types/workflow';
 import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
 import { X, Trash2, Save, Database, Package } from 'lucide-react';
 import { VariablePicker } from './VariablePicker';
@@ -48,6 +48,18 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
   const [dbPassword, setDbPassword] = useState(step.config.dbPassword || '');
   const [dbQuery, setDbQuery] = useState(step.config.dbQuery || '');
 
+  // AI fields
+  const [aiBaseUrl, setAiBaseUrl] = useState(step.config.aiBaseUrl || '');
+  const [aiModel, setAiModel] = useState(step.config.aiModel || '');
+  const [aiSystemPrompt, setAiSystemPrompt] = useState(step.config.aiSystemPrompt || '');
+  const [aiUserPrompt, setAiUserPrompt] = useState(step.config.aiUserPrompt || '');
+  const [aiTemperature, setAiTemperature] = useState(step.config.aiTemperature ?? 0.7);
+  const [aiMaxTokens, setAiMaxTokens] = useState(step.config.aiMaxTokens ?? 2048);
+  const [aiApiKey, setAiApiKey] = useState(step.config.aiApiKey || '');
+  const [aiResponseFormat, setAiResponseFormat] = useState(step.config.aiResponseFormat || 'text');
+  const [aiMaxIterations, setAiMaxIterations] = useState(step.config.aiMaxIterations ?? 10);
+  const [aiTools, setAiTools] = useState<AiToolDefinition[]>(step.config.aiTools || []);
+
   // Picker state
   const [activePicker, setActivePicker] = useState<string | null>(null);
 
@@ -84,6 +96,16 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
     setDbUser(step.config.dbUser || '');
     setDbPassword(step.config.dbPassword || '');
     setDbQuery(step.config.dbQuery || '');
+    setAiBaseUrl(step.config.aiBaseUrl || '');
+    setAiModel(step.config.aiModel || '');
+    setAiSystemPrompt(step.config.aiSystemPrompt || '');
+    setAiUserPrompt(step.config.aiUserPrompt || '');
+    setAiTemperature(step.config.aiTemperature ?? 0.7);
+    setAiMaxTokens(step.config.aiMaxTokens ?? 2048);
+    setAiApiKey(step.config.aiApiKey || '');
+    setAiResponseFormat(step.config.aiResponseFormat || 'text');
+    setAiMaxIterations(step.config.aiMaxIterations ?? 10);
+    setAiTools(step.config.aiTools || []);
     setRetryEnabled(!!step.retryPolicy);
     setMaxAttempts(step.retryPolicy?.maxAttempts || 3);
     setInitialInterval(step.retryPolicy?.initialInterval || 1000);
@@ -138,6 +160,28 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
         config.dbUser = dbUser;
         config.dbPassword = dbPassword;
         config.dbQuery = dbQuery;
+        break;
+      case 'ai-chat':
+        config.aiBaseUrl = aiBaseUrl;
+        config.aiModel = aiModel;
+        config.aiSystemPrompt = aiSystemPrompt;
+        config.aiUserPrompt = aiUserPrompt;
+        config.aiTemperature = Number(aiTemperature);
+        config.aiMaxTokens = Number(aiMaxTokens);
+        config.aiApiKey = aiApiKey;
+        config.aiResponseFormat = aiResponseFormat as StepConfig['aiResponseFormat'];
+        break;
+      case 'ai-agent':
+        config.aiBaseUrl = aiBaseUrl;
+        config.aiModel = aiModel;
+        config.aiSystemPrompt = aiSystemPrompt;
+        config.aiUserPrompt = aiUserPrompt;
+        config.aiTemperature = Number(aiTemperature);
+        config.aiMaxTokens = Number(aiMaxTokens);
+        config.aiApiKey = aiApiKey;
+        config.aiResponseFormat = aiResponseFormat as StepConfig['aiResponseFormat'];
+        config.aiMaxIterations = Number(aiMaxIterations);
+        config.aiTools = aiTools;
         break;
     }
 
@@ -743,6 +787,321 @@ print(json.dumps({'result': result}))`}
               <p className="text-xs text-muted mt-2">
                 Use <code>{'${variable}'}</code> syntax for dynamic values.
               </p>
+            </div>
+          </>
+        );
+
+      case 'ai-chat':
+      case 'ai-agent':
+        return (
+          <>
+            <div className="form-group">
+              <label className="form-label">API Base URL</label>
+              <input
+                type="text"
+                className="form-input"
+                value={aiBaseUrl}
+                onChange={(e) => setAiBaseUrl(e.target.value)}
+                placeholder="http://your-vllm-server:8000/v1"
+              />
+              <p className="text-xs text-muted mt-1">Leave empty to use AI_BASE_URL env var.</p>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Model</label>
+              <input
+                type="text"
+                className="form-input"
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value)}
+                placeholder="meta-llama/Llama-3-70b"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">API Key</label>
+              <input
+                type="password"
+                className="form-input"
+                value={aiApiKey}
+                onChange={(e) => setAiApiKey(e.target.value)}
+                placeholder="Leave empty to use AI_API_KEY env var"
+              />
+            </div>
+            <div className="form-group">
+              <div className="flex justify-between items-center mb-1">
+                <label className="form-label">System Prompt</label>
+                <button
+                  className="btn btn-ghost btn-xs flex gap-1 items-center"
+                  onClick={() => setActivePicker(activePicker === 'aiSystemPrompt' ? null : 'aiSystemPrompt')}
+                >
+                  <Database size={10} /> Insert Variable
+                </button>
+              </div>
+              <textarea
+                className="form-textarea"
+                value={aiSystemPrompt}
+                onChange={(e) => setAiSystemPrompt(e.target.value)}
+                placeholder="You are a helpful assistant..."
+                style={{ minHeight: '80px' }}
+              />
+              {activePicker === 'aiSystemPrompt' && (
+                <div className="mt-2">
+                  <VariablePicker
+                    workflow={workflow}
+                    currentStepId={step.id}
+                    onSelect={(v) => {
+                      setAiSystemPrompt(aiSystemPrompt + v);
+                      setActivePicker(null);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="form-group">
+              <div className="flex justify-between items-center mb-1">
+                <label className="form-label">User Prompt</label>
+                <button
+                  className="btn btn-ghost btn-xs flex gap-1 items-center"
+                  onClick={() => setActivePicker(activePicker === 'aiUserPrompt' ? null : 'aiUserPrompt')}
+                >
+                  <Database size={10} /> Insert Variable
+                </button>
+              </div>
+              <textarea
+                className="form-textarea"
+                value={aiUserPrompt}
+                onChange={(e) => setAiUserPrompt(e.target.value)}
+                placeholder="Analyze the following data: ${step1.output.data}"
+                style={{ minHeight: '100px' }}
+              />
+              {activePicker === 'aiUserPrompt' && (
+                <div className="mt-2">
+                  <VariablePicker
+                    workflow={workflow}
+                    currentStepId={step.id}
+                    onSelect={(v) => {
+                      setAiUserPrompt(aiUserPrompt + v);
+                      setActivePicker(null);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Response Format</label>
+              <select
+                className="form-select"
+                value={aiResponseFormat}
+                onChange={(e) => setAiResponseFormat(e.target.value as 'text' | 'json')}
+              >
+                <option value="text">Text</option>
+                <option value="json">JSON</option>
+              </select>
+            </div>
+
+            {step.type === 'ai-agent' && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">Max Iterations</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={aiMaxIterations}
+                    onChange={(e) => setAiMaxIterations(Number(e.target.value))}
+                    min={1}
+                    max={50}
+                  />
+                  <p className="text-xs text-muted mt-1">Maximum number of tool-calling loops before stopping.</p>
+                </div>
+                <div className="form-group">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="form-label">Tools</label>
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => setAiTools([...aiTools, {
+                        name: '',
+                        description: '',
+                        parameters: {},
+                        type: 'http'
+                      }])}
+                    >
+                      + Add Tool
+                    </button>
+                  </div>
+                  {aiTools.length === 0 ? (
+                    <p className="text-xs text-muted italic">No tools configured. The agent will respond without tool use.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {aiTools.map((tool, idx) => (
+                        <div key={idx} className="p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-semibold">Tool {idx + 1}</span>
+                            <button
+                              className="btn btn-ghost btn-icon btn-xs text-red-500"
+                              onClick={() => setAiTools(aiTools.filter((_, i) => i !== idx))}
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="Tool name (e.g. search_database)"
+                              value={tool.name}
+                              onChange={(e) => {
+                                const updated = [...aiTools];
+                                updated[idx] = { ...updated[idx], name: e.target.value };
+                                setAiTools(updated);
+                              }}
+                            />
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="Description"
+                              value={tool.description}
+                              onChange={(e) => {
+                                const updated = [...aiTools];
+                                updated[idx] = { ...updated[idx], description: e.target.value };
+                                setAiTools(updated);
+                              }}
+                            />
+                            <select
+                              className="form-select"
+                              value={tool.type}
+                              onChange={(e) => {
+                                const updated = [...aiTools];
+                                updated[idx] = { ...updated[idx], type: e.target.value as 'http' | 'javascript' | 'workflow' };
+                                setAiTools(updated);
+                              }}
+                            >
+                              <option value="http">HTTP Request</option>
+                              <option value="javascript">JavaScript</option>
+                              <option value="workflow">Workflow</option>
+                            </select>
+                            {tool.type === 'http' && (
+                              <>
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  placeholder="Tool URL (e.g. https://api.example.com/${params.query})"
+                                  value={tool.toolUrl || ''}
+                                  onChange={(e) => {
+                                    const updated = [...aiTools];
+                                    updated[idx] = { ...updated[idx], toolUrl: e.target.value };
+                                    setAiTools(updated);
+                                  }}
+                                />
+                                <select
+                                  className="form-select"
+                                  value={tool.toolMethod || 'POST'}
+                                  onChange={(e) => {
+                                    const updated = [...aiTools];
+                                    updated[idx] = { ...updated[idx], toolMethod: e.target.value as 'GET' | 'POST' | 'PUT' | 'DELETE' };
+                                    setAiTools(updated);
+                                  }}
+                                >
+                                  <option value="GET">GET</option>
+                                  <option value="POST">POST</option>
+                                  <option value="PUT">PUT</option>
+                                  <option value="DELETE">DELETE</option>
+                                </select>
+                              </>
+                            )}
+                            {tool.type === 'javascript' && (
+                              <textarea
+                                className="form-textarea"
+                                placeholder="// Access tool arguments via params object\nreturn { result: params.query };"
+                                value={tool.toolCode || ''}
+                                onChange={(e) => {
+                                  const updated = [...aiTools];
+                                  updated[idx] = { ...updated[idx], toolCode: e.target.value };
+                                  setAiTools(updated);
+                                }}
+                                style={{ minHeight: '80px', fontFamily: 'monospace' }}
+                              />
+                            )}
+                            {tool.type === 'workflow' && (
+                              <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Workflow ID"
+                                value={tool.toolWorkflowId || ''}
+                                onChange={(e) => {
+                                  const updated = [...aiTools];
+                                  updated[idx] = { ...updated[idx], toolWorkflowId: e.target.value };
+                                  setAiTools(updated);
+                                }}
+                              />
+                            )}
+                            <div>
+                              <label className="form-label text-xs">Parameters (JSON)</label>
+                              <textarea
+                                className="form-textarea"
+                                placeholder='{"query": {"type": "string", "description": "Search query", "required": true}}'
+                                value={JSON.stringify(tool.parameters, null, 2)}
+                                onChange={(e) => {
+                                  try {
+                                    const params = JSON.parse(e.target.value);
+                                    const updated = [...aiTools];
+                                    updated[idx] = { ...updated[idx], parameters: params };
+                                    setAiTools(updated);
+                                  } catch {
+                                    // Don't update on invalid JSON
+                                  }
+                                }}
+                                style={{ minHeight: '60px', fontFamily: 'monospace', fontSize: '12px' }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            <details className="mt-4">
+              <summary className="text-xs font-semibold cursor-pointer text-muted hover:text-primary">
+                Advanced Settings
+              </summary>
+              <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 space-y-3">
+                <div className="form-group">
+                  <label className="form-label">Temperature</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={aiTemperature}
+                    onChange={(e) => setAiTemperature(Number(e.target.value))}
+                    min={0}
+                    max={2}
+                    step={0.1}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Max Tokens</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={aiMaxTokens}
+                    onChange={(e) => setAiMaxTokens(Number(e.target.value))}
+                    min={1}
+                    max={32768}
+                  />
+                </div>
+              </div>
+            </details>
+
+            <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded text-xs border border-gray-200 dark:border-gray-700">
+              <p className="font-semibold mb-1">Output Structure:</p>
+              <div className="font-mono text-muted">
+                {'{'}<br/>
+                &nbsp;&nbsp;response: string{step.type === 'ai-agent' ? ' | object' : ''},<br/>
+                {step.type === 'ai-agent' && <>&nbsp;&nbsp;iterations: number,<br/>&nbsp;&nbsp;toolCalls: array,<br/></>}
+                &nbsp;&nbsp;model: string,<br/>
+                &nbsp;&nbsp;usage: {'{ prompt_tokens, completion_tokens, total_tokens }'}<br/>
+                {'}'}
+              </div>
             </div>
           </>
         );

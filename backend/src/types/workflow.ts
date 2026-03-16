@@ -85,7 +85,9 @@ export type StepType =
   | 'notification-slack'
   | 'action-email'
   | 'action-slack'
-  | 'connector-db';
+  | 'connector-db'
+  | 'ai-chat'
+  | 'ai-agent';
 
 export interface StepConfig {
   // Script nodes
@@ -131,6 +133,40 @@ export interface StepConfig {
   dbUser?: string;
   dbPassword?: string;
   dbQuery?: string;
+
+  // AI Chat & Agent shared fields
+  aiBaseUrl?: string;
+  aiModel?: string;
+  aiSystemPrompt?: string;
+  aiUserPrompt?: string;
+  aiTemperature?: number;
+  aiMaxTokens?: number;
+  aiApiKey?: string;
+  aiResponseFormat?: 'text' | 'json';
+
+  // AI Agent only
+  aiMaxIterations?: number;
+  aiTools?: AiToolDefinition[];
+}
+
+export interface AiToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, AiToolParameter>;
+  type: 'http' | 'javascript' | 'workflow';
+  toolUrl?: string;
+  toolMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  toolHeaders?: Record<string, string>;
+  toolBodyTemplate?: string;
+  toolCode?: string;
+  toolWorkflowId?: string;
+}
+
+export interface AiToolParameter {
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  description: string;
+  required?: boolean;
+  enum?: string[];
 }
 
 export interface VariableMapping {

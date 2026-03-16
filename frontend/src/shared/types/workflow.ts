@@ -80,7 +80,9 @@ export type StepType =
   | 'trigger-webhook'
   | 'action-email'
   | 'action-slack'
-  | 'connector-db';
+  | 'connector-db'
+  | 'ai-chat'
+  | 'ai-agent';
 
 export interface StepConfig {
   code?: string;
@@ -112,6 +114,40 @@ export interface StepConfig {
   dbUser?: string;
   dbPassword?: string;
   dbQuery?: string;
+
+  // AI Chat & Agent shared fields
+  aiBaseUrl?: string;
+  aiModel?: string;
+  aiSystemPrompt?: string;
+  aiUserPrompt?: string;
+  aiTemperature?: number;
+  aiMaxTokens?: number;
+  aiApiKey?: string;
+  aiResponseFormat?: 'text' | 'json';
+
+  // AI Agent only
+  aiMaxIterations?: number;
+  aiTools?: AiToolDefinition[];
+}
+
+export interface AiToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, AiToolParameter>;
+  type: 'http' | 'javascript' | 'workflow';
+  toolUrl?: string;
+  toolMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  toolHeaders?: Record<string, string>;
+  toolBodyTemplate?: string;
+  toolCode?: string;
+  toolWorkflowId?: string;
+}
+
+export interface AiToolParameter {
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  description: string;
+  required?: boolean;
+  enum?: string[];
 }
 
 export interface VariableMapping {
@@ -233,4 +269,6 @@ export const STEP_TYPE_INFO: Record<StepType, { label: string; icon: string; col
   'action-email': { label: 'Send Email', icon: '📧', color: '#3b82f6' },
   'action-slack': { label: 'Slack Message', icon: '💬', color: '#4a154b' },
   'connector-db': { label: 'Database Query', icon: '🗄️', color: '#0ea5e9' },
+  'ai-chat': { label: 'AI Chat', icon: '🤖', color: '#10b981' },
+  'ai-agent': { label: 'AI Agent', icon: '🧠', color: '#8b5cf6' },
 };

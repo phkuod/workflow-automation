@@ -19,6 +19,10 @@ const NODE_CATEGORIES = {
     label: '⚙️ Actions',
     types: ['script-js', 'script-python', 'http-request', 'set-variable', 'action-email', 'action-slack', 'connector-db'] as StepType[],
   },
+  ai: {
+    label: '🤖 AI',
+    types: ['ai-chat', 'ai-agent'] as StepType[],
+  },
   flow: {
     label: '🔀 Flow Control',
     types: ['if-else', 'wait'] as StepType[],
@@ -27,7 +31,7 @@ const NODE_CATEGORIES = {
 
 function NodeLibrary({ onAddStep, stations, onAddStepToStation, onClose }: NodeLibraryProps) {
   const [search, setSearch] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['triggers', 'actions', 'flow']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['triggers', 'actions', 'ai', 'flow']);
   const [selectedStation, setSelectedStation] = useState<string>(stations[0]?.id || '');
 
   const toggleCategory = (category: string) => {
