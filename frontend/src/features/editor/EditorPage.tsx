@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import '@xyflow/react/dist/style.css';
 
@@ -57,6 +57,8 @@ function EditorPage() {
     currentExecution,
     executionLogs,
     isLoading,
+    isSaving,
+    isDirty,
     updateWorkflow,
   } = useWorkflowStore();
 
@@ -72,9 +74,8 @@ function EditorPage() {
   const [showExecuteDialog, setShowExecuteDialog] = useState<'execute' | 'simulate' | null>(null);
   const [showInputParams, setShowInputParams] = useState(false);
   
-  // Track unsaved changes
-  const originalWorkflowRef = useRef<string | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // Use store's isDirty for unsaved changes tracking
+  const hasUnsavedChanges = isDirty;
 
   // Load workflow
   useEffect(() => {
@@ -85,20 +86,6 @@ function EditorPage() {
     }
   }, [id, fetchWorkflow, setCurrentWorkflow]);
 
-  // Store original workflow for change detection
-  useEffect(() => {
-    if (currentWorkflow && !originalWorkflowRef.current) {
-      originalWorkflowRef.current = JSON.stringify(currentWorkflow.definition);
-    }
-  }, [currentWorkflow]);
-
-  // Detect unsaved changes
-  useEffect(() => {
-    if (currentWorkflow && originalWorkflowRef.current) {
-      const currentDef = JSON.stringify(currentWorkflow.definition);
-      setHasUnsavedChanges(currentDef !== originalWorkflowRef.current);
-    }
-  }, [currentWorkflow]);
 
   // Browser beforeunload warning
   useEffect(() => {
@@ -118,8 +105,6 @@ function EditorPage() {
   useEffect(() => {
     setEditorView({ type: 'stage-view' });
     selectStep(null);
-    originalWorkflowRef.current = null; // Reset original on new workflow
-    setHasUnsavedChanges(false);
   }, [id]);
 
   // Get current stage for Step View
@@ -222,15 +207,11 @@ function EditorPage() {
   const handleSave = useCallback(async () => {
     try {
       await saveWorkflow();
-      if (currentWorkflow) {
-        originalWorkflowRef.current = JSON.stringify(currentWorkflow.definition);
-        setHasUnsavedChanges(false);
-      }
       toast.success('Workflow saved');
     } catch {
       toast.error('Failed to save workflow');
     }
-  }, [saveWorkflow, currentWorkflow]);
+  }, [saveWorkflow]);
 
   const handleSimulate = useCallback(async () => {
     const params = currentWorkflow?.definition.inputParameters;
@@ -413,13 +394,13 @@ function EditorPage() {
           <button
             className={`btn ${hasUnsavedChanges ? 'btn-primary' : 'btn-secondary'}`}
             onClick={handleSave}
-            disabled={isLoading}
+            disabled={isSaving}
             style={{
               position: 'relative',
             }}
           >
-            <Save size={18} />
-            {hasUnsavedChanges ? 'Save*' : 'Save'}
+            {isSaving ? <span className="loading-spinner" /> : <Save size={18} />}
+            {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save*' : 'Save'}
             {hasUnsavedChanges && (
               <span style={{
                 position: 'absolute',

@@ -19,6 +19,7 @@ import '@xyflow/react/dist/style.css';
 
 import StageNode from '../nodes/StageNode';
 import type { Workflow, Execution } from '../../../shared/types/workflow';
+import { EDGE_COLORS } from '../../../shared/constants/colors';
 import { Plus } from 'lucide-react';
 
 const nodeTypes: NodeTypes = {
@@ -76,12 +77,12 @@ export default function StageCanvas({
         type: 'smoothstep',
         animated: isSimulating,
         style: { 
-          stroke: '#8b5cf6', 
+          stroke: EDGE_COLORS.secondary, 
           strokeWidth: 3,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: '#8b5cf6',
+          color: EDGE_COLORS.secondary,
           width: 20,
           height: 20,
         },
@@ -109,10 +110,10 @@ export default function StageCanvas({
           ...params,
           type: 'smoothstep',
           animated: isSimulating,
-          style: { stroke: '#8b5cf6', strokeWidth: 3 },
+          style: { stroke: EDGE_COLORS.secondary, strokeWidth: 3 },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: '#8b5cf6',
+            color: EDGE_COLORS.secondary,
             width: 20,
             height: 20,
           },
@@ -145,10 +146,10 @@ export default function StageCanvas({
         fitView
         snapToGrid
         snapGrid={[20, 20]}
-        connectionLineStyle={{ stroke: '#8b5cf6', strokeWidth: 2 }}
+        connectionLineStyle={{ stroke: EDGE_COLORS.secondary, strokeWidth: 2 }}
         defaultEdgeOptions={{
           type: 'smoothstep',
-          style: { stroke: '#8b5cf6', strokeWidth: 3 },
+          style: { stroke: EDGE_COLORS.secondary, strokeWidth: 3 },
         }}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
@@ -156,10 +157,10 @@ export default function StageCanvas({
         <MiniMap
           nodeColor={(node) => {
             const status = node.data?.status;
-            if (status === 'completed') return '#22c55e';
-            if (status === 'failed') return '#ef4444';
-            if (status === 'running') return '#3b82f6';
-            return '#8b5cf6';
+            if (status === 'completed') return EDGE_COLORS.success;
+            if (status === 'failed') return EDGE_COLORS.error;
+            if (status === 'running') return EDGE_COLORS.primary;
+            return EDGE_COLORS.secondary;
           }}
           style={{ background: 'var(--bg-secondary)' }}
         />

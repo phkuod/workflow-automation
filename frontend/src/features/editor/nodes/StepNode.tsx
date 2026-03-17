@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { Step } from '../../../shared/types/workflow';
 import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
+import { EDGE_COLORS } from '../../../shared/constants/colors';
 import { CheckCircle, XCircle, Clock, Loader } from 'lucide-react';
 
 interface StepNodeData extends Record<string, unknown> {
@@ -139,7 +140,7 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
             style={{
               width: '12px',
               height: '12px',
-              background: '#22c55e',
+              background: EDGE_COLORS.success,
               border: '2px solid var(--bg-secondary)',
               bottom: '-6px',
               left: '35%',
@@ -152,7 +153,7 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
             transform: 'translateX(-50%)',
             fontSize: '10px',
             fontWeight: 700,
-            color: '#22c55e',
+            color: EDGE_COLORS.success,
           }}>T</div>
           <Handle
             type="source"
@@ -161,7 +162,7 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
             style={{
               width: '12px',
               height: '12px',
-              background: '#ef4444',
+              background: EDGE_COLORS.error,
               border: '2px solid var(--bg-secondary)',
               bottom: '-6px',
               left: '65%',
@@ -174,7 +175,7 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
             transform: 'translateX(-50%)',
             fontSize: '10px',
             fontWeight: 700,
-            color: '#ef4444',
+            color: EDGE_COLORS.error,
           }}>F</div>
         </>
       ) : (

@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react';
 import type { Step, StepConfig, Workflow } from '../../../shared/types/workflow';
 import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
-import { X, Trash2, Save, Database, Package } from 'lucide-react';
-import { VariablePicker } from './VariablePicker';
+import { X, Trash2, Save, Package } from 'lucide-react';
+
+import ScriptConfigForm from './step-configs/ScriptConfigForm';
+import HttpRequestConfigForm from './step-configs/HttpRequestConfigForm';
+import ConditionConfigForm from './step-configs/ConditionConfigForm';
+import VariableConfigForm from './step-configs/VariableConfigForm';
+import TriggerConfigForm from './step-configs/TriggerConfigForm';
+import WaitConfigForm from './step-configs/WaitConfigForm';
+import NotificationConfigForm from './step-configs/NotificationConfigForm';
+import DatabaseConfigForm from './step-configs/DatabaseConfigForm';
 
 interface NodeConfigPanelProps {
   step: Step;
@@ -29,17 +37,11 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
   const [duration, setDuration] = useState(step.config.duration || 5);
   const [unit, setUnit] = useState(step.config.unit || 'seconds');
   const [webhookMethod, setWebhookMethod] = useState(step.config.webhookMethod || 'POST');
-  
-  // Email fields
   const [emailTo, setEmailTo] = useState(step.config.emailTo || '');
   const [emailSubject, setEmailSubject] = useState(step.config.emailSubject || '');
   const [emailBody, setEmailBody] = useState(step.config.emailBody || '');
-  
-  // Slack fields
   const [slackWebhookUrl, setSlackWebhookUrl] = useState(step.config.slackWebhookUrl || '');
   const [slackMessage, setSlackMessage] = useState(step.config.slackMessage || '');
-
-  // Database connector fields
   const [dbType, setDbType] = useState(step.config.dbType || 'postgres');
   const [dbHost, setDbHost] = useState(step.config.dbHost || '');
   const [dbPort, setDbPort] = useState(step.config.dbPort || 5432);
@@ -47,9 +49,6 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
   const [dbUser, setDbUser] = useState(step.config.dbUser || '');
   const [dbPassword, setDbPassword] = useState(step.config.dbPassword || '');
   const [dbQuery, setDbQuery] = useState(step.config.dbQuery || '');
-
-  // Picker state
-  const [activePicker, setActivePicker] = useState<string | null>(null);
 
   // Retry Policy
   const [retryEnabled, setRetryEnabled] = useState(!!step.retryPolicy);
@@ -142,7 +141,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
     }
 
     const updateData: Partial<Step> = { name, config, timeout: timeout * 1000 };
-    
+
     if (retryEnabled) {
       updateData.retryPolicy = {
         maxAttempts: Number(maxAttempts),
@@ -161,590 +160,82 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
   const renderConfigFields = () => {
     switch (step.type) {
       case 'script-js':
-        return (
-          <div className="form-group">
-            <label className="form-label">JavaScript Code</label>
-            <textarea
-              className="form-textarea"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder={`// Access input data via inputData object
-// Return value will be the step output
-
-const result = inputData.value * 2;
-return { result };`}
-              style={{ minHeight: '200px', fontFamily: 'monospace' }}
-            />
-            <p className="text-xs text-muted mt-2">
-              Access previous step outputs via <code>inputData</code>. Return an object for the step output.
-            </p>
-          </div>
-        );
-
       case 'script-python':
-        return (
-          <div className="form-group">
-            <label className="form-label">Python Code</label>
-            <textarea
-              className="form-textarea"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder={`# Access input data via input_data dict
-# Print JSON for output
-
-result = input_data.get('value', 0) * 2
-print(json.dumps({'result': result}))`}
-              style={{ minHeight: '200px', fontFamily: 'monospace' }}
-            />
-            <p className="text-xs text-muted mt-2">
-              Access input via <code>input_data</code> dict. Print JSON for output.
-            </p>
-          </div>
-        );
+        return <ScriptConfigForm type={step.type} code={code} onCodeChange={setCode} />;
 
       case 'http-request':
         return (
-          <>
-            <div className="form-group">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="form-input"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://api.example.com/data"
-                />
-                <button 
-                  className={`btn btn-icon btn-sm ${activePicker === 'url' ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setActivePicker(activePicker === 'url' ? null : 'url')}
-                >
-                  <Database size={14} />
-                </button>
-              </div>
-              {activePicker === 'url' && (
-                <div className="mt-2">
-                  <VariablePicker 
-                    workflow={workflow} 
-                    currentStepId={step.id} 
-                    onSelect={(v) => {
-                      setUrl(url + v);
-                      setActivePicker(null);
-                    }} 
-                  />
-                </div>
-              )}
-              <p className="text-xs text-muted mt-2">
-                Use <code>{'${variable}'}</code> for dynamic values or click the database icon to pick upstream outputs.
-              </p>
-              <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded text-xs border border-gray-200 dark:border-gray-700">
-                <p className="font-semibold mb-1">Output Structure:</p>
-                <div className="font-mono text-muted">
-                  {'{'}<br/>
-                  &nbsp;&nbsp;status: number,<br/>
-                  &nbsp;&nbsp;statusText: string,<br/>
-                  &nbsp;&nbsp;headers: object,<br/>
-                  &nbsp;&nbsp;data: any // Response body<br/>
-                  {'}'}
-                </div>
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Method</label>
-              <select
-                className="form-select"
-                value={method}
-                onChange={(e) => setMethod(e.target.value as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH')}
-              >
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="DELETE">DELETE</option>
-                <option value="PATCH">PATCH</option>
-              </select>
-            </div>
-            {method !== 'GET' && (
-              <div className="form-group">
-                <div className="flex justify-between items-center mb-1">
-                  <label className="form-label">Request Body (JSON)</label>
-                  <button 
-                    className="btn btn-ghost btn-xs flex gap-1 items-center"
-                    onClick={() => setActivePicker(activePicker === 'body' ? null : 'body')}
-                  >
-                    <Database size={10} /> Insert Variable
-                  </button>
-                </div>
-                <textarea
-                  className="form-textarea"
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  placeholder='{"key": "value"}'
-                  style={{ fontFamily: 'monospace' }}
-                />
-                {activePicker === 'body' && (
-                  <div className="mt-2">
-                    <VariablePicker 
-                      workflow={workflow} 
-                      currentStepId={step.id} 
-                      onSelect={(v) => {
-                        setBody(body + v);
-                        setActivePicker(null);
-                      }} 
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Headers Section */}
-            <div className="form-group">
-              <div className="flex justify-between items-center mb-2">
-                <label className="form-label">Request Headers</label>
-                <button 
-                  className="btn btn-ghost btn-xs"
-                  onClick={() => setHeaders([...headers, { key: '', value: '' }])}
-                >
-                  + Add Header
-                </button>
-              </div>
-              {headers.length === 0 ? (
-                <p className="text-xs text-muted italic">No custom headers configured.</p>
-              ) : (
-                <div className="space-y-2">
-                  {headers.map((header, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="Header Name"
-                        value={header.key}
-                        onChange={(e) => {
-                          const newHeaders = [...headers];
-                          newHeaders[idx].key = e.target.value;
-                          setHeaders(newHeaders);
-                        }}
-                        style={{ flex: 1 }}
-                      />
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="Value"
-                        value={header.value}
-                        onChange={(e) => {
-                          const newHeaders = [...headers];
-                          newHeaders[idx].value = e.target.value;
-                          setHeaders(newHeaders);
-                        }}
-                        style={{ flex: 2 }}
-                      />
-                      <button 
-                        className="btn btn-ghost btn-icon btn-xs text-red-500"
-                        onClick={() => setHeaders(headers.filter((_, i) => i !== idx))}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Advanced Settings */}
-            <details className="mt-4">
-              <summary className="text-xs font-semibold cursor-pointer text-muted hover:text-primary">
-                Advanced Settings
-              </summary>
-              <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-                <div className="form-group">
-                  <label className="form-label">Timeout (seconds)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={timeout}
-                    onChange={(e) => setTimeoutValue(Number(e.target.value))}
-                    min={1}
-                    max={300}
-                  />
-                  <p className="text-xs text-muted mt-1">Request will fail if it takes longer than this.</p>
-                </div>
-              </div>
-            </details>
-          </>
+          <HttpRequestConfigForm
+            stepId={step.id} workflow={workflow}
+            url={url} method={method} body={body} headers={headers} timeout={timeout}
+            onUrlChange={setUrl} onMethodChange={setMethod} onBodyChange={setBody}
+            onHeadersChange={setHeaders} onTimeoutChange={setTimeoutValue}
+          />
         );
 
       case 'if-else':
         return (
-          <div className="form-group">
-            <label className="form-label">Condition Expression</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className="form-input"
-                value={condition}
-                onChange={(e) => setCondition(e.target.value)}
-                placeholder="${step1.output.value} > 10"
-              />
-              <button 
-                className={`btn btn-icon btn-sm ${activePicker === 'condition' ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setActivePicker(activePicker === 'condition' ? null : 'condition')}
-              >
-                <Database size={14} />
-              </button>
-            </div>
-            {activePicker === 'condition' && (
-              <div className="mt-2">
-                <VariablePicker 
-                  workflow={workflow} 
-                  currentStepId={step.id} 
-                  onSelect={(v) => {
-                    const cleanVar = v.replace(/[{}]/g, ''); // Conditions in ScriptRunner often don't want {{}} wrapper if they are evaluated directly as JS
-                    setCondition(condition + (condition ? ' && ' : '') + cleanVar);
-                    setActivePicker(null);
-                  }} 
-                />
-              </div>
-            )}
-            <p className="text-xs text-muted mt-2">
-              JavaScript expression that evaluates to true/false.
-            </p>
-          </div>
+          <ConditionConfigForm
+            stepId={step.id} workflow={workflow}
+            condition={condition} onConditionChange={setCondition}
+          />
         );
 
       case 'set-variable':
         return (
-          <>
-            <div className="form-group">
-              <label className="form-label">Variable Name</label>
-              <input
-                type="text"
-                className="form-input"
-                value={variableName}
-                onChange={(e) => setVariableName(e.target.value)}
-                placeholder="myVariable"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Value</label>
-              <div className="flex gap-2">
-              <input
-                type="text"
-                className="form-input"
-                value={variableValue}
-                onChange={(e) => setVariableValue(e.target.value)}
-                placeholder="${step1.output.result}"
-              />
-              <button 
-                className={`btn btn-icon btn-sm ${activePicker === 'variableValue' ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setActivePicker(activePicker === 'variableValue' ? null : 'variableValue')}
-              >
-                <Database size={14} />
-              </button>
-            </div>
-            {activePicker === 'variableValue' && (
-              <div className="mt-2">
-                <VariablePicker 
-                  workflow={workflow} 
-                  currentStepId={step.id} 
-                  onSelect={(v) => {
-                    setVariableValue(variableValue + v);
-                    setActivePicker(null);
-                  }} 
-                />
-              </div>
-            )}
-            </div>
-          </>
+          <VariableConfigForm
+            stepId={step.id} workflow={workflow}
+            variableName={variableName} variableValue={variableValue}
+            onVariableNameChange={setVariableName} onVariableValueChange={setVariableValue}
+          />
         );
 
       case 'trigger-cron':
-        return (
-          <div className="form-group">
-            <label className="form-label">Cron Expression</label>
-            <input
-              type="text"
-              className="form-input"
-              value={cronExpression}
-              onChange={(e) => setCronExpression(e.target.value)}
-              placeholder="0 * * * *"
-            />
-            <p className="text-xs text-muted mt-2">
-              Examples: <code>0 * * * *</code> (hourly), <code>0 9 * * *</code> (daily at 9am)
-            </p>
-          </div>
-        );
-
+      case 'trigger-webhook':
       case 'trigger-manual':
         return (
-          <div className="text-muted text-sm">
-            This trigger is activated manually when you run the workflow.
-          </div>
+          <TriggerConfigForm
+            type={step.type} stepId={step.id}
+            cronExpression={cronExpression} webhookMethod={webhookMethod}
+            onCronExpressionChange={setCronExpression} onWebhookMethodChange={setWebhookMethod}
+          />
         );
 
       case 'wait':
         return (
-          <div className="flex gap-4">
-            <div className="form-group flex-1">
-              <label className="form-label">Duration</label>
-              <input
-                type="number"
-                className="form-input"
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                min={1}
-              />
-            </div>
-            <div className="form-group flex-1">
-              <label className="form-label">Unit</label>
-              <select
-                className="form-select"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value as 'seconds' | 'minutes' | 'hours')}
-              >
-                <option value="seconds">Seconds</option>
-                <option value="minutes">Minutes</option>
-                <option value="hours">Hours</option>
-              </select>
-            </div>
-          </div>
-        );
-
-      case 'trigger-webhook':
-        const webhookUrl = `${window.location.protocol}//${window.location.host}/api/webhooks/${step.id}`;
-        return (
-          <>
-            <div className="form-group">
-              <label className="form-label">Webhook URL</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="form-input"
-                  value={webhookUrl}
-                  readOnly
-                />
-                <button 
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => navigator.clipboard.writeText(webhookUrl)}
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Expected Method</label>
-              <select
-                className="form-select"
-                value={webhookMethod}
-                onChange={(e) => setWebhookMethod(e.target.value as 'GET' | 'POST' | 'PUT')}
-              >
-                <option value="POST">POST</option>
-                <option value="GET">GET</option>
-                <option value="PUT">PUT</option>
-              </select>
-            </div>
-          </>
+          <WaitConfigForm
+            duration={duration} unit={unit}
+            onDurationChange={setDuration} onUnitChange={setUnit}
+          />
         );
 
       case 'action-email':
         return (
-          <>
-            <div className="form-group">
-              <label className="form-label">To</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="form-input"
-                  value={emailTo}
-                  onChange={(e) => setEmailTo(e.target.value)}
-                  placeholder="user@example.com"
-                />
-                <button 
-                  className={`btn btn-icon btn-sm ${activePicker === 'emailTo' ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setActivePicker(activePicker === 'emailTo' ? null : 'emailTo')}
-                >
-                  <Database size={14} />
-                </button>
-              </div>
-              {activePicker === 'emailTo' && (
-                <div className="mt-2">
-                  <VariablePicker 
-                    workflow={workflow} 
-                    currentStepId={step.id} 
-                    onSelect={(v) => {
-                      setEmailTo(emailTo + v);
-                      setActivePicker(null);
-                    }} 
-                  />
-                </div>
-              )}
-            </div>
-            <div className="form-group">
-              <label className="form-label">Subject</label>
-              <input
-                type="text"
-                className="form-input"
-                value={emailSubject}
-                onChange={(e) => setEmailSubject(e.target.value)}
-                placeholder="Workflow Notification"
-              />
-            </div>
-            <div className="form-group">
-              <div className="flex justify-between items-center mb-1">
-                <label className="form-label">Body</label>
-                <button 
-                  className="btn btn-ghost btn-xs flex gap-1 items-center"
-                  onClick={() => setActivePicker(activePicker === 'emailBody' ? null : 'emailBody')}
-                >
-                  <Database size={10} /> Insert Variable
-                </button>
-              </div>
-              <textarea
-                className="form-textarea"
-                value={emailBody}
-                onChange={(e) => setEmailBody(e.target.value)}
-                placeholder="Hello, the result is {{path}}"
-                style={{ minHeight: '120px' }}
-              />
-              {activePicker === 'emailBody' && (
-                <div className="mt-2">
-                  <VariablePicker 
-                    workflow={workflow} 
-                    currentStepId={step.id} 
-                    onSelect={(v) => {
-                      setEmailBody(emailBody + v);
-                      setActivePicker(null);
-                    }} 
-                  />
-                </div>
-              )}
-            </div>
-          </>
+          <NotificationConfigForm
+            type="action-email" stepId={step.id} workflow={workflow}
+            emailTo={emailTo} emailSubject={emailSubject} emailBody={emailBody}
+            onEmailToChange={setEmailTo} onEmailSubjectChange={setEmailSubject} onEmailBodyChange={setEmailBody}
+          />
         );
 
       case 'action-slack':
         return (
-          <>
-            <div className="form-group">
-              <label className="form-label">Slack Webhook URL</label>
-              <input
-                type="text"
-                className="form-input"
-                value={slackWebhookUrl}
-                onChange={(e) => setSlackWebhookUrl(e.target.value)}
-                placeholder="https://hooks.slack.com/services/..."
-              />
-            </div>
-            <div className="form-group">
-              <div className="flex justify-between items-center mb-1">
-                <label className="form-label">Message</label>
-                <button 
-                  className="btn btn-ghost btn-xs flex gap-1 items-center"
-                  onClick={() => setActivePicker(activePicker === 'slackMessage' ? null : 'slackMessage')}
-                >
-                  <Database size={10} /> Insert Variable
-                </button>
-              </div>
-              <textarea
-                className="form-textarea"
-                value={slackMessage}
-                onChange={(e) => setSlackMessage(e.target.value)}
-                placeholder="Workflow notification: {{status}}"
-                style={{ minHeight: '100px' }}
-              />
-              {activePicker === 'slackMessage' && (
-                <div className="mt-2">
-                  <VariablePicker 
-                    workflow={workflow} 
-                    currentStepId={step.id} 
-                    onSelect={(v) => {
-                      setSlackMessage(slackMessage + v);
-                      setActivePicker(null);
-                    }} 
-                  />
-                </div>
-              )}
-            </div>
-          </>
+          <NotificationConfigForm
+            type="action-slack" stepId={step.id} workflow={workflow}
+            slackWebhookUrl={slackWebhookUrl} slackMessage={slackMessage}
+            onSlackWebhookUrlChange={setSlackWebhookUrl} onSlackMessageChange={setSlackMessage}
+          />
         );
 
       case 'connector-db':
         return (
-          <>
-            <div className="form-group">
-              <label className="form-label">Database Type</label>
-              <select
-                className="form-select"
-                value={dbType}
-                onChange={(e) => setDbType(e.target.value as 'postgres' | 'mysql')}
-              >
-                <option value="postgres">PostgreSQL</option>
-                <option value="mysql">MySQL</option>
-              </select>
-            </div>
-            <div className="flex gap-2">
-              <div className="form-group" style={{ flex: 3 }}>
-                <label className="form-label">Host</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={dbHost}
-                  onChange={(e) => setDbHost(e.target.value)}
-                  placeholder="localhost"
-                />
-              </div>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label className="form-label">Port</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={dbPort}
-                  onChange={(e) => setDbPort(Number(e.target.value))}
-                  placeholder="5432"
-                />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Database Name</label>
-              <input
-                type="text"
-                className="form-input"
-                value={dbName}
-                onChange={(e) => setDbName(e.target.value)}
-                placeholder="my_database"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Username</label>
-              <input
-                type="text"
-                className="form-input"
-                value={dbUser}
-                onChange={(e) => setDbUser(e.target.value)}
-                placeholder="db_user"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Password</label>
-              <input
-                type="password"
-                className="form-input"
-                value={dbPassword}
-                onChange={(e) => setDbPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">SQL Query</label>
-              <textarea
-                className="form-textarea"
-                value={dbQuery}
-                onChange={(e) => setDbQuery(e.target.value)}
-                placeholder="SELECT * FROM users WHERE active = true"
-                style={{ minHeight: '120px', fontFamily: 'monospace' }}
-              />
-              <p className="text-xs text-muted mt-2">
-                Use <code>{'${variable}'}</code> syntax for dynamic values.
-              </p>
-            </div>
-          </>
+          <DatabaseConfigForm
+            dbType={dbType} dbHost={dbHost} dbPort={dbPort} dbName={dbName}
+            dbUser={dbUser} dbPassword={dbPassword} dbQuery={dbQuery}
+            onDbTypeChange={setDbType} onDbHostChange={setDbHost} onDbPortChange={setDbPort}
+            onDbNameChange={setDbName} onDbUserChange={setDbUser} onDbPasswordChange={setDbPassword}
+            onDbQueryChange={setDbQuery}
+          />
         );
 
       default:
@@ -818,8 +309,8 @@ print(json.dumps({'result': result}))`}
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-sm font-semibold">Retry Policy</h4>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   className="sr-only peer"
                   checked={retryEnabled}
                   onChange={(e) => setRetryEnabled(e.target.checked)}
@@ -878,7 +369,7 @@ print(json.dumps({'result': result}))`}
           gap: '8px',
         }}
       >
-        <button className="btn btn-danger btn-sm" onClick={onDelete}>
+        <button className="btn btn-danger btn-sm" onClick={onDelete} aria-label="Delete step">
           <Trash2 size={14} />
           Delete
         </button>
@@ -886,6 +377,7 @@ print(json.dumps({'result': result}))`}
           className="btn btn-primary btn-sm"
           onClick={handleSave}
           style={{ marginLeft: 'auto' }}
+          aria-label="Save step configuration"
         >
           <Save size={14} />
           Save

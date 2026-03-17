@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -17,6 +17,7 @@ import '@xyflow/react/dist/style.css';
 
 import StepNode from '../nodes/StepNode';
 import type { Station, Step, StepType, Execution } from '../../../shared/types/workflow';
+import { EDGE_COLORS } from '../../../shared/constants/colors';
 
 const nodeTypes: NodeTypes = {
   step: StepNode,
@@ -63,7 +64,7 @@ export default function StepCanvas({
       return station.edges.map((edge) => {
         const isTrue = edge.sourceHandle === 'true';
         const isFalse = edge.sourceHandle === 'false';
-        const color = isTrue ? '#22c55e' : isFalse ? '#ef4444' : '#22c55e';
+        const color = isTrue ? EDGE_COLORS.success : isFalse ? EDGE_COLORS.error : EDGE_COLORS.success;
         return {
           id: edge.id,
           source: edge.source,
@@ -95,10 +96,10 @@ export default function StepCanvas({
         target: currentStep.id,
         type: 'smoothstep',
         animated: isSimulating,
-        style: { stroke: '#22c55e', strokeWidth: 2 },
+        style: { stroke: EDGE_COLORS.success, strokeWidth: 2 },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: '#22c55e',
+          color: EDGE_COLORS.success,
           width: 16,
           height: 16,
         },
@@ -111,7 +112,7 @@ export default function StepCanvas({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Update nodes when station changes
-  useMemo(() => {
+  useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
@@ -122,7 +123,7 @@ export default function StepCanvas({
       if (params.source && params.target) {
         const isTrue = params.sourceHandle === 'true';
         const isFalse = params.sourceHandle === 'false';
-        const color = isTrue ? '#22c55e' : isFalse ? '#ef4444' : '#22c55e';
+        const color = isTrue ? EDGE_COLORS.success : isFalse ? EDGE_COLORS.error : EDGE_COLORS.success;
 
         setEdges((eds) => addEdge({
           ...params,
@@ -180,10 +181,10 @@ export default function StepCanvas({
         fitView
         snapToGrid
         snapGrid={[20, 20]}
-        connectionLineStyle={{ stroke: '#22c55e', strokeWidth: 2 }}
+        connectionLineStyle={{ stroke: EDGE_COLORS.success, strokeWidth: 2 }}
         defaultEdgeOptions={{
           type: 'smoothstep',
-          style: { stroke: '#22c55e', strokeWidth: 2 },
+          style: { stroke: EDGE_COLORS.success, strokeWidth: 2 },
         }}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} />

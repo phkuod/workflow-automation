@@ -30,6 +30,8 @@ interface WorkflowState {
   
   // UI State
   isLoading: boolean;
+  isSaving: boolean;
+  isDirty: boolean;
   error: string | null;
   selectedStepId: string | null;
   selectedStationId: string | null;
@@ -73,6 +75,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   currentExecution: null,
   executionLogs: [],
   isLoading: false,
+  isSaving: false,
+  isDirty: false,
   error: null,
   selectedStepId: null,
   selectedStationId: null,
@@ -149,25 +153,33 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   // Save current workflow
   saveWorkflow: async () => {
-    const { currentWorkflow } = get();
-    if (!currentWorkflow) return;
+    const { currentWorkflow, isSaving } = get();
+    if (!currentWorkflow || isSaving) return;
 
-    set({ isLoading: true });
+    // Snapshot workflow state before async operation
+    const snapshot = {
+      id: currentWorkflow.id,
+      name: currentWorkflow.name,
+      description: currentWorkflow.description,
+      definition: currentWorkflow.definition,
+    };
+
+    set({ isSaving: true });
     try {
-      await workflowApi.update(currentWorkflow.id, {
-        name: currentWorkflow.name,
-        description: currentWorkflow.description,
-        definition: currentWorkflow.definition,
+      await workflowApi.update(snapshot.id, {
+        name: snapshot.name,
+        description: snapshot.description,
+        definition: snapshot.definition,
       });
-      set({ isLoading: false });
+      set({ isSaving: false, isDirty: false });
     } catch (error: unknown) {
-      set({ error: error instanceof Error ? error.message : String(error), isLoading: false });
+      set({ error: error instanceof Error ? error.message : String(error), isSaving: false });
     }
   },
 
   // Set current workflow
   setCurrentWorkflow: (workflow) => {
-    set({ currentWorkflow: workflow, selectedStepId: null, selectedStationId: null });
+    set({ currentWorkflow: workflow, selectedStepId: null, selectedStationId: null, isDirty: false });
   },
 
   // Add a new station
@@ -190,6 +202,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           stations: [...currentWorkflow.definition.stations, newStation],
         },
       },
+      isDirty: true,
     });
   },
 
@@ -208,13 +221,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           ),
         },
       },
+      isDirty: true,
     });
   },
 
   // Delete station
   deleteStation: (stationId: string) => {
-    const { currentWorkflow } = get();
+    const { currentWorkflow, selectedStationId, selectedStepId } = get();
     if (!currentWorkflow) return;
+
+    const deletedStation = currentWorkflow.definition.stations.find((s) => s.id === stationId);
+    const stepIds = deletedStation ? deletedStation.steps.map((s) => s.id) : [];
+    const clearStation = selectedStationId === stationId;
+    const clearStep = selectedStepId !== null && stepIds.includes(selectedStepId);
 
     set({
       currentWorkflow: {
@@ -224,6 +243,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           stations: currentWorkflow.definition.stations.filter((s) => s.id !== stationId),
         },
       },
+      isDirty: true,
+      selectedStationId: clearStation ? null : selectedStationId,
+      selectedStepId: clearStep ? null : selectedStepId,
     });
   },
 
@@ -255,6 +277,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           ),
         },
       },
+      isDirty: true,
     });
   },
 
@@ -276,6 +299,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           })),
         },
       },
+      isDirty: true,
     });
   },
 
@@ -297,6 +321,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         },
       },
       selectedStepId: selectedStepId === stepId ? null : selectedStepId,
+      isDirty: true,
     });
   },
 
@@ -324,6 +349,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           }),
         },
       },
+      isDirty: true,
     });
   },
 
