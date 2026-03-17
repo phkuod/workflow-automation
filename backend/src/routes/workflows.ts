@@ -29,7 +29,7 @@ const syncSchedule = async (workflow: Workflow) => {
   }
 
   if (workflow.status === 'active' && cronExpression) {
-    await scheduler.scheduleWorkflow(workflow, cronExpression);
+    scheduler.scheduleWorkflow(workflow, cronExpression);
   } else {
     scheduler.unscheduleWorkflow(workflow.id);
   }
@@ -197,7 +197,7 @@ router.get('/:id/executions', (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Workflow not found' });
     }
 
-    const limit = parseInt(req.query.limit as string) || 20;
+    const limit = Math.max(1, Math.min(200, parseInt(req.query.limit as string) || 20));
     const executions = ExecutionModel.getByWorkflowId(req.params.id, limit);
     res.json({ success: true, data: executions });
   } catch (error: unknown) {

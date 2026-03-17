@@ -20,17 +20,26 @@ router.get('/:id/stream', (req: Request, res: Response) => {
 
   res.write('data: {"type":"connected"}\n\n');
 
+  let closed = false;
+
+  const cleanup = () => {
+    if (!closed) {
+      closed = true;
+      executionEventBus.off(`execution:${id}`, handler);
+    }
+  };
+
   const handler = (event: ExecutionEvent) => {
+    if (closed) return;
     res.write(`data: ${JSON.stringify(event)}\n\n`);
     if (['execution:complete', 'execution:failed', 'execution:cancelled'].includes(event.type)) {
+      cleanup();
       res.end();
     }
   };
 
   executionEventBus.on(`execution:${id}`, handler);
-  req.on('close', () => {
-    executionEventBus.off(`execution:${id}`, handler);
-  });
+  req.on('close', cleanup);
 });
 
 /**
@@ -40,11 +49,24 @@ router.get('/:id/stream', (req: Request, res: Response) => {
 router.post('/:id/cancel', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
+    // Validate execution exists and is actually running before cancelling
+    const execution = ExecutionModel.getById(id);
+    if (!execution) {
+      return res.status(404).json({ success: false, error: 'Execution not found' });
+    }
+    if (execution.status !== 'running') {
+      return res.status(409).json({
+        success: false,
+        error: `Cannot cancel execution with status '${execution.status}' - only running executions can be cancelled`
+      });
+    }
+
     const cancelled = executionManager.cancel(id);
     if (!cancelled) {
       return res.status(404).json({
         success: false,
-        error: 'Execution not found or already completed'
+        error: 'Execution not found in active execution manager'
       });
     }
     ExecutionModel.update(id, {

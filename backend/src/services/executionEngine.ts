@@ -112,7 +112,8 @@ export class ExecutionEngine {
 
     // Execute stations sequentially
     let cancelled = false;
-    for (const station of workflow.definition.stations) {
+    const stations = workflow.definition.stations || [];
+    for (const station of stations) {
       if (failed) break;
 
       // Check for cancellation
