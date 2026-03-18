@@ -66,6 +66,8 @@ export class ExecutionModel {
     return this.getById(id)!;
   }
 
+  private static readonly VALID_STATUSES = new Set(['running', 'completed', 'failed', 'cancelled']);
+
   static update(id: string, data: Partial<{
     status: Execution['status'];
     endTime: string;
@@ -76,6 +78,9 @@ export class ExecutionModel {
     const values: any[] = [];
 
     if (data.status !== undefined) {
+      if (!ExecutionModel.VALID_STATUSES.has(data.status)) {
+        throw new Error(`Invalid execution status: '${data.status}'. Must be one of: ${[...ExecutionModel.VALID_STATUSES].join(', ')}`);
+      }
       updates.push('status = ?');
       values.push(data.status);
     }

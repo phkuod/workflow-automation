@@ -235,9 +235,27 @@ ${code}
         timeout: 30000
       };
 
+      const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB
+
       const req = transport.request(options, (res: http.IncomingMessage) => {
+        // Follow redirects (3xx) up to 5 times
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          req.destroy();
+          resolve({ status: res.statusCode, statusText: `Redirect to ${res.headers.location}`, data: '' });
+          return;
+        }
+
         let data = '';
-        res.on('data', (chunk: Buffer | string) => { data += chunk; });
+        let size = 0;
+        res.on('data', (chunk: Buffer | string) => {
+          size += Buffer.byteLength(chunk);
+          if (size > MAX_RESPONSE_SIZE) {
+            req.destroy();
+            reject(new Error(`Response exceeded maximum size of ${MAX_RESPONSE_SIZE} bytes`));
+            return;
+          }
+          data += chunk;
+        });
         res.on('end', () => {
           resolve({
             status: res.statusCode || 0,
@@ -271,7 +289,7 @@ ${code}
       const result = runInContext(`(${interpolated})`, sandbox, { timeout: 1000 });
       return Boolean(result);
     } catch (error) {
-      log.error({ err: error }, 'Condition evaluation error');
+      log.error({ err: error, condition }, `Condition evaluation failed for expression: "${condition}". Defaulting to false.`);
       return false;
     }
   }

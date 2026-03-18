@@ -36,7 +36,7 @@ class SchedulerService {
     log.info('Initializing scheduler service...');
 
     try {
-      const workflows = await WorkflowModel.getAll();
+      const workflows = WorkflowModel.getAll();
       let scheduledCount = 0;
 
       for (const workflow of workflows) {
@@ -44,7 +44,7 @@ class SchedulerService {
 
         const cronStep = this.findCronTrigger(workflow);
         if (cronStep && cronStep.config.cronExpression) {
-          await this.scheduleWorkflow(workflow, cronStep.config.cronExpression);
+          this.scheduleWorkflow(workflow, cronStep.config.cronExpression);
           scheduledCount++;
         }
       }
@@ -60,7 +60,7 @@ class SchedulerService {
   /**
    * Schedule a workflow to run on a cron expression
    */
-  async scheduleWorkflow(workflow: Workflow, cronExpression: string): Promise<boolean> {
+  scheduleWorkflow(workflow: Workflow, cronExpression: string): boolean {
     // Validate cron expression
     if (!cron.validate(cronExpression)) {
       log.error(`Invalid cron expression: ${cronExpression}`);
@@ -82,7 +82,7 @@ class SchedulerService {
 
       try {
         // Re-fetch the workflow in case it was updated
-        const latestWorkflow = await WorkflowModel.getById(workflow.id);
+        const latestWorkflow = WorkflowModel.getById(workflow.id);
         if (!latestWorkflow) {
           log.error(`Workflow ${workflow.id} not found`);
           return;

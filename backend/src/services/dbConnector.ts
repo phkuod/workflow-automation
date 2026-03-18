@@ -60,6 +60,8 @@ export class DbConnectorService {
     password?: string,
     query?: string
   ): Promise<any[]> {
+    const QUERY_TIMEOUT_MS = 30000;
+
     const pool = new PgPool({
       host,
       port: port || 5432,
@@ -68,7 +70,8 @@ export class DbConnectorService {
       password,
       // Use short timeouts so workflows don't hang indefinitely on bad connections
       connectionTimeoutMillis: 5000,
-      idleTimeoutMillis: 1000, 
+      idleTimeoutMillis: 1000,
+      statement_timeout: QUERY_TIMEOUT_MS,
     });
 
     try {
