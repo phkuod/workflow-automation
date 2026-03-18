@@ -13,15 +13,16 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { executionApi } from '../../shared/api/workflowApi';
+import { EDGE_COLORS } from '../../shared/constants/colors';
 import { useConfirm } from '../../shared/components/ConfirmDialog';
 import type { Execution, ExecutionLog } from '../../shared/types/workflow';
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, { bg: string; color: string; icon: React.ReactNode }> = {
-    completed: { bg: 'rgba(34,197,94,0.15)', color: '#22c55e', icon: <CheckCircle size={14} /> },
-    failed: { bg: 'rgba(239,68,68,0.15)', color: '#ef4444', icon: <XCircle size={14} /> },
-    running: { bg: 'rgba(59,130,246,0.15)', color: '#3b82f6', icon: <Loader size={14} /> },
-    cancelled: { bg: 'rgba(100,116,139,0.15)', color: '#64748b', icon: <XCircle size={14} /> },
+    completed: { bg: 'rgba(34,197,94,0.15)', color: EDGE_COLORS.success, icon: <CheckCircle size={14} /> },
+    failed: { bg: 'rgba(239,68,68,0.15)', color: EDGE_COLORS.error, icon: <XCircle size={14} /> },
+    running: { bg: 'rgba(59,130,246,0.15)', color: EDGE_COLORS.primary, icon: <Loader size={14} /> },
+    cancelled: { bg: 'rgba(100,116,139,0.15)', color: EDGE_COLORS.muted, icon: <XCircle size={14} /> },
   };
   const s = styles[status] || styles.cancelled;
   return (
@@ -37,12 +38,12 @@ function StatusBadge({ status }: { status: string }) {
 
 function TriggerBadge({ trigger }: { trigger: string }) {
   const colors: Record<string, string> = {
-    manual: '#8b5cf6', schedule: '#f59e0b', webhook: '#3b82f6', api: '#64748b',
+    manual: EDGE_COLORS.secondary, schedule: EDGE_COLORS.warning, webhook: EDGE_COLORS.primary, api: EDGE_COLORS.muted,
   };
   return (
     <span style={{
       padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 500,
-      background: `${colors[trigger] || '#64748b'}20`, color: colors[trigger] || '#64748b',
+      background: `${colors[trigger] || EDGE_COLORS.muted}20`, color: colors[trigger] || EDGE_COLORS.muted,
     }}>
       {trigger}
     </span>
@@ -248,7 +249,7 @@ function ExecutionRow({
           {formatDuration(execution.startTime, execution.endTime)}
         </td>
         <td style={tdStyle}>
-          <span style={{ fontWeight: 600, color: execution.successRate >= 100 ? '#22c55e' : execution.successRate > 0 ? '#f59e0b' : '#ef4444' }}>
+          <span style={{ fontWeight: 600, color: execution.successRate >= 100 ? EDGE_COLORS.success : execution.successRate > 0 ? EDGE_COLORS.warning : EDGE_COLORS.error }}>
             {execution.successRate.toFixed(0)}%
           </span>
         </td>
@@ -311,17 +312,24 @@ function ExecutionRow({
             {/* Logs */}
             {logs && logs.length > 0 && (
               <div style={{ marginTop: '12px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Logs</h4>
+                <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>
+                  Logs
+                  {logs.length > 200 && (
+                    <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: '8px' }}>
+                      (showing last 200 of {logs.length})
+                    </span>
+                  )}
+                </h4>
                 <div style={{
                   maxHeight: '250px', overflowY: 'auto',
                   background: 'var(--bg-primary)', borderRadius: '8px',
                   border: '1px solid var(--border-color)', padding: '8px',
                   fontFamily: 'monospace', fontSize: '11px',
                 }}>
-                  {logs.map((log) => (
+                  {logs.slice(-200).map((log) => (
                     <div key={log.id} style={{
                       padding: '3px 6px', borderRadius: '4px',
-                      color: log.level === 'error' ? '#ef4444' : log.level === 'warn' ? '#f59e0b' : 'var(--text-secondary)',
+                      color: log.level === 'error' ? EDGE_COLORS.error : log.level === 'warn' ? EDGE_COLORS.warning : 'var(--text-secondary)',
                       background: log.level === 'error' ? 'rgba(239,68,68,0.05)' : undefined,
                     }}>
                       <span style={{ color: 'var(--text-muted)' }}>

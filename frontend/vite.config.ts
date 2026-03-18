@@ -24,12 +24,14 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui': ['@xyflow/react', 'recharts', 'lucide-react'],
+          'vendor-flow': ['@xyflow/react'],
+          'vendor-charts': ['recharts'],
+          'vendor-icons': ['lucide-react'],
           'vendor-utils': ['axios', 'zustand']
         }
       }
     },
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 600
   },
   esbuild: {
     drop: ['console', 'debugger'],

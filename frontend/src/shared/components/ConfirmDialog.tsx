@@ -1,4 +1,4 @@
-import { useState, useCallback, createContext, useContext, ReactNode } from 'react';
+import { useState, useCallback, createContext, useContext, useRef, useEffect, ReactNode } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 
 interface ConfirmOptions {
@@ -62,18 +62,54 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, isOpen: false, resolve: null }));
   }, [state.resolve]);
 
-  const buttonColor = state.type === 'danger' ? 'var(--accent-error)' : 
-                      state.type === 'warning' ? 'var(--accent-warning)' : 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Focus cancel button when dialog opens
+  useEffect(() => {
+    if (state.isOpen) {
+      setTimeout(() => cancelBtnRef.current?.focus(), 100);
+    }
+  }, [state.isOpen]);
+
+  // Trap focus within dialog
+  const handleDialogKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      handleCancel();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, [handleCancel]);
+
+  const buttonColor = state.type === 'danger' ? 'var(--accent-error)' :
+                      state.type === 'warning' ? 'var(--accent-warning)' :
                       'var(--accent-primary)';
 
   return (
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
-      
+
       {state.isOpen && (
-        <div 
+        <div
           className="modal-overlay"
           onClick={handleCancel}
+          onKeyDown={handleDialogKeyDown}
+          role="dialog"
+          aria-modal="true"
+          aria-label={state.title}
           style={{
             position: 'fixed',
             inset: 0,
@@ -86,6 +122,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           }}
         >
           <div
+            ref={dialogRef}
             className="modal"
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -167,6 +204,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               borderTop: '1px solid var(--border-color)',
             }}>
               <button
+                ref={cancelBtnRef}
                 className="btn btn-secondary"
                 onClick={handleCancel}
               >

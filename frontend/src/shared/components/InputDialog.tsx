@@ -90,9 +90,12 @@ export function InputProvider({ children }: { children: ReactNode }) {
       {children}
       
       {state.isOpen && (
-        <div 
+        <div
           className="modal-overlay"
           onClick={handleCancel}
+          role="dialog"
+          aria-modal="true"
+          aria-label={state.title}
           style={{
             position: 'fixed',
             inset: 0,
