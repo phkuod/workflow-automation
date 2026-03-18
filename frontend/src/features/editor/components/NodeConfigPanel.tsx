@@ -24,7 +24,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
   const [name, setName] = useState(step.name);
   const [code, setCode] = useState(step.config.code || '');
   const [url, setUrl] = useState(step.config.url || '');
-  const [method, setMethod] = useState(step.config.method || 'GET');
+  const [method, setMethod] = useState<string>(step.config.method || 'GET');
   const [body, setBody] = useState(step.config.body || '');
   const [headers, setHeaders] = useState<{key: string, value: string}[]>(
     step.config.headers ? Object.entries(step.config.headers).map(([key, value]) => ({ key, value: value as string })) : []
@@ -35,14 +35,14 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
   const [variableValue, setVariableValue] = useState(step.config.variableValue || '');
   const [cronExpression, setCronExpression] = useState(step.config.cronExpression || '');
   const [duration, setDuration] = useState(step.config.duration || 5);
-  const [unit, setUnit] = useState(step.config.unit || 'seconds');
-  const [webhookMethod, setWebhookMethod] = useState(step.config.webhookMethod || 'POST');
+  const [unit, setUnit] = useState<string>(step.config.unit || 'seconds');
+  const [webhookMethod, setWebhookMethod] = useState<string>(step.config.webhookMethod || 'POST');
   const [emailTo, setEmailTo] = useState(step.config.emailTo || '');
   const [emailSubject, setEmailSubject] = useState(step.config.emailSubject || '');
   const [emailBody, setEmailBody] = useState(step.config.emailBody || '');
   const [slackWebhookUrl, setSlackWebhookUrl] = useState(step.config.slackWebhookUrl || '');
   const [slackMessage, setSlackMessage] = useState(step.config.slackMessage || '');
-  const [dbType, setDbType] = useState(step.config.dbType || 'postgres');
+  const [dbType, setDbType] = useState<string>(step.config.dbType || 'postgres');
   const [dbHost, setDbHost] = useState(step.config.dbHost || '');
   const [dbPort, setDbPort] = useState(step.config.dbPort || 5432);
   const [dbName, setDbName] = useState(step.config.dbName || '');

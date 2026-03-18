@@ -1,4 +1,3 @@
-import type { StepConfig } from '../../../../shared/types/workflow';
 
 interface ScriptConfigFormProps {
   type: 'script-js' | 'script-python';
