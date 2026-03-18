@@ -12,7 +12,10 @@ vi.mock('pg', () => {
     connect: vi.fn(() => mClient),
     end: vi.fn()
   };
-  return { Pool: vi.fn(() => mPool) };
+  const Pool = vi.fn(function(this: any) {
+    Object.assign(this, mPool);
+  });
+  return { Pool };
 });
 
 vi.mock('mysql2/promise', () => {
