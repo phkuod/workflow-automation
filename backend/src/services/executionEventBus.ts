@@ -11,7 +11,7 @@ export interface ExecutionEvent {
     stepId?: string;
     stepName?: string;
     status?: string;
-    output?: any;
+    output?: Record<string, unknown>;
     error?: string;
     progress?: { completed: number; total: number };
     timestamp: string;

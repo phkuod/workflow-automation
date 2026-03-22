@@ -3,6 +3,7 @@ import { WorkflowModel } from '../models/workflow';
 import { ExecutionModel } from '../models/execution';
 import { ExecutionEngine } from '../services/executionEngine';
 import { createLogger } from '../utils/logger';
+import { findTriggerStep } from '../utils/workflowHelpers';
 
 const router = Router();
 
@@ -25,16 +26,7 @@ router.all('/:id', async (req: Request, res: Response) => {
     }
 
     // Find webhook trigger node and validate method
-    let webhookTrigger;
-    for (const station of workflow.definition.stations) {
-      for (const step of station.steps) {
-        if (step.type === 'trigger-webhook') {
-          webhookTrigger = step;
-          break;
-        }
-      }
-      if (webhookTrigger) break;
-    }
+    const webhookTrigger = findTriggerStep(workflow, 'trigger-webhook');
 
     if (!webhookTrigger) {
       return res.status(400).json({ success: false, error: 'Workflow does not have a webhook trigger' });

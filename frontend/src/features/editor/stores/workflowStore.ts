@@ -1,13 +1,14 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 
-import type { 
-  Workflow, 
-  WorkflowDefinition, 
-  Station, 
-  Step, 
+import type {
+  Workflow,
+  WorkflowDefinition,
+  Station,
+  Step,
   StepType,
   Execution,
-  ExecutionLog 
+  ExecutionLog
 } from '../../../shared/types/workflow';
 import { workflowApi, executionApi } from '../../../shared/api/workflowApi';
 
@@ -425,3 +426,30 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set({ error: null });
   },
 }));
+
+// Memoized selectors — use these instead of destructuring the whole store
+export const useCurrentWorkflow = () => useWorkflowStore(s => s.currentWorkflow);
+export const useSelectedStepId = () => useWorkflowStore(s => s.selectedStepId);
+export const useSelectedStationId = () => useWorkflowStore(s => s.selectedStationId);
+export const useWorkflowUIState = () =>
+  useWorkflowStore(useShallow(s => ({
+    isLoading: s.isLoading,
+    isSaving: s.isSaving,
+    isDirty: s.isDirty,
+    error: s.error,
+    isSimulating: s.isSimulating,
+  })));
+export const useEditorActions = () =>
+  useWorkflowStore(useShallow(s => ({
+    addStation: s.addStation,
+    updateStation: s.updateStation,
+    deleteStation: s.deleteStation,
+    addStep: s.addStep,
+    updateStep: s.updateStep,
+    deleteStep: s.deleteStep,
+    connectSteps: s.connectSteps,
+    selectStep: s.selectStep,
+    selectStation: s.selectStation,
+    saveWorkflow: s.saveWorkflow,
+    setCurrentWorkflow: s.setCurrentWorkflow,
+  })));

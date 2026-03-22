@@ -9,6 +9,9 @@ import { createLogger } from '../utils/logger';
 
 const log = createLogger('scriptRunner');
 
+const HTTP_REQUEST_TIMEOUT_MS = 30000;
+const CONDITION_EVAL_TIMEOUT_MS = 1000;
+
 // Blocked hostname patterns for SSRF protection
 const BLOCKED_HOSTNAMES = new Set([
   'localhost',
@@ -301,7 +304,7 @@ exec(compile(_payload['code'], '<user_script>', 'exec'))
           'Content-Type': 'application/json',
           ...headers
         },
-        timeout: 30000
+        timeout: HTTP_REQUEST_TIMEOUT_MS
       };
 
       const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -355,7 +358,7 @@ exec(compile(_payload['code'], '<user_script>', 'exec'))
       const interpolated = this.interpolateVariables(condition, context);
       // Use VM sandbox instead of new Function + with() for safer evaluation
       const sandbox = createContext({ ...context });
-      const result = runInContext(`(${interpolated})`, sandbox, { timeout: 1000 });
+      const result = runInContext(`(${interpolated})`, sandbox, { timeout: CONDITION_EVAL_TIMEOUT_MS });
       return Boolean(result);
     } catch (error) {
       log.error({ err: error, condition }, `Condition evaluation failed for expression: "${condition}". Defaulting to false.`);

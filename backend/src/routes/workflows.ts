@@ -12,23 +12,15 @@ import {
   ApiResponse,
   Workflow
 } from '../types/workflow';
+import { findTriggerStep } from '../utils/workflowHelpers';
 
 const router = Router();
 const log = createLogger('workflows');
 
 // Helper to handle scheduling logic
 const syncSchedule = async (workflow: Workflow) => {
-  // Find cron trigger
-  let cronExpression: string | undefined;
-  for (const station of workflow.definition.stations) {
-    for (const step of station.steps) {
-      if (step.type === 'trigger-cron' && step.config.cronExpression) {
-        cronExpression = step.config.cronExpression;
-        break;
-      }
-    }
-    if (cronExpression) break;
-  }
+  const cronStep = findTriggerStep(workflow, 'trigger-cron');
+  const cronExpression = cronStep?.config.cronExpression;
 
   if (workflow.status === 'active' && cronExpression) {
     scheduler.scheduleWorkflow(workflow, cronExpression);

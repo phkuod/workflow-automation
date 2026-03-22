@@ -6,11 +6,15 @@ const DB_PATH = process.env.DB_PATH
   ? path.resolve(process.env.DB_PATH)
   : path.join(__dirname, '../../data/workflow.db');
 
-function toRows(results: QueryExecResult[]): Record<string, any>[] {
+type DbValue = string | number | null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- rows from sql.js have dynamic columns
+type DbRow = Record<string, any>;
+
+function toRows(results: QueryExecResult[]): DbRow[] {
   if (!results || results.length === 0) return [];
   const { columns, values } = results[0];
   return values.map(row =>
-    Object.fromEntries(columns.map((col, i) => [col, row[i]]))
+    Object.fromEntries(columns.map((col, i) => [col, row[i]])) as DbRow
   );
 }
 
@@ -80,17 +84,17 @@ class SqlJsAdapter {
 
   prepare(sql: string) {
     return {
-      all: (...params: any[]): Record<string, any>[] => {
+      all: (...params: DbValue[]): DbRow[] => {
         const flat = params.flat();
         const results = this.sqlDb.exec(sql, flat.length ? flat : undefined);
         return toRows(results);
       },
-      get: (...params: any[]): Record<string, any> | undefined => {
+      get: (...params: DbValue[]): DbRow | undefined => {
         const flat = params.flat();
         const results = this.sqlDb.exec(sql, flat.length ? flat : undefined);
         return toRows(results)[0];
       },
-      run: (...params: any[]): { changes: number } => {
+      run: (...params: DbValue[]): { changes: number } => {
         const flat = params.flat();
         this.sqlDb.run(sql, flat.length ? flat : undefined);
         const changes = this.sqlDb.getRowsModified();
@@ -219,7 +223,7 @@ const db = new Proxy({} as SqlJsAdapter, {
     if (!_db) {
       throw new Error('Database not initialized. Call initDatabase() first.');
     }
-    const value = (_db as any)[prop as string];
+    const value = (_db as unknown as Record<string | symbol, unknown>)[prop];
     return typeof value === 'function' ? value.bind(_db) : value;
   },
 });

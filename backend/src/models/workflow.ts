@@ -74,7 +74,7 @@ export class WorkflowModel {
 
     const now = new Date().toISOString();
     const updates: string[] = ['updated_at = ?'];
-    const values: any[] = [now];
+    const values: (string | number | null)[] = [now];
 
     if (data.name !== undefined) {
       updates.push('name = ?');

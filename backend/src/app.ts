@@ -12,13 +12,17 @@ const log = createLogger('app');
 
 const app = express();
 
-// Middleware
+// Middleware — CORS
 const corsOrigins = process.env.CORS_ORIGINS;
-app.use(cors(
-  corsOrigins
-    ? { origin: corsOrigins.split(',').map(o => o.trim()), credentials: true }
-    : undefined
-));
+if (corsOrigins) {
+  app.use(cors({ origin: corsOrigins.split(',').map(o => o.trim()), credentials: true }));
+} else if (process.env.NODE_ENV === 'production') {
+  // Production without explicit CORS_ORIGINS: allow same-origin only
+  app.use(cors({ origin: false }));
+} else {
+  // Development: allow all origins
+  app.use(cors());
+}
 app.use(express.json({ limit: '10mb' }));
 app.use(requestLogger);
 

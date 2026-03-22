@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { Step } from '../../../shared/types/workflow';
 import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
@@ -12,11 +12,49 @@ interface StepNodeData extends Record<string, unknown> {
   hasInspectableData?: boolean;
 }
 
+const handleStyle = {
+  width: '12px',
+  height: '12px',
+  background: 'var(--accent-primary)',
+  border: '2px solid var(--bg-secondary)',
+};
+
+const targetHandleStyle = { ...handleStyle, top: '-6px' };
+const sourceHandleStyle = { ...handleStyle, bottom: '-6px' };
+
+const STATUS_BORDER: Record<string, React.CSSProperties> = {
+  completed: { borderColor: 'var(--accent-success)' },
+  failed: { borderColor: 'var(--accent-error)' },
+  running: { borderColor: 'var(--accent-primary)', boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)' },
+};
+
 // Using a more generic props type for compatibility with Xyflow v12
 const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: boolean }) => {
   const { step, status, isSelected, hasInspectableData } = data;
   const activeSelected = isSelected || selected;
   const typeInfo = STEP_TYPE_INFO[step.type] || { label: step.type, icon: '📦', color: '#64748b' };
+
+  const containerStyle = useMemo(() => ({
+    background: 'var(--bg-secondary)',
+    border: `2px solid ${activeSelected ? 'var(--accent-primary)' : 'var(--border-color)'}`,
+    borderRadius: '10px',
+    padding: '12px 16px',
+    minWidth: '200px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    ...(status ? STATUS_BORDER[status] : undefined),
+  }), [activeSelected, status]);
+
+  const iconBgStyle = useMemo(() => ({
+    width: '32px',
+    height: '32px',
+    borderRadius: '8px',
+    background: `${typeInfo.color}20`,
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    fontSize: '16px',
+  }), [typeInfo.color]);
 
   const getStatusIcon = () => {
     switch (status) {
@@ -33,63 +71,18 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
     }
   };
 
-  const getStatusStyle = () => {
-    switch (status) {
-      case 'completed':
-        return { borderColor: 'var(--accent-success)' };
-      case 'failed':
-        return { borderColor: 'var(--accent-error)' };
-      case 'running':
-        return { borderColor: 'var(--accent-primary)', boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)' };
-      default:
-        return {};
-    }
-  };
-
   return (
-    <div
-      style={{
-        background: 'var(--bg-secondary)',
-        border: `2px solid ${activeSelected ? 'var(--accent-primary)' : 'var(--border-color)'}`,
-        borderRadius: '10px',
-        padding: '12px 16px',
-        minWidth: '200px',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        ...getStatusStyle(),
-      }}
-    >
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{
-          width: '12px',
-          height: '12px',
-          background: 'var(--accent-primary)',
-          border: '2px solid var(--bg-secondary)',
-          top: '-6px',
-        }}
-      />
-      
+    <div style={containerStyle}>
+      <Handle type="target" position={Position.Top} style={targetHandleStyle} />
+
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '8px',
-            background: `${typeInfo.color}20`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '16px',
-          }}
-        >
+        <div style={iconBgStyle}>
           {typeInfo.icon}
         </div>
-        
+
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ 
-            fontSize: '13px', 
+          <div style={{
+            fontSize: '13px',
             fontWeight: 600,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -97,8 +90,8 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
           }}>
             {step.name}
           </div>
-          <div style={{ 
-            fontSize: '11px', 
+          <div style={{
+            fontSize: '11px',
             color: 'var(--text-muted)',
             display: 'flex',
             alignItems: 'center',
@@ -138,11 +131,8 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
             position={Position.Bottom}
             id="true"
             style={{
-              width: '12px',
-              height: '12px',
+              ...sourceHandleStyle,
               background: EDGE_COLORS.success,
-              border: '2px solid var(--bg-secondary)',
-              bottom: '-6px',
               left: '35%',
             }}
           />
@@ -160,11 +150,8 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
             position={Position.Bottom}
             id="false"
             style={{
-              width: '12px',
-              height: '12px',
+              ...sourceHandleStyle,
               background: EDGE_COLORS.error,
-              border: '2px solid var(--bg-secondary)',
-              bottom: '-6px',
               left: '65%',
             }}
           />
@@ -179,17 +166,7 @@ const StepNode = memo(({ data, selected }: { data: StepNodeData; selected?: bool
           }}>F</div>
         </>
       ) : (
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          style={{
-            width: '12px',
-            height: '12px',
-            background: 'var(--accent-primary)',
-            border: '2px solid var(--bg-secondary)',
-            bottom: '-6px',
-          }}
-        />
+        <Handle type="source" position={Position.Bottom} style={sourceHandleStyle} />
       )}
     </div>
   );

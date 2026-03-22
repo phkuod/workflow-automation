@@ -76,7 +76,7 @@ export class ExecutionModel {
     result: ExecutionResult;
   }>): Execution | null {
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | null)[] = [];
 
     if (data.status !== undefined) {
       if (!ExecutionModel.VALID_STATUSES.has(data.status)) {
