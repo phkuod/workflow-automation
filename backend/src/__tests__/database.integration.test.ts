@@ -143,12 +143,13 @@ describe('database.ts — SqlJsAdapter integration', () => {
 
   it('data persists to disk across re-initialization', async () => {
     { // Phase 1: write data
-      const { initDatabase, default: db } = await import('../db/database');
+      const { initDatabase, flushDatabase, default: db } = await import('../db/database');
       await initDatabase();
       db.prepare(
         `INSERT INTO workflows (id, name, status, definition, created_at, updated_at)
          VALUES ('persist-1', 'Persisted Workflow', 'active', '{"nodes":[]}', datetime('now'), datetime('now'))`
       ).run();
+      flushDatabase(); // Ensure debounced writes are flushed before re-init
     }
     vi.resetModules(); // same tmpDb still in process.env.DB_PATH
     { // Phase 2: re-load from same file

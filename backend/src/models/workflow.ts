@@ -1,8 +1,9 @@
 import db from '../db/database';
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  Workflow, 
-  WorkflowDefinition, 
+import { safeJsonParse } from '../utils/safeJsonParse';
+import {
+  Workflow,
+  WorkflowDefinition,
   CreateWorkflowRequest, 
   UpdateWorkflowRequest 
 } from '../types/workflow';
@@ -18,14 +19,21 @@ interface WorkflowRow {
 }
 
 export class WorkflowModel {
-  static getAll(): Workflow[] {
+  static getAll(limit = 100, offset = 0): Workflow[] {
     const stmt = db.prepare(`
-      SELECT id, name, description, status, definition, created_at, updated_at 
-      FROM workflows 
+      SELECT id, name, description, status, definition, created_at, updated_at
+      FROM workflows
       ORDER BY updated_at DESC
+      LIMIT ? OFFSET ?
     `);
-    const rows = stmt.all() as WorkflowRow[];
+    const rows = stmt.all(limit, offset) as WorkflowRow[];
     return rows.map(this.rowToWorkflow);
+  }
+
+  static count(): number {
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM workflows');
+    const row = stmt.get() as { count: number } | undefined;
+    return row?.count ?? 0;
   }
 
   static getById(id: string): Workflow | null {
@@ -109,7 +117,7 @@ export class WorkflowModel {
       name: row.name,
       description: row.description || undefined,
       status: row.status,
-      definition: JSON.parse(row.definition) as WorkflowDefinition,
+      definition: safeJsonParse<WorkflowDefinition>(row.definition, { stations: [] } as unknown as WorkflowDefinition, `workflow ${row.id}`),
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

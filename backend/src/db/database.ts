@@ -21,20 +21,56 @@ function toRows(results: QueryExecResult[]): Record<string, any>[] {
  */
 class SqlJsAdapter {
   private inTransaction = false;
+  private dirty = false;
+  private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private static readonly SAVE_DEBOUNCE_MS = 100;
 
-  constructor(private sqlDb: SqlJsDatabase, private dbPath: string) {}
+  constructor(private sqlDb: SqlJsDatabase, private dbPath: string) {
+    // Flush pending writes on process exit (only register once)
+    const flushAndExit = () => { this.flush(); };
+    process.once('beforeExit', flushAndExit);
+  }
 
   private save(): void {
     if (this.inTransaction) return;
+    this.dirty = true;
+    if (!this.saveTimer) {
+      this.saveTimer = setTimeout(() => this.flush(), SqlJsAdapter.SAVE_DEBOUNCE_MS);
+      // Don't let the timer keep the process alive
+      if (this.saveTimer && typeof this.saveTimer === 'object' && 'unref' in this.saveTimer) {
+        this.saveTimer.unref();
+      }
+    }
+  }
+
+  private saveNow(): void {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+    }
+    this.dirty = false;
     const data = this.sqlDb.export();
     fs.writeFileSync(this.dbPath, Buffer.from(data));
     // sql.js export() resets connection-level PRAGMAs; restore foreign keys
     this.sqlDb.run('PRAGMA foreign_keys = ON');
   }
 
+  flush(): void {
+    if (this.dirty || this.saveTimer) {
+      if (this.saveTimer) {
+        clearTimeout(this.saveTimer);
+        this.saveTimer = null;
+      }
+      this.dirty = false;
+      const data = this.sqlDb.export();
+      fs.writeFileSync(this.dbPath, Buffer.from(data));
+      this.sqlDb.run('PRAGMA foreign_keys = ON');
+    }
+  }
+
   exec(sql: string): this {
     this.sqlDb.exec(sql);
-    this.save();
+    this.saveNow(); // Schema changes flush immediately
     return this;
   }
 
@@ -72,7 +108,7 @@ class SqlJsAdapter {
         fn(arg);
         this.sqlDb.run('COMMIT');
         this.inTransaction = false;
-        this.save();
+        this.saveNow();
       } catch (e) {
         this.sqlDb.run('ROLLBACK');
         this.inTransaction = false;
@@ -121,7 +157,10 @@ const SCHEMA_SQL = `
   );
 
   CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);
+  CREATE INDEX IF NOT EXISTS idx_executions_status ON executions(status);
+  CREATE INDEX IF NOT EXISTS idx_executions_start_time ON executions(start_time);
   CREATE INDEX IF NOT EXISTS idx_execution_logs_execution_id ON execution_logs(execution_id);
+  CREATE INDEX IF NOT EXISTS idx_execution_logs_timestamp ON execution_logs(timestamp);
 
   CREATE TABLE IF NOT EXISTS workflow_versions (
     id TEXT PRIMARY KEY,
@@ -137,6 +176,11 @@ const SCHEMA_SQL = `
 `;
 
 export async function initDatabase(): Promise<void> {
+  // Flush any pending writes from previous adapter (e.g. during test re-init)
+  if (_db) {
+    _db.flush();
+  }
+
   const dataDir = path.dirname(DB_PATH);
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
@@ -159,6 +203,10 @@ export async function initDatabase(): Promise<void> {
   _db = new SqlJsAdapter(sqlDb, DB_PATH);
   _db.pragma('foreign_keys = ON');
   _db.exec(SCHEMA_SQL);
+}
+
+export function flushDatabase(): void {
+  if (_db) _db.flush();
 }
 
 /**

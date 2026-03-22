@@ -63,7 +63,17 @@ router.all('/:id', async (req: Request, res: Response) => {
 
     // Fire-and-forget: run the execution asynchronously, passing the pre-created execution ID
     ExecutionEngine.executeWithId(execution.id, workflow, 'webhook', inputData)
-      .catch(err => createLogger('webhooks').error({ err }, `Webhook execution failed for ${workflowId}`));
+      .catch(err => {
+        createLogger('webhooks').error({ err }, `Webhook execution failed for ${workflowId}`);
+        try {
+          ExecutionModel.update(execution.id, {
+            status: 'failed',
+            endTime: new Date().toISOString(),
+          });
+        } catch (updateErr) {
+          createLogger('webhooks').error({ err: updateErr }, `Failed to update execution ${execution.id} status after webhook error`);
+        }
+      });
 
     res.status(202).json({
       success: true,
@@ -72,8 +82,8 @@ router.all('/:id', async (req: Request, res: Response) => {
     });
 
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    createLogger('webhooks').error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

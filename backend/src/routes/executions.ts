@@ -2,8 +2,10 @@ import { Router, Request, Response } from 'express';
 import { ExecutionModel, LogModel } from '../models/execution';
 import { executionManager } from '../services/executionManager';
 import { executionEventBus, type ExecutionEvent } from '../services/executionEventBus';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const log = createLogger('executions');
 
 /**
  * GET /api/executions/:id/stream
@@ -21,10 +23,20 @@ router.get('/:id/stream', (req: Request, res: Response) => {
   res.write('data: {"type":"connected"}\n\n');
 
   let closed = false;
+  const SSE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour max
+
+  const sseTimeout = setTimeout(() => {
+    if (!closed) {
+      res.write(`data: ${JSON.stringify({ type: 'timeout', message: 'SSE connection timed out' })}\n\n`);
+      cleanup();
+      res.end();
+    }
+  }, SSE_TIMEOUT_MS);
 
   const cleanup = () => {
     if (!closed) {
       closed = true;
+      clearTimeout(sseTimeout);
       executionEventBus.off(`execution:${id}`, handler);
     }
   };
@@ -75,8 +87,8 @@ router.post('/:id/cancel', (req: Request, res: Response) => {
     });
     res.json({ success: true, data: { cancelled: true } });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -90,8 +102,8 @@ router.get('/', (req: Request, res: Response) => {
     const executions = ExecutionModel.getAll(limit);
     res.json({ success: true, data: executions });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -109,8 +121,8 @@ router.get('/:id/logs', (req: Request, res: Response) => {
     const logs = LogModel.getByExecutionId(req.params.id);
     res.json({ success: true, data: logs });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -126,8 +138,8 @@ router.get('/:id', (req: Request, res: Response) => {
     }
     res.json({ success: true, data: execution });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -143,8 +155,8 @@ router.delete('/:id', (req: Request, res: Response) => {
     }
     res.json({ success: true, data: { deleted: true } });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

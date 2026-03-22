@@ -2,11 +2,41 @@ import { createContext, runInContext, Context } from 'vm';
 import { spawn } from 'child_process';
 import * as http from 'http';
 import * as https from 'https';
+import * as net from 'net';
 import { URL } from 'url';
 import { StepConfig } from '../types/workflow';
 import { createLogger } from '../utils/logger';
 
 const log = createLogger('scriptRunner');
+
+// Blocked hostname patterns for SSRF protection
+const BLOCKED_HOSTNAMES = new Set([
+  'localhost',
+  '127.0.0.1',
+  '::1',
+  '0.0.0.0',
+  '169.254.169.254', // Cloud metadata
+  'metadata.google.internal',
+]);
+
+function isPrivateIP(ip: string): boolean {
+  if (net.isIPv4(ip)) {
+    const parts = ip.split('.').map(Number);
+    // 10.0.0.0/8
+    if (parts[0] === 10) return true;
+    // 172.16.0.0/12
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    // 192.168.0.0/16
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    // 169.254.0.0/16 (link-local)
+    if (parts[0] === 169 && parts[1] === 254) return true;
+    // 127.0.0.0/8 (loopback)
+    if (parts[0] === 127) return true;
+    // 0.0.0.0
+    if (parts[0] === 0) return true;
+  }
+  return false;
+}
 
 export interface ScriptResult {
   success: boolean;
@@ -23,14 +53,15 @@ export class ScriptRunner {
     const logs: string[] = [];
     
     try {
-      // Create sandbox context
+      // Create sandbox context — user data spread first, then built-ins override
+      // so user-controlled keys cannot shadow console, JSON, Object, etc.
       const sandbox: Context = {
         ...inputData,
-        console: {
+        console: Object.freeze({
           log: (...args: unknown[]) => logs.push(args.map(a => JSON.stringify(a)).join(' ')),
           error: (...args: unknown[]) => logs.push(`[ERROR] ${args.map(a => JSON.stringify(a)).join(' ')}`),
           warn: (...args: unknown[]) => logs.push(`[WARN] ${args.map(a => JSON.stringify(a)).join(' ')}`)
-        },
+        }),
         JSON,
         Math,
         Date,
@@ -45,9 +76,14 @@ export class ScriptRunner {
         isFinite,
         encodeURIComponent,
         decodeURIComponent,
-        setTimeout: undefined, // Disabled for security
+        setTimeout: undefined,
         setInterval: undefined,
-        fetch: undefined // Could enable if needed
+        setImmediate: undefined,
+        fetch: undefined,
+        require: undefined,
+        process: undefined,
+        global: undefined,
+        globalThis: undefined,
       };
 
       const context = createContext(sandbox);
@@ -87,30 +123,31 @@ export class ScriptRunner {
       let output = '';
       let errorOutput = '';
 
-      // Helper to escape JSON string for safe Python multiline string injection
-      const escapeForPython = (obj: unknown) => {
-        return JSON.stringify(obj || {}).replace(/\\/g, '\\\\').replace(/'''/g, "\\'\\'\\'");
-      };
+      // Fixed wrapper script — no user data interpolated into code string.
+      // All data is passed safely via stdin as JSON.
+      const wrapperScript = `
+import json, sys
 
-      // Prepare Python script with input data and steps (Zero-Config access)
-      const pythonScript = `
-import json
-import sys
+_payload = json.loads(sys.stdin.read())
+input_data = _payload['input_data']
+steps = _payload['steps']
 
-# Input data (legacy)
-input_data = json.loads('''${escapeForPython(context.inputData)}''')
-
-# Steps (Zero-Config access) - access via steps['Step Name']['output']
-steps = json.loads('''${escapeForPython(context.steps)}''')
-
-# User code
-${code}
+exec(compile(_payload['code'], '<user_script>', 'exec'))
 `;
 
       const pythonCmd = process.env.PYTHON_CMD || 'python';
-      const python = spawn(pythonCmd, ['-c', pythonScript], {
+      const python = spawn(pythonCmd, ['-c', wrapperScript], {
         timeout
       });
+
+      // Pass user code and data safely via stdin as JSON
+      const payload = JSON.stringify({
+        input_data: context.inputData || {},
+        steps: context.steps || {},
+        code
+      });
+      python.stdin.write(payload);
+      python.stdin.end();
 
       python.stdout.on('data', (data: Buffer) => {
         const str = data.toString();
@@ -159,6 +196,35 @@ ${code}
   }
 
   /**
+   * Validate URL to prevent SSRF attacks
+   */
+  private static validateUrl(url: string): void {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new Error(`Invalid URL: ${url}`);
+    }
+
+    // Only allow http and https protocols
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`Blocked protocol: ${parsed.protocol} — only http: and https: are allowed`);
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+
+    // Check against blocked hostnames
+    if (BLOCKED_HOSTNAMES.has(hostname)) {
+      throw new Error(`Blocked request to restricted host: ${hostname}`);
+    }
+
+    // Check if hostname is a private/internal IP
+    if (net.isIP(hostname) && isPrivateIP(hostname)) {
+      throw new Error(`Blocked request to private/internal IP: ${hostname}`);
+    }
+  }
+
+  /**
    * Execute HTTP Request
    */
   static async executeHttpRequest(config: StepConfig, inputData: Record<string, unknown>): Promise<ScriptResult> {
@@ -168,6 +234,9 @@ ${code}
       const url = this.interpolateVariables(config.url || '', inputData);
       const method = config.method || 'GET';
       const headers = config.headers || {};
+
+      // SSRF protection: validate URL before making request
+      this.validateUrl(url);
       let body = config.body;
 
       if (body) {

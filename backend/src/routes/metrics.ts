@@ -2,8 +2,10 @@ import { Router } from 'express';
 import { ExecutionModel } from '../models/execution';
 import { WorkflowModel } from '../models/workflow';
 import { scheduler } from '../services/scheduler';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const log = createLogger('metrics');
 
 interface Metrics {
   timestamp: string;
@@ -120,8 +122,8 @@ router.get('/', (req, res) => {
 
     res.json({ success: true, data: metrics });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -163,8 +165,8 @@ router.get('/executions/history', (req, res) => {
 
     res.json({ success: true, data });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

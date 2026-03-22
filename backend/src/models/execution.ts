@@ -1,5 +1,6 @@
 import db from '../db/database';
 import { v4 as uuidv4 } from 'uuid';
+import { safeJsonParse } from '../utils/safeJsonParse';
 import { Execution, ExecutionResult, ExecutionLog } from '../types/workflow';
 
 interface ExecutionRow {
@@ -127,7 +128,7 @@ export class ExecutionModel {
       startTime: row.start_time,
       endTime: row.end_time || undefined,
       successRate: row.success_rate,
-      result: row.result ? JSON.parse(row.result) : undefined
+      result: row.result ? safeJsonParse(row.result, undefined, `execution ${row.id} result`) : undefined
     };
   }
 }
@@ -202,7 +203,7 @@ export class LogModel {
       stepId: row.step_id || undefined,
       level: row.level,
       message: row.message,
-      data: row.data ? JSON.parse(row.data) : undefined,
+      data: row.data ? safeJsonParse(row.data, undefined, `execution log ${row.id} data`) : undefined,
       timestamp: row.timestamp
     };
   }
