@@ -114,20 +114,20 @@ describe('DashboardPage', () => {
     expect(totalCard!.querySelector('.text-3xl')?.textContent).toBe('3');
 
     // Active = 1
-    const activeLabel = screen.getByText('Active');
-    const activeCard = activeLabel.closest('.stat-card');
+    const activeLabel = screen.getAllByText('Active').find(el => el.closest('.stat-card'));
+    const activeCard = activeLabel!.closest('.stat-card');
     expect(activeCard).not.toBeNull();
     expect(activeCard!.querySelector('.text-3xl')?.textContent).toBe('1');
 
     // Paused = 1
-    const pausedLabel = screen.getByText('Paused');
-    const pausedCard = pausedLabel.closest('.stat-card');
+    const pausedLabel = screen.getAllByText('Paused').find(el => el.closest('.stat-card'));
+    const pausedCard = pausedLabel!.closest('.stat-card');
     expect(pausedCard).not.toBeNull();
     expect(pausedCard!.querySelector('.text-3xl')?.textContent).toBe('1');
 
     // Draft = 1
-    const draftLabel = screen.getByText('Draft');
-    const draftCard = draftLabel.closest('.stat-card');
+    const draftLabel = screen.getAllByText('Draft').find(el => el.closest('.stat-card'));
+    const draftCard = draftLabel!.closest('.stat-card');
     expect(draftCard).not.toBeNull();
     expect(draftCard!.querySelector('.text-3xl')?.textContent).toBe('1');
   });

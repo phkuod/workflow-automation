@@ -11,6 +11,8 @@ import {
   ChevronDown,
   ChevronRight,
   RefreshCw,
+  Search,
+  Filter,
 } from 'lucide-react';
 import { executionApi } from '../../shared/api/workflowApi';
 import { EDGE_COLORS } from '../../shared/constants/colors';
@@ -66,6 +68,8 @@ export default function ExecutionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [logs, setLogs] = useState<Record<string, ExecutionLog[]>>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const fetchExecutions = useCallback(async () => {
     try {
@@ -127,6 +131,12 @@ export default function ExecutionsPage() {
     }
   };
 
+  const filteredExecutions = executions.filter((exec) => {
+    if (statusFilter !== 'all' && exec.status !== statusFilter) return false;
+    if (searchQuery && !exec.workflowName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+
   return (
     <div className="layout">
       <header className="header">
@@ -139,7 +149,11 @@ export default function ExecutionsPage() {
               <List size={24} style={{ marginRight: '10px', color: 'var(--accent-primary)' }} />
               Execution History
             </h1>
-            <p className="text-sm text-muted">{executions.length} executions</p>
+            <p className="text-sm text-muted">
+              {filteredExecutions.length === executions.length
+                ? `${executions.length} executions`
+                : `${filteredExecutions.length} of ${executions.length} executions`}
+            </p>
           </div>
         </div>
         <div className="header-actions">
@@ -151,6 +165,40 @@ export default function ExecutionsPage() {
       </header>
 
       <main className="main-content">
+        {/* Filter Bar */}
+        {executions.length > 0 && (
+          <div style={{
+            display: 'flex', gap: '12px', marginBottom: '1rem', alignItems: 'center', flexWrap: 'wrap',
+          }}>
+            <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: '320px' }}>
+              <Search size={16} style={{
+                position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)',
+                color: 'var(--text-muted)', pointerEvents: 'none',
+              }} />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Search by workflow name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ paddingLeft: '34px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Filter size={16} style={{ color: 'var(--text-muted)' }} />
+              {['all', 'completed', 'failed', 'running', 'cancelled'].map((status) => (
+                <button
+                  key={status}
+                  className={`btn btn-sm ${statusFilter === status ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setStatusFilter(status)}
+                  style={{ textTransform: 'capitalize' }}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {error && (
           <div className="card" style={{
             background: 'rgba(239,68,68,0.1)', borderColor: 'var(--accent-error)', marginBottom: '1.5rem',
@@ -170,6 +218,12 @@ export default function ExecutionsPage() {
             <h3>No Executions Yet</h3>
             <p className="text-muted">Run a workflow to see execution history here.</p>
           </div>
+        ) : filteredExecutions.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+            <Search size={48} style={{ margin: '0 auto 1rem', color: 'var(--text-muted)' }} />
+            <h3>No Matching Executions</h3>
+            <p className="text-muted">Try adjusting your search or filter criteria.</p>
+          </div>
         ) : (
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -186,7 +240,7 @@ export default function ExecutionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {executions.map((exec) => (
+                {filteredExecutions.map((exec) => (
                   <ExecutionRow
                     key={exec.id}
                     execution={exec}
