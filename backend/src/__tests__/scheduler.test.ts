@@ -20,6 +20,7 @@ vi.mock('cron-parser', () => ({
 vi.mock('../models/workflow', () => ({
   WorkflowModel: {
     getAll: vi.fn().mockReturnValue([]),
+    getAllUnlimited: vi.fn().mockReturnValue([]),
     getById: vi.fn(),
   },
 }));
@@ -122,11 +123,11 @@ describe('SchedulerService', () => {
   describe('initialize', () => {
     it('schedules active workflows with cron triggers', async () => {
       const workflow = makeCronWorkflow();
-      (WorkflowModel.getAll as ReturnType<typeof vi.fn>).mockReturnValue([workflow]);
+      (WorkflowModel.getAllUnlimited as ReturnType<typeof vi.fn>).mockReturnValue([workflow]);
 
       await scheduler.initialize();
 
-      expect(WorkflowModel.getAll).toHaveBeenCalledOnce();
+      expect(WorkflowModel.getAllUnlimited).toHaveBeenCalledOnce();
       expect(cron.validate).toHaveBeenCalledWith('*/5 * * * *');
       expect(cron.schedule).toHaveBeenCalledWith(
         '*/5 * * * *',
@@ -144,7 +145,7 @@ describe('SchedulerService', () => {
     it('skips non-active workflows', async () => {
       const draftWorkflow = makeCronWorkflow({ id: 'wf-draft', status: 'draft' });
       const pausedWorkflow = makeCronWorkflow({ id: 'wf-paused', status: 'paused' });
-      (WorkflowModel.getAll as ReturnType<typeof vi.fn>).mockReturnValue([
+      (WorkflowModel.getAllUnlimited as ReturnType<typeof vi.fn>).mockReturnValue([
         draftWorkflow,
         pausedWorkflow,
       ]);
@@ -157,7 +158,7 @@ describe('SchedulerService', () => {
 
     it('skips workflows without cron trigger', async () => {
       const manualWorkflow = makeManualWorkflow();
-      (WorkflowModel.getAll as ReturnType<typeof vi.fn>).mockReturnValue([manualWorkflow]);
+      (WorkflowModel.getAllUnlimited as ReturnType<typeof vi.fn>).mockReturnValue([manualWorkflow]);
 
       await scheduler.initialize();
 
@@ -166,13 +167,13 @@ describe('SchedulerService', () => {
     });
 
     it('does not re-initialize if already initialized', async () => {
-      (WorkflowModel.getAll as ReturnType<typeof vi.fn>).mockReturnValue([]);
+      (WorkflowModel.getAllUnlimited as ReturnType<typeof vi.fn>).mockReturnValue([]);
 
       await scheduler.initialize();
       await scheduler.initialize();
 
-      // getAll should only be called once because the second call exits early
-      expect(WorkflowModel.getAll).toHaveBeenCalledOnce();
+      // getAllUnlimited should only be called once because the second call exits early
+      expect(WorkflowModel.getAllUnlimited).toHaveBeenCalledOnce();
     });
   });
 

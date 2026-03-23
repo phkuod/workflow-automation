@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import * as http from 'http';
 import * as https from 'https';
 import * as net from 'net';
+import * as dns from 'dns';
 import { URL } from 'url';
 import { StepConfig } from '../types/workflow';
 import { createLogger } from '../utils/logger';
@@ -199,9 +200,10 @@ exec(compile(_payload['code'], '<user_script>', 'exec'))
   }
 
   /**
-   * Validate URL to prevent SSRF attacks
+   * Validate URL to prevent SSRF attacks.
+   * Resolves DNS names to check if they point to private/internal IPs.
    */
-  private static validateUrl(url: string): void {
+  private static async validateUrl(url: string): Promise<void> {
     let parsed: URL;
     try {
       parsed = new URL(url);
@@ -221,9 +223,25 @@ exec(compile(_payload['code'], '<user_script>', 'exec'))
       throw new Error(`Blocked request to restricted host: ${hostname}`);
     }
 
-    // Check if hostname is a private/internal IP
-    if (net.isIP(hostname) && isPrivateIP(hostname)) {
-      throw new Error(`Blocked request to private/internal IP: ${hostname}`);
+    // Check if hostname is a private/internal IP (literal IP address)
+    if (net.isIP(hostname)) {
+      if (isPrivateIP(hostname)) {
+        throw new Error(`Blocked request to private/internal IP: ${hostname}`);
+      }
+      return; // Literal IP that passed checks — no DNS lookup needed
+    }
+
+    // Resolve DNS name to IP and check the resolved address
+    let resolvedAddress: string;
+    try {
+      const result = await dns.promises.lookup(hostname);
+      resolvedAddress = result.address;
+    } catch (err) {
+      throw new Error(`DNS resolution failed for ${hostname}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    if (isPrivateIP(resolvedAddress)) {
+      throw new Error(`Blocked request to ${hostname}: resolves to private/internal IP ${resolvedAddress}`);
     }
   }
 
@@ -239,7 +257,7 @@ exec(compile(_payload['code'], '<user_script>', 'exec'))
       const headers = config.headers || {};
 
       // SSRF protection: validate URL before making request
-      this.validateUrl(url);
+      await this.validateUrl(url);
       let body = config.body;
 
       if (body) {

@@ -1,6 +1,6 @@
 import app from './app';
 import { scheduler } from './services/scheduler';
-import { initDatabase } from './db/database';
+import { initDatabase, flushDatabase } from './db/database';
 
 const PORT = process.env.PORT || 3002;
 
@@ -40,6 +40,7 @@ async function main() {
   process.on('SIGTERM', async () => {
     console.log('SIGTERM received. Shutting down gracefully...');
     await scheduler.shutdown();
+    flushDatabase();
     server.close(() => {
       console.log('Server closed');
       process.exit(0);
@@ -49,6 +50,7 @@ async function main() {
   process.on('SIGINT', async () => {
     console.log('SIGINT received. Shutting down gracefully...');
     await scheduler.shutdown();
+    flushDatabase();
     server.close(() => {
       console.log('Server closed');
       process.exit(0);

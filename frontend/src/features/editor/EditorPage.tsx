@@ -88,6 +88,10 @@ function EditorPage() {
       creatingRef.current = true;
       createWorkflow('Untitled Workflow').then((workflow) => {
         navigate(`/editor/${workflow.id}`, { replace: true });
+      }).catch(() => {
+        creatingRef.current = false;
+        toast.error('Failed to create workflow');
+        navigate('/dashboard');
       });
     } else if (id) {
       fetchWorkflow(id);

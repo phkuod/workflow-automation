@@ -48,7 +48,7 @@ interface Metrics {
 router.get('/', (req, res) => {
   try {
     // Fetch data
-    const workflows = WorkflowModel.getAll();
+    const workflows = WorkflowModel.getAllUnlimited();
     const executions = ExecutionModel.getAll();
     const schedules = scheduler.getScheduledWorkflows();
 

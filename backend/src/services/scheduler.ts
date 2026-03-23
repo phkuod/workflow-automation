@@ -37,7 +37,7 @@ class SchedulerService {
     log.info('Initializing scheduler service...');
 
     try {
-      const workflows = WorkflowModel.getAll();
+      const workflows = WorkflowModel.getAllUnlimited();
       let scheduledCount = 0;
 
       for (const workflow of workflows) {
