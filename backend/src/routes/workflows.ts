@@ -4,6 +4,7 @@ import { ExecutionModel } from '../models/execution';
 import { VersionModel } from '../models/version';
 import { ExecutionEngine } from '../services/executionEngine';
 import { scheduler } from '../services/scheduler';
+import { createLogger } from '../utils/logger';
 import {
   CreateWorkflowRequest,
   UpdateWorkflowRequest,
@@ -11,22 +12,15 @@ import {
   ApiResponse,
   Workflow
 } from '../types/workflow';
+import { findTriggerStep } from '../utils/workflowHelpers';
 
 const router = Router();
+const log = createLogger('workflows');
 
 // Helper to handle scheduling logic
 const syncSchedule = async (workflow: Workflow) => {
-  // Find cron trigger
-  let cronExpression: string | undefined;
-  for (const station of workflow.definition.stations) {
-    for (const step of station.steps) {
-      if (step.type === 'trigger-cron' && step.config.cronExpression) {
-        cronExpression = step.config.cronExpression;
-        break;
-      }
-    }
-    if (cronExpression) break;
-  }
+  const cronStep = findTriggerStep(workflow, 'trigger-cron');
+  const cronExpression = cronStep?.config.cronExpression;
 
   if (workflow.status === 'active' && cronExpression) {
     scheduler.scheduleWorkflow(workflow, cronExpression);
@@ -41,11 +35,14 @@ const syncSchedule = async (workflow: Workflow) => {
  */
 router.get('/', (req: Request, res: Response) => {
   try {
-    const workflows = WorkflowModel.getAll();
-    res.json({ success: true, data: workflows } as ApiResponse<typeof workflows>);
+    const limit = Math.max(1, Math.min(200, parseInt(req.query.limit as string) || 100));
+    const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
+    const workflows = WorkflowModel.getAll(limit, offset);
+    const total = WorkflowModel.count();
+    res.json({ success: true, data: workflows, total, limit, offset } as ApiResponse<typeof workflows>);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -61,8 +58,8 @@ router.get('/:id', (req: Request, res: Response) => {
     }
     res.json({ success: true, data: workflow });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -86,8 +83,8 @@ router.post('/', async (req: Request, res: Response) => {
     
     res.status(201).json({ success: true, data: workflow });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -119,8 +116,8 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: workflow });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -139,8 +136,8 @@ router.delete('/:id', (req: Request, res: Response) => {
 
     res.json({ success: true, data: { deleted: true } });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -161,8 +158,12 @@ router.post('/:id/execute', async (req: Request, res: Response) => {
     res.json({ success: true, data: execution });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    const status = message.startsWith('Missing required input parameter') ? 400 : 500;
-    res.status(status).json({ success: false, error: message });
+    if (message.startsWith('Missing required input parameter')) {
+      res.status(400).json({ success: false, error: message });
+    } else {
+      log.error({ err: error }, 'Unexpected error');
+      res.status(500).json({ success: false, error: 'Internal server error' });
+    }
   }
 });
 
@@ -182,8 +183,12 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
     res.json({ success: true, data: execution });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    const status = message.startsWith('Missing required input parameter') ? 400 : 500;
-    res.status(status).json({ success: false, error: message });
+    if (message.startsWith('Missing required input parameter')) {
+      res.status(400).json({ success: false, error: message });
+    } else {
+      log.error({ err: error }, 'Unexpected error');
+      res.status(500).json({ success: false, error: 'Internal server error' });
+    }
   }
 });
 
@@ -201,8 +206,8 @@ router.get('/:id/executions', (req: Request, res: Response) => {
     const executions = ExecutionModel.getByWorkflowId(req.params.id, limit);
     res.json({ success: true, data: executions });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -214,8 +219,8 @@ router.get('/:id/versions', (req: Request, res: Response) => {
     const versions = VersionModel.getByWorkflowId(req.params.id);
     res.json({ success: true, data: versions });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -230,8 +235,8 @@ router.get('/:id/versions/:version', (req: Request, res: Response) => {
     }
     res.json({ success: true, data: version });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -256,8 +261,8 @@ router.post('/:id/versions/:version/restore', async (req: Request, res: Response
     }
     res.json({ success: true, data: updated });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

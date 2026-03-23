@@ -65,23 +65,23 @@ describe('DbConnectorService', () => {
       }));
       expect(mClient.query).toHaveBeenCalledWith('SELECT * FROM test');
       expect(mClient.release).toHaveBeenCalled();
-      expect(mPool.end).toHaveBeenCalled();
+      // Pool is reused (singleton) — not destroyed per query
     });
 
     it('should throw an error if postgres query fails', async () => {
       const config: StepConfig = {
         dbType: 'postgres'
       };
-      
+
       const mPool = new PgPool();
       const mClient = await mPool.connect();
       (mClient.query as any).mockRejectedValueOnce(new Error('Syntax error'));
 
       await expect(DbConnectorService.executeQuery(config, 'BAD QUERY'))
         .rejects.toThrow('Syntax error');
-        
+
       expect(mClient.release).toHaveBeenCalled();
-      expect(mPool.end).toHaveBeenCalled();
+      // Pool is reused (singleton) — not destroyed per query
     });
   });
 

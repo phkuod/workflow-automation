@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { scheduler } from '../services/scheduler';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const log = createLogger('schedules');
 
 /**
  * GET /api/schedules
@@ -12,8 +14,8 @@ router.get('/', (req, res) => {
     const schedules = scheduler.getScheduledWorkflows();
     res.json({ success: true, data: schedules });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -32,8 +34,8 @@ router.get('/:workflowId', (req, res) => {
     }
     res.json({ success: true, data: schedule });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -52,8 +54,8 @@ router.put('/:workflowId/pause', (req, res) => {
     }
     res.json({ success: true, message: 'Schedule paused' });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -72,8 +74,8 @@ router.put('/:workflowId/resume', (req, res) => {
     }
     res.json({ success: true, message: 'Schedule resumed' });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -92,8 +94,8 @@ router.delete('/:workflowId', (req, res) => {
     }
     res.json({ success: true, message: 'Schedule removed' });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

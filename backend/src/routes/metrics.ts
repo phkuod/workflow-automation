@@ -2,8 +2,10 @@ import { Router } from 'express';
 import { ExecutionModel } from '../models/execution';
 import { WorkflowModel } from '../models/workflow';
 import { scheduler } from '../services/scheduler';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const log = createLogger('metrics');
 
 interface Metrics {
   timestamp: string;
@@ -50,51 +52,48 @@ router.get('/', (req, res) => {
     const executions = ExecutionModel.getAll();
     const schedules = scheduler.getScheduledWorkflows();
 
-    // Calculate workflow stats
-    const workflowStats = {
-      total: workflows.length,
-      active: workflows.filter(w => w.status === 'active').length,
-      paused: workflows.filter(w => w.status === 'paused').length,
-      draft: workflows.filter(w => w.status === 'draft').length,
-    };
+    // Calculate workflow stats (single pass)
+    const wCounts = { active: 0, paused: 0, draft: 0 };
+    for (const w of workflows) {
+      if (w.status in wCounts) wCounts[w.status as keyof typeof wCounts]++;
+    }
+    const workflowStats = { total: workflows.length, ...wCounts };
 
-    // Calculate execution stats
+    // Calculate execution stats (single pass)
     const now = new Date();
-    const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const last24HoursMs = now.getTime() - 24 * 60 * 60 * 1000;
+    const last7DaysMs = now.getTime() - 7 * 24 * 60 * 60 * 1000;
 
-    const completedExecutions = executions.filter(e => e.status === 'completed');
-    const failedExecutions = executions.filter(e => e.status === 'failed');
-    const runningExecutions = executions.filter(e => e.status === 'running');
-    
-    const executionsLast24h = executions.filter(e => 
-      new Date(e.startTime) >= last24Hours
-    ).length;
-    
-    const executionsLast7d = executions.filter(e => 
-      new Date(e.startTime) >= last7Days
-    ).length;
+    let completed = 0, failed = 0, running = 0, last24h = 0, last7d = 0;
+    for (const e of executions) {
+      if (e.status === 'completed') completed++;
+      else if (e.status === 'failed') failed++;
+      else if (e.status === 'running') running++;
+      const startMs = new Date(e.startTime).getTime();
+      if (startMs >= last24HoursMs) last24h++;
+      if (startMs >= last7DaysMs) last7d++;
+    }
 
-    const totalFinished = completedExecutions.length + failedExecutions.length;
-    const successRate = totalFinished > 0 
-      ? Math.round((completedExecutions.length / totalFinished) * 100) 
-      : 0;
-
+    const totalFinished = completed + failed;
     const executionStats = {
       total: executions.length,
-      completed: completedExecutions.length,
-      failed: failedExecutions.length,
-      running: runningExecutions.length,
-      successRate,
-      last24Hours: executionsLast24h,
-      last7Days: executionsLast7d,
+      completed,
+      failed,
+      running,
+      successRate: totalFinished > 0 ? Math.round((completed / totalFinished) * 100) : 0,
+      last24Hours: last24h,
+      last7Days: last7d,
     };
 
-    // Calculate scheduler stats
+    // Calculate scheduler stats (single pass)
+    let activeSchedules = 0;
+    for (const s of schedules) {
+      if (s.isActive) activeSchedules++;
+    }
     const schedulerStats = {
       scheduledWorkflows: schedules.length,
-      activeSchedules: schedules.filter(s => s.isActive).length,
-      pausedSchedules: schedules.filter(s => !s.isActive).length,
+      activeSchedules,
+      pausedSchedules: schedules.length - activeSchedules,
     };
 
     // System metrics
@@ -120,8 +119,8 @@ router.get('/', (req, res) => {
 
     res.json({ success: true, data: metrics });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -163,8 +162,8 @@ router.get('/executions/history', (req, res) => {
 
     res.json({ success: true, data });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ success: false, error: message });
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

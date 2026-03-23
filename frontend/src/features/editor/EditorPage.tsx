@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import '@xyflow/react/dist/style.css';
 
@@ -60,6 +60,7 @@ function EditorPage() {
     isSaving,
     isDirty,
     updateWorkflow,
+    createWorkflow,
   } = useWorkflowStore();
 
   // Input dialog hook
@@ -77,14 +78,23 @@ function EditorPage() {
   // Use store's isDirty for unsaved changes tracking
   const hasUnsavedChanges = isDirty;
 
-  // Load workflow
+  // Guard against StrictMode double-invocation when creating new workflows
+  const creatingRef = useRef(false);
+
+  // Load workflow or create new one
   useEffect(() => {
-    if (id) {
+    if (id === 'new') {
+      if (creatingRef.current) return;
+      creatingRef.current = true;
+      createWorkflow('Untitled Workflow').then((workflow) => {
+        navigate(`/editor/${workflow.id}`, { replace: true });
+      });
+    } else if (id) {
       fetchWorkflow(id);
     } else {
       setCurrentWorkflow(null);
     }
-  }, [id, fetchWorkflow, setCurrentWorkflow]);
+  }, [id, fetchWorkflow, setCurrentWorkflow, createWorkflow, navigate]);
 
 
   // Browser beforeunload warning

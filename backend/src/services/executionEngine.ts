@@ -14,7 +14,10 @@ import { ScriptRunner, ScriptResult } from './scriptRunner';
 import { DbConnectorService } from './dbConnector';
 import { executionManager } from './executionManager';
 import { executionEventBus, ExecutionEvent } from './executionEventBus';
+import { createLogger } from '../utils/logger';
 import nodemailer from 'nodemailer';
+
+const log = createLogger('executionEngine');
 
 // Initialize email transporter
 const transporter = nodemailer.createTransport({
@@ -683,12 +686,11 @@ export class ExecutionEngine {
         retryAttempts++;
         if (retryAttempts >= maxAttempts) {
           const errMsg = error instanceof Error ? error.message : String(error);
-          const errStack = error instanceof Error ? error.stack : undefined;
           stepResult.status = 'failed';
           stepResult.error = {
-            message: errMsg,
-            stack: errStack
+            message: errMsg
           };
+          log.error({ err: error }, `Step error: ${step.name}`);
           this.log(context, 'error', `Step error: ${step.name} - ${errMsg}`, undefined, undefined, step.id);
         }
       }
@@ -810,6 +812,8 @@ export class ExecutionEngine {
   /**
    * Add log entry
    */
+  private static readonly MAX_BUFFERED_LOGS = 10000;
+
   private static log(
     context: ExecutionContext,
     level: ExecutionLog['level'],
@@ -826,5 +830,15 @@ export class ExecutionEngine {
       message,
       data
     });
+
+    // Flush logs to DB periodically to prevent OOM on large workflows
+    if (context.logs.length >= this.MAX_BUFFERED_LOGS) {
+      try {
+        LogModel.createMany(context.logs);
+        context.logs.length = 0;
+      } catch (err) {
+        log.error({ err }, 'Failed to flush execution logs to database');
+      }
+    }
   }
 }

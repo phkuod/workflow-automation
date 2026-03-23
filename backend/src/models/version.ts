@@ -1,5 +1,6 @@
 import db from '../db/database';
 import { v4 as uuidv4 } from 'uuid';
+import { safeJsonParse } from '../utils/safeJsonParse';
 import { WorkflowDefinition } from '../types/workflow';
 
 export interface WorkflowVersion {
@@ -84,7 +85,7 @@ export class VersionModel {
       id: row.id,
       workflowId: row.workflow_id,
       version: row.version,
-      definition: JSON.parse(row.definition),
+      definition: safeJsonParse(row.definition, { stations: [] }, `version ${row.id}`),
       changeSummary: row.change_summary || undefined,
       createdAt: row.created_at,
     };

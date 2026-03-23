@@ -3,6 +3,7 @@ import { CronExpressionParser } from 'cron-parser';
 import { WorkflowModel } from '../models/workflow';
 import { ExecutionEngine } from './executionEngine';
 import { createLogger } from '../utils/logger';
+import { findTriggerStep } from '../utils/workflowHelpers';
 import type { Workflow, Execution } from '../types/workflow';
 
 const log = createLogger('scheduler');
@@ -42,7 +43,7 @@ class SchedulerService {
       for (const workflow of workflows) {
         if (workflow.status !== 'active') continue;
 
-        const cronStep = this.findCronTrigger(workflow);
+        const cronStep = findTriggerStep(workflow, 'trigger-cron');
         if (cronStep && cronStep.config.cronExpression) {
           this.scheduleWorkflow(workflow, cronStep.config.cronExpression);
           scheduledCount++;
@@ -181,20 +182,6 @@ class SchedulerService {
 
     const { task, ...rest } = scheduled;
     return rest;
-  }
-
-  /**
-   * Find the cron trigger step in a workflow
-   */
-  private findCronTrigger(workflow: Workflow): { config: { cronExpression?: string } } | null {
-    for (const station of workflow.definition.stations) {
-      for (const step of station.steps) {
-        if (step.type === 'trigger-cron') {
-          return step;
-        }
-      }
-    }
-    return null;
   }
 
   /**
