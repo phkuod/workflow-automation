@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ScriptRunner } from '../services/scriptRunner';
 import { EventEmitter } from 'events';
 
+// Mock DNS to return a public IP for any lookup (SSRF validation now resolves DNS)
+vi.mock('dns', () => ({
+  promises: {
+    lookup: vi.fn().mockResolvedValue({ address: '93.184.216.34', family: 4 }),
+  },
+}));
+
 // Mock both http and https modules
 vi.mock('http', async () => {
   const actual = await vi.importActual<typeof import('http')>('http');

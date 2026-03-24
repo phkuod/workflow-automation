@@ -30,6 +30,16 @@ export class WorkflowModel {
     return rows.map(this.rowToWorkflow);
   }
 
+  static getAllUnlimited(): Workflow[] {
+    const stmt = db.prepare(`
+      SELECT id, name, description, status, definition, created_at, updated_at
+      FROM workflows
+      ORDER BY updated_at DESC
+    `);
+    const rows = stmt.all() as WorkflowRow[];
+    return rows.map(this.rowToWorkflow);
+  }
+
   static count(): number {
     const stmt = db.prepare('SELECT COUNT(*) as count FROM workflows');
     const row = stmt.get() as { count: number } | undefined;
