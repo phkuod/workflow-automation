@@ -93,6 +93,15 @@ function DashboardPage() {
 
   const handleExecute = useCallback(async (workflow: Workflow, e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const isConfirmed = await confirm({
+      title: 'Execute Workflow',
+      message: `Are you sure you want to execute "${workflow.name}"?`,
+      confirmText: 'Execute',
+      type: 'info'
+    });
+    if (!isConfirmed) return;
+
     const params = workflow.definition.inputParameters;
     if (params && params.length > 0) {
       setExecuteTarget(workflow);
@@ -105,7 +114,7 @@ function DashboardPage() {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error(`Execution failed: ${msg}`);
     }
-  }, []);
+  }, [confirm]);
 
   const handleExecuteWithParams = useCallback(async (inputData: Record<string, unknown>) => {
     if (!executeTarget) return;

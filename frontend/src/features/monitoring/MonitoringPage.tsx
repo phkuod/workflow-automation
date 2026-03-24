@@ -368,7 +368,7 @@ export default function MonitoringPage() {
                     <LineChart data={trendData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                       <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} />
-                      <YAxis stroke="#94a3b8" fontSize={12} />
+                      <YAxis stroke="#94a3b8" fontSize={12} allowDecimals={false} />
                       <Tooltip 
                         contentStyle={{ 
                           backgroundColor: '#1e293b', 

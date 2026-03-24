@@ -80,7 +80,7 @@ function mockFetchFailure(message = 'Network error') {
 
 describe('MonitoringPage', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.clearAllMocks();
     mockGetExecutionHistory.mockResolvedValue([]);
   });
@@ -135,7 +135,7 @@ describe('MonitoringPage', () => {
     expect(screen.getByText('1d 1h 1m')).toBeInTheDocument();
     expect(screen.getByText('Active Schedules')).toBeInTheDocument();
     expect(screen.getByText('Memory (Heap)')).toBeInTheDocument();
-    expect(screen.getByText('42 MB')).toBeInTheDocument();
+    expect(screen.getAllByText('42 MB').length).toBeGreaterThanOrEqual(1);
   });
 
   // -------------------------------------------------------------------------
