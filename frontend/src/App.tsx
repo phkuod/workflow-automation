@@ -10,6 +10,7 @@ const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const EditorPage = lazy(() => import('./features/editor/EditorPage'));
 const MonitoringPage = lazy(() => import('./features/monitoring/MonitoringPage'));
 const ExecutionsPage = lazy(() => import('./features/executions/ExecutionsPage'));
+const TemplateGalleryPage = lazy(() => import('./features/templates/TemplateGalleryPage'));
 const NotFoundPage = lazy(() => import('./shared/components/NotFoundPage'));
 
 function LoadingFallback() {
@@ -43,6 +44,7 @@ function App() {
               <Route path="/dashboard" element={<MainLayout><DashboardPage /></MainLayout>} />
               <Route path="/monitoring" element={<MainLayout><MonitoringPage /></MainLayout>} />
               <Route path="/executions" element={<MainLayout><ExecutionsPage /></MainLayout>} />
+              <Route path="/new" element={<MainLayout><TemplateGalleryPage /></MainLayout>} />
               {/* Editor pages without sidebar for full-screen editing */}
               <Route path="/editor/:id" element={<EditorPage />} />
               <Route path="/editor" element={<EditorPage />} />

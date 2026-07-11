@@ -34,10 +34,6 @@ function DashboardPage() {
     error
   } = useWorkflowStore();
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newWorkflowName, setNewWorkflowName] = useState('');
-  const [newWorkflowDesc, setNewWorkflowDesc] = useState('');
-  const [nameTouched, setNameTouched] = useState(false);
   const [executeTarget, setExecuteTarget] = useState<Workflow | null>(null);
 
   useEffect(() => {
@@ -54,21 +50,6 @@ function DashboardPage() {
     }
     return { total: workflows.length, ...counts };
   }, [workflows]);
-
-  const handleCreate = useCallback(async () => {
-    if (!newWorkflowName.trim()) return;
-
-    try {
-      const workflow = await createWorkflow(newWorkflowName, newWorkflowDesc);
-      setShowCreateModal(false);
-      setNewWorkflowName('');
-      setNewWorkflowDesc('');
-      setNameTouched(false);
-      navigate(`/editor/${workflow.id}`);
-    } catch {
-      toast.error('Failed to create automation');
-    }
-  }, [newWorkflowName, newWorkflowDesc, createWorkflow, navigate]);
 
   const handleDelete = useCallback(async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -207,7 +188,7 @@ function DashboardPage() {
               style={{ display: 'none' }} 
             />
           </label>
-          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+          <button className="btn btn-primary" onClick={() => navigate('/new')}>
             <Plus size={18} />
             New Automation
           </button>
@@ -260,7 +241,7 @@ function DashboardPage() {
               <p className="text-muted">Create your first automation to get started</p>
               <button
                 className="btn btn-primary mt-4"
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => navigate('/new')}
               >
                 <Plus size={18} />
                 Create Automation
@@ -360,67 +341,6 @@ function DashboardPage() {
           onSubmit={handleExecuteWithParams}
           onCancel={() => setExecuteTarget(null)}
         />
-      )}
-
-      {/* Create Modal */}
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => { setShowCreateModal(false); setNameTouched(false); }}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Create New Automation" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">Create New Automation</h3>
-              <button
-                className="btn btn-ghost btn-icon"
-                onClick={() => { setShowCreateModal(false); setNameTouched(false); }}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label className="form-label">Automation Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g., Daily Report Generator"
-                  value={newWorkflowName}
-                  onChange={(e) => setNewWorkflowName(e.target.value)}
-                  onBlur={() => setNameTouched(true)}
-                  autoFocus
-                />
-                {nameTouched && !newWorkflowName.trim() && (
-                  <p className="text-sm" style={{ color: 'var(--accent-error)', marginTop: '4px' }}>
-                    Automation name is required
-                  </p>
-                )}
-              </div>
-              <div className="form-group">
-                <label className="form-label">Description (optional)</label>
-                <textarea
-                  className="form-textarea"
-                  placeholder="What does this automation do?"
-                  value={newWorkflowDesc}
-                  onChange={(e) => setNewWorkflowDesc(e.target.value)}
-                  rows={3}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button
-                className="btn btn-secondary"
-                onClick={() => { setShowCreateModal(false); setNameTouched(false); }}
-              >
-                Cancel
-              </button>
-              <button 
-                className="btn btn-primary"
-                onClick={handleCreate}
-                disabled={!newWorkflowName.trim()}
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

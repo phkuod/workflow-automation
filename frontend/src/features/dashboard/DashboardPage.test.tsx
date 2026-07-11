@@ -141,17 +141,14 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Flow 3')).toBeInTheDocument();
   });
 
-  it('"New Workflow" button opens create modal', async () => {
+  it('"New Automation" button navigates to the template gallery', async () => {
     render(<DashboardPage />);
-
-    expect(screen.queryByRole('dialog')).toBeNull();
 
     await act(async () => {
       fireEvent.click(screen.getByText('New Automation'));
     });
 
-    expect(screen.getByRole('dialog', { name: 'Create New Automation' })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('e.g., Daily Report Generator')).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith('/new');
   });
 
   it('navigates to editor on workflow row click', async () => {
