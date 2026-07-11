@@ -180,7 +180,7 @@ export default function StationConfigPanel({ station, workflow, onUpdate, onDele
                   </div>
                 )}
                 <p className="text-[10px] text-muted mt-1">
-                  Example: <code>steps['Step Name'].output.value &gt; 10</code>
+                  Example: <code>steps['Action Name'].output.value &gt; 10</code>
                 </p>
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function StationConfigPanel({ station, workflow, onUpdate, onDele
           </div>
 
           <p className="text-xs text-muted mb-4 italic">
-            Execute all steps in this stage repeatedly for each item in an array.
+            Execute all actions in this stage repeatedly for each item in an array.
           </p>
 
           {iteratorEnabled && (

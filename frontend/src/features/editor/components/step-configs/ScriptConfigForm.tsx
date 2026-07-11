@@ -15,14 +15,14 @@ export default function ScriptConfigForm({ type, code, onCodeChange }: ScriptCon
         value={code}
         onChange={(e) => onCodeChange(e.target.value)}
         placeholder={isJs
-          ? `// Access input data via inputData object\n// Return value will be the step output\n\nconst result = inputData.value * 2;\nreturn { result };`
+          ? `// Access input data via inputData object\n// Return value will be the action output\n\nconst result = inputData.value * 2;\nreturn { result };`
           : `# Access input data via input_data dict\n# Print JSON for output\n\nresult = input_data.get('value', 0) * 2\nprint(json.dumps({'result': result}))`
         }
         style={{ minHeight: '200px', fontFamily: 'monospace' }}
       />
       <p className="text-xs text-muted mt-2">
         {isJs
-          ? <>Access previous step outputs via <code>inputData</code>. Return an object for the step output.</>
+          ? <>Access previous action outputs via <code>inputData</code>. Return an object for the action output.</>
           : <>Access input via <code>input_data</code> dict. Print JSON for output.</>
         }
       </p>

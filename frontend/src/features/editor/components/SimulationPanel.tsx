@@ -208,7 +208,7 @@ function SimulationPanel({ execution, logs, isRunning, selectedStepId, onStepDes
               )}
               <span className="text-sm">{station.stationName}</span>
               <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>
-                {station.steps.filter(s => s.status === 'completed').length}/{station.steps.length} steps
+                {station.steps.filter(s => s.status === 'completed').length}/{station.steps.length} actions
               </span>
             </div>
           ))}
@@ -294,11 +294,11 @@ function formatEventMessage(event: ExecutionEvent): string {
   const { type, data } = event;
   switch (type) {
     case 'step:start':
-      return `Step started: ${data.stepName}`;
+      return `Action started: ${data.stepName}`;
     case 'step:complete':
-      return `Step completed: ${data.stepName}`;
+      return `Action completed: ${data.stepName}`;
     case 'step:failed':
-      return `Step failed: ${data.stepName} — ${data.error || 'unknown error'}`;
+      return `Action failed: ${data.stepName} — ${data.error || 'unknown error'}`;
     case 'station:start':
       return `Stage started: ${data.stationName}`;
     case 'station:complete':
@@ -306,7 +306,7 @@ function formatEventMessage(event: ExecutionEvent): string {
     case 'station:failed':
       return `Stage failed: ${data.stationName} — ${data.error || 'unknown error'}`;
     case 'execution:complete':
-      return `Run completed (${data.progress?.completed}/${data.progress?.total} steps)`;
+      return `Run completed (${data.progress?.completed}/${data.progress?.total} actions)`;
     case 'execution:failed':
       return `Run failed`;
     case 'execution:cancelled':

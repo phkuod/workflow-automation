@@ -280,7 +280,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
             {typeInfo.icon}
           </span>
           <div>
-            <div style={{ fontWeight: 600, fontSize: '14px' }}>Configure Step</div>
+            <div style={{ fontWeight: 600, fontSize: '14px' }}>Configure Action</div>
             <div style={{ fontSize: '12px', color: typeInfo.color }}>{typeInfo.label}</div>
           </div>
         </div>
@@ -292,7 +292,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
       {/* Body */}
       <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
         <div className="form-group">
-          <label className="form-label">Step Name</label>
+          <label className="form-label">Action Name</label>
           <input
             type="text"
             className="form-input"
@@ -369,7 +369,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
           gap: '8px',
         }}
       >
-        <button className="btn btn-danger btn-sm" onClick={onDelete} aria-label="Delete step">
+        <button className="btn btn-danger btn-sm" onClick={onDelete} aria-label="Delete action">
           <Trash2 size={14} />
           Delete
         </button>
@@ -377,7 +377,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
           className="btn btn-primary btn-sm"
           onClick={handleSave}
           style={{ marginLeft: 'auto' }}
-          aria-label="Save step configuration"
+          aria-label="Save action configuration"
         >
           <Save size={14} />
           Save

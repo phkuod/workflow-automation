@@ -208,10 +208,10 @@ function EditorPage() {
 
   const handleAddStep = useCallback(async (stationId: string, type: StepType) => {
     const name = await showInputDialog({
-      title: 'Add Step',
-      message: `Enter a name for the new ${type.replace('-', ' ')} step:`,
-      placeholder: 'Step name...',
-      confirmText: 'Create Step',
+      title: 'Add Action',
+      message: `Enter a name for the new ${type.replace('-', ' ')} action:`,
+      placeholder: 'Action name...',
+      confirmText: 'Create Action',
     });
     if (name) {
       addStep(stationId, type, name);
@@ -333,7 +333,7 @@ function EditorPage() {
             color: 'var(--text-secondary)',
           }}>
             <Layers size={14} />
-            {editorView.type === 'stage-view' ? 'Stage View' : 'Step View'}
+            {editorView.type === 'stage-view' ? 'Stage View' : 'Action View'}
           </div>
 
           {editorView.type === 'step-view' && (
@@ -360,7 +360,7 @@ function EditorPage() {
               onClick={() => setShowLibrary(!showLibrary)}
             >
               <Plus size={18} />
-              Add Step
+              Add Action
             </button>
           )}
 

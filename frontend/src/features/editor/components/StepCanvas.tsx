@@ -204,10 +204,10 @@ export default function StepCanvas({
             border: '2px dashed var(--border-color)',
           }}>
             <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              No steps in this stage yet.
+              No actions in this stage yet.
             </p>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              Use the Node Library to add steps.
+              Use the Node Library to add actions.
             </p>
           </div>
         )}
