@@ -368,7 +368,7 @@ function ExecutionRow({
             {logs && logs.length > 0 && (
               <details style={{ marginTop: '12px' }}>
                 <summary style={{ cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
-                  Technical details ({logs.length > 200 ? `last 200 of ${logs.length}` : logs.length} log entries)
+                  Technical details ({logs.length > 200 ? `last 200 of ${logs.length} log entries` : `${logs.length} log ${logs.length === 1 ? 'entry' : 'entries'}`})
                 </summary>
                 <div style={{
                   maxHeight: '250px', overflowY: 'auto',

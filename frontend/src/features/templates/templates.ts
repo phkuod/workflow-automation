@@ -56,7 +56,7 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
           id: 'stage-transform', name: 'Transform', position: { x: 400, y: 150 },
           steps: [
             { id: 'step-transform', name: 'Reshape the data', type: 'script-js', config: { code: 'const items = input.data || [];\nreturn { count: items.length, items };' }, position: { x: 100, y: 100 } },
-            { id: 'step-store', name: 'Remember the result', type: 'set-variable', config: { variableName: 'processedData', variableValue: '${step-transform.output}' }, position: { x: 300, y: 100 } },
+            { id: 'step-store', name: 'Remember the result', type: 'set-variable', config: { variableName: 'processedData', variableValue: '${step-transform.output.count}' }, position: { x: 300, y: 100 } },
           ],
         },
       ],
@@ -79,7 +79,7 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
         {
           id: 'stage-notify', name: 'Notify', position: { x: 400, y: 150 },
           steps: [
-            { id: 'step-slack', name: 'Post to Slack', type: 'action-slack', config: { slackWebhookUrl: '', slackMessage: 'New order received: ${step-trigger.output.body}' }, position: { x: 100, y: 100 } },
+            { id: 'step-slack', name: 'Post to Slack', type: 'action-slack', config: { slackWebhookUrl: '', slackMessage: 'New order received: ${input.body}' }, position: { x: 100, y: 100 } },
           ],
         },
       ],
@@ -120,7 +120,7 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
           id: 'stage-welcome', name: 'Welcome', position: { x: 100, y: 150 },
           steps: [
             { id: 'step-trigger', name: 'When a signup arrives', type: 'trigger-webhook', config: { webhookMethod: 'POST' }, position: { x: 100, y: 100 } },
-            { id: 'step-email', name: 'Send the welcome email', type: 'action-email', config: { emailTo: '${step-trigger.output.body.email}', emailSubject: 'Welcome!', emailBody: 'Thanks for signing up. We are glad you are here.' }, position: { x: 300, y: 100 } },
+            { id: 'step-email', name: 'Send the welcome email', type: 'action-email', config: { emailTo: '${input.body.email}', emailSubject: 'Welcome!', emailBody: 'Thanks for signing up. We are glad you are here.' }, position: { x: 300, y: 100 } },
           ],
         },
       ],
