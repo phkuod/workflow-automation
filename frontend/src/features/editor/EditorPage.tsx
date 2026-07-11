@@ -7,6 +7,7 @@ import { useInput } from '../../shared/components/InputDialog';
 import { useConfirm } from '../../shared/components/ConfirmDialog';
 import StageCanvas from './components/StageCanvas';
 import StepCanvas from './components/StepCanvas';
+import PlanView from './components/PlanView';
 import EditorBreadcrumb from './components/EditorBreadcrumb';
 import NodeLibrary from './components/NodeLibrary';
 import NodeConfigPanel from './components/NodeConfigPanel';
@@ -69,6 +70,13 @@ function EditorPage() {
 
   // View state
   const [editorView, setEditorView] = useState<EditorView>({ type: 'stage-view' });
+  const [viewMode, setViewMode] = useState<'plan' | 'canvas'>(() =>
+    (localStorage.getItem('editor.viewMode') as 'plan' | 'canvas' | null) ?? 'plan'
+  );
+  const switchViewMode = useCallback((mode: 'plan' | 'canvas') => {
+    setViewMode(mode);
+    localStorage.setItem('editor.viewMode', mode);
+  }, []);
   const [showLibrary, setShowLibrary] = useState(true);
   const [showSimulation, setShowSimulation] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -326,47 +334,67 @@ function EditorPage() {
         </div>
         
         <div className="header-actions">
-          {/* View indicator */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            padding: '6px 12px',
-            background: 'var(--bg-tertiary)',
-            borderRadius: '8px',
-            fontSize: '12px',
-            color: 'var(--text-secondary)',
-          }}>
-            <Layers size={14} />
-            {editorView.type === 'stage-view' ? 'Stage View' : 'Action View'}
+          {/* Plan / Canvas view toggle */}
+          <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-tertiary)', borderRadius: '8px', padding: '2px' }}>
+            <button
+              className={`btn btn-sm ${viewMode === 'plan' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => switchViewMode('plan')}
+            >
+              Plan View
+            </button>
+            <button
+              className={`btn btn-sm ${viewMode === 'canvas' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => switchViewMode('canvas')}
+            >
+              Canvas View
+            </button>
           </div>
 
-          {editorView.type === 'step-view' && (
-            <button 
-              className="btn btn-secondary"
-              onClick={handleBackToStageView}
-            >
-              <ArrowLeft size={18} />
-              Back to Stages
-            </button>
-          )}
+          {viewMode === 'canvas' && (
+            <>
+              {/* View indicator */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 12px',
+                background: 'var(--bg-tertiary)',
+                borderRadius: '8px',
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+              }}>
+                <Layers size={14} />
+                {editorView.type === 'stage-view' ? 'Stage View' : 'Action View'}
+              </div>
 
-          {editorView.type === 'stage-view' ? (
-            <button 
-              className="btn btn-secondary"
-              onClick={handleAddStation}
-            >
-              <Plus size={18} />
-              Add Stage
-            </button>
-          ) : (
-            <button 
-              className="btn btn-secondary"
-              onClick={() => setShowLibrary(!showLibrary)}
-            >
-              <Plus size={18} />
-              Add Action
-            </button>
+              {editorView.type === 'step-view' && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleBackToStageView}
+                >
+                  <ArrowLeft size={18} />
+                  Back to Stages
+                </button>
+              )}
+
+              {editorView.type === 'stage-view' ? (
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleAddStation}
+                >
+                  <Plus size={18} />
+                  Add Stage
+                </button>
+              ) : (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowLibrary(!showLibrary)}
+                >
+                  <Plus size={18} />
+                  Add Action
+                </button>
+              )}
+            </>
           )}
 
           {/* Workflow Status */}
@@ -452,8 +480,8 @@ function EditorPage() {
       {/* Main Editor Area */}
       <div className="flex" style={{ flex: 1, overflow: 'hidden' }}>
         {/* Node Library Panel (only in Step View) */}
-        {showLibrary && editorView.type === 'step-view' && currentStage && (
-          <NodeLibrary 
+        {viewMode === 'canvas' && showLibrary && editorView.type === 'step-view' && currentStage && (
+          <NodeLibrary
             onAddStep={(type) => handleAddStep(currentStage.id, type)}
             stations={currentWorkflow?.definition.stations || []}
             onAddStepToStation={handleAddStep}
@@ -463,29 +491,40 @@ function EditorPage() {
 
         {/* Canvas Area */}
         <div style={{ flex: 1, height: '100%' }}>
-          {currentWorkflow && editorView.type === 'stage-view' && (
-            <StageCanvas
+          {currentWorkflow && viewMode === 'plan' ? (
+            <PlanView
               workflow={currentWorkflow}
-              execution={currentExecution}
-              isSimulating={isSimulating}
-              onStageDoubleClick={handleStageDoubleClick}
-              onStageClick={handleStationClick}
-              onAddStation={handleAddStation}
+              onEditStep={(stepId) => selectStep(stepId)}
+              onEditStage={(stageId) => selectStation(stageId)}
+              onAddStage={handleAddStation}
             />
-          )}
+          ) : (
+            <>
+              {currentWorkflow && editorView.type === 'stage-view' && (
+                <StageCanvas
+                  workflow={currentWorkflow}
+                  execution={currentExecution}
+                  isSimulating={isSimulating}
+                  onStageDoubleClick={handleStageDoubleClick}
+                  onStageClick={handleStationClick}
+                  onAddStation={handleAddStation}
+                />
+              )}
 
-          {currentWorkflow && editorView.type === 'step-view' && currentStage && (
-            <StepCanvas
-              station={currentStage}
-              execution={currentExecution}
-              isSimulating={isSimulating}
-              selectedStepId={selectedStepId}
-              onStepClick={handleStepClick}
-              onStepUpdate={updateStep}
-              onStepConnect={(sourceId, targetId, sourceHandle) =>
-                connectSteps(currentStage.id, sourceId, targetId, sourceHandle)
-              }
-            />
+              {currentWorkflow && editorView.type === 'step-view' && currentStage && (
+                <StepCanvas
+                  station={currentStage}
+                  execution={currentExecution}
+                  isSimulating={isSimulating}
+                  selectedStepId={selectedStepId}
+                  onStepClick={handleStepClick}
+                  onStepUpdate={updateStep}
+                  onStepConnect={(sourceId, targetId, sourceHandle) =>
+                    connectSteps(currentStage.id, sourceId, targetId, sourceHandle)
+                  }
+                />
+              )}
+            </>
           )}
         </div>
 
@@ -500,7 +539,7 @@ function EditorPage() {
           />
         )}
 
-        {selectedStation && currentWorkflow && editorView.type === 'stage-view' && (
+        {selectedStation && currentWorkflow && (editorView.type === 'stage-view' || viewMode === 'plan') && (
           <StationConfigPanel 
             station={selectedStation}
             workflow={currentWorkflow}
