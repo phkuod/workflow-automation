@@ -267,6 +267,11 @@ function EditorPage() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+        return;
+      }
       if (e.key === 'Escape') {
         if (selectedStepId) {
           selectStep(null);
@@ -280,7 +285,7 @@ function EditorPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedStepId, selectedStationId, editorView, selectStep, selectStation, handleBackToStageView]);
+  }, [selectedStepId, selectedStationId, editorView, selectStep, selectStation, handleBackToStageView, handleSave]);
 
   // Loading state
   if (isLoading && !currentWorkflow) {

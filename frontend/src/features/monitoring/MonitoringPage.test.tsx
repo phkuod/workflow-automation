@@ -22,11 +22,15 @@ vi.mock('recharts', () => ({
   Legend: () => null,
 }));
 
-// Mock metricsApi
+// Mock metricsApi and scheduleApi
 const mockGetExecutionHistory = vi.fn().mockResolvedValue([]);
+const mockGetSchedules = vi.fn().mockResolvedValue([]);
 vi.mock('../../shared/api/workflowApi', () => ({
   metricsApi: {
     getExecutionHistory: (...args: unknown[]) => mockGetExecutionHistory(...args),
+  },
+  scheduleApi: {
+    getAll: (...args: unknown[]) => mockGetSchedules(...args),
   },
 }));
 
@@ -83,6 +87,7 @@ describe('MonitoringPage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.clearAllMocks();
     mockGetExecutionHistory.mockResolvedValue([]);
+    mockGetSchedules.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -160,5 +165,29 @@ describe('MonitoringPage', () => {
     render(<MonitoringPage />);
 
     expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
+  // Test 6: scheduled automations section
+  // -------------------------------------------------------------------------
+  it('lists scheduled automations with next run time', async () => {
+    mockFetchSuccess(mockMetrics);
+    mockGetSchedules.mockResolvedValue([
+      {
+        workflowId: 'w1',
+        workflowName: 'Daily Report',
+        cronExpression: '0 9 * * *',
+        isActive: true,
+        nextRun: '2026-07-12T09:00:00.000Z',
+      },
+    ]);
+
+    render(<MonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Scheduled Automations')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Daily Report')).toBeInTheDocument();
+    expect(screen.getByText('0 9 * * *')).toBeInTheDocument();
   });
 });

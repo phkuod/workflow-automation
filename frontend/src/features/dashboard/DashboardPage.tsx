@@ -217,7 +217,7 @@ function DashboardPage() {
         </div>
 
         {/* Workflows List */}
-        <div className="card">
+        <div className="card" style={{ overflowX: 'auto' }}>
           <div className="card-header">
             <h2 className="card-title">Automations</h2>
           </div>
@@ -268,7 +268,7 @@ function DashboardPage() {
                     <td>
                       <div className="font-medium">{workflow.name}</div>
                       {workflow.description && (
-                        <div className="text-sm text-muted">{workflow.description}</div>
+                        <div className="text-sm text-muted cell-description">{workflow.description}</div>
                       )}
                     </td>
                     <td>{getStatusBadge(workflow.status)}</td>
@@ -276,12 +276,13 @@ function DashboardPage() {
                     <td className="text-muted text-sm">
                       {new Date(workflow.updatedAt).toLocaleDateString()}
                     </td>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
                       <div className="flex gap-2">
                         <button
                           className="btn btn-sm btn-success btn-icon"
                           onClick={(e) => handleExecute(workflow, e)}
-                          title="Execute"
+                          disabled={workflow.status === 'draft'}
+                          title={workflow.status === 'draft' ? 'Activate this automation to run it' : 'Run'}
                         >
                           <Play size={14} />
                         </button>

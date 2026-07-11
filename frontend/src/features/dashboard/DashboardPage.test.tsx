@@ -168,4 +168,17 @@ describe('DashboardPage', () => {
 
     expect(screen.getByText('Failed to load workflows')).toBeInTheDocument();
   });
+
+  it('disables the run button for draft automations', () => {
+    mockStore.workflows = mockWorkflows as typeof mockStore.workflows;
+    render(<DashboardPage />);
+
+    const draftRow = screen.getByText('Flow 3').closest('tr');
+    const draftRunButton = draftRow!.querySelector('[title="Activate this automation to run it"]');
+    expect(draftRunButton).toBeDisabled();
+
+    const activeRow = screen.getByText('Test Flow').closest('tr');
+    const activeRunButton = activeRow!.querySelector('[title="Run"]');
+    expect(activeRunButton).not.toBeDisabled();
+  });
 });

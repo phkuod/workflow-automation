@@ -147,3 +147,21 @@ export const metricsApi = {
     return response.data.data!;
   },
 };
+
+// Schedules API
+export interface ScheduleInfo {
+  workflowId: string;
+  workflowName: string;
+  cronExpression: string;
+  isActive: boolean;
+  nextRun?: string;
+  lastRun?: string;
+}
+
+export const scheduleApi = {
+  getAll: async (): Promise<ScheduleInfo[]> => {
+    const response = await api.get<ApiResponse<ScheduleInfo[]>>('/schedules');
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+};
