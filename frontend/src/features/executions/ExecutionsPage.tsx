@@ -18,6 +18,7 @@ import { executionApi } from '../../shared/api/workflowApi';
 import { EDGE_COLORS } from '../../shared/constants/colors';
 import { useConfirm } from '../../shared/components/ConfirmDialog';
 import type { Execution, ExecutionLog } from '../../shared/types/workflow';
+import RunTimeline from './components/RunTimeline';
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, { bg: string; color: string; icon: React.ReactNode }> = {
@@ -330,55 +331,22 @@ function ExecutionRow({
       {isExpanded && (
         <tr>
           <td colSpan={8} style={{ padding: '0 16px 16px 40px', background: 'var(--bg-tertiary)' }}>
-            {/* Station/Step Results */}
+            {/* Run Timeline */}
             {execution.result?.stations && execution.result.stations.length > 0 && (
-              <div style={{ marginTop: '12px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Stage Results</h4>
-                {execution.result.stations.map((station) => (
-                  <div key={station.stationId} style={{
-                    marginBottom: '8px', padding: '10px 14px',
-                    borderRadius: '8px', background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <StatusBadge status={station.status} />
-                      <span style={{ fontWeight: 500, fontSize: '13px' }}>{station.stationName}</span>
-                    </div>
-                    {station.steps.length > 0 && (
-                      <div style={{ paddingLeft: '12px', borderLeft: '2px solid var(--border-color)' }}>
-                        {station.steps.map((step) => (
-                          <div key={step.stepId} style={{
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '4px 0', fontSize: '12px',
-                          }}>
-                            <StatusBadge status={step.status} />
-                            <span>{step.stepName}</span>
-                            <span style={{ color: 'var(--text-muted)' }}>({step.stepType})</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <RunTimeline result={execution.result} />
             )}
 
             {/* Logs */}
             {logs && logs.length > 0 && (
-              <div style={{ marginTop: '12px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>
-                  Logs
-                  {logs.length > 200 && (
-                    <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: '8px' }}>
-                      (showing last 200 of {logs.length})
-                    </span>
-                  )}
-                </h4>
+              <details style={{ marginTop: '12px' }}>
+                <summary style={{ cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Technical details ({logs.length} log entries)
+                </summary>
                 <div style={{
                   maxHeight: '250px', overflowY: 'auto',
                   background: 'var(--bg-primary)', borderRadius: '8px',
                   border: '1px solid var(--border-color)', padding: '8px',
-                  fontFamily: 'monospace', fontSize: '11px',
+                  fontFamily: 'monospace', fontSize: '11px', marginTop: '8px',
                 }}>
                   {logs.slice(-200).map((log) => (
                     <div key={log.id} style={{
@@ -396,7 +364,7 @@ function ExecutionRow({
                     </div>
                   ))}
                 </div>
-              </div>
+              </details>
             )}
             {logs && logs.length === 0 && (
               <p className="text-muted text-sm" style={{ marginTop: '8px' }}>No logs available.</p>
