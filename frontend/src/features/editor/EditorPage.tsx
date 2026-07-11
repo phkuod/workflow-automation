@@ -76,6 +76,11 @@ function EditorPage() {
   const switchViewMode = useCallback((mode: 'plan' | 'canvas') => {
     setViewMode(mode);
     localStorage.setItem('editor.viewMode', mode);
+    if (mode === 'plan') {
+      // Plan View has no drill-in concept: reset the canvas navigation so the
+      // breadcrumb and step-view state don't go stale behind the plan.
+      setEditorView({ type: 'stage-view' });
+    }
   }, []);
   const [showLibrary, setShowLibrary] = useState(true);
   const [showSimulation, setShowSimulation] = useState(false);

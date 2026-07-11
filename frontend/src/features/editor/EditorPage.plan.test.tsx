@@ -126,6 +126,27 @@ describe('EditorPage view toggle', () => {
     expect(window.localStorage.getItem('editor.viewMode')).toBe('canvas');
   });
 
+  it('resets the canvas drill-in when switching to Plan View', () => {
+    window.localStorage.setItem('editor.viewMode', 'canvas');
+    render(<EditorPage />);
+
+    // Drill into the first stage's step view via the stage node double-click
+    fireEvent.doubleClick(screen.getByText('Stage 1: Collect data'));
+    expect(screen.getByText('Action View')).toBeInTheDocument();
+    // Breadcrumb now shows the stage crumb
+    expect(screen.getByRole('button', { name: 'Collect data' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^plan view$/i }));
+
+    // The stale stage crumb must be gone: breadcrumb shows only the automation name
+    expect(screen.queryByRole('button', { name: 'Collect data' })).not.toBeInTheDocument();
+
+    // Switching back to canvas lands on the stage overview, not the stale step view
+    fireEvent.click(screen.getByRole('button', { name: /canvas view/i }));
+    expect(screen.getByText('Stage View')).toBeInTheDocument();
+    expect(screen.queryByText('Action View')).not.toBeInTheDocument();
+  });
+
   it('opens the action config panel when a plan row edit button is clicked', () => {
     const { rerender } = render(<EditorPage />);
 
