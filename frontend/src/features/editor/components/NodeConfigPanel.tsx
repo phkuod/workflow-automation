@@ -305,58 +305,63 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
 
         {/* Retry Policy - Only for actions, not triggers */}
         {!step.type.startsWith('trigger-') && step.type !== 'if-else' && step.type !== 'wait' && (
-          <div className="mt-8 pt-6 border-t border-color">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-semibold">Retry Policy</h4>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={retryEnabled}
-                  onChange={(e) => setRetryEnabled(e.target.checked)}
-                />
-                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
-
-            {retryEnabled && (
-              <div className="space-y-4">
-                <div className="form-group">
-                  <label className="form-label">Max Attempts</label>
+          <details style={{ marginTop: '16px' }}>
+            <summary style={{ cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+              Advanced
+            </summary>
+            <div className="mt-8 pt-6 border-t border-color">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-semibold">Retry Policy</h4>
+                <label className="relative inline-flex items-center cursor-pointer">
                   <input
-                    type="number"
-                    className="form-input"
-                    value={maxAttempts}
-                    onChange={(e) => setMaxAttempts(Number(e.target.value))}
-                    min={1}
-                    max={10}
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={retryEnabled}
+                    onChange={(e) => setRetryEnabled(e.target.checked)}
                   />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Initial Interval (ms)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={initialInterval}
-                    onChange={(e) => setInitialInterval(Number(e.target.value))}
-                    min={100}
-                    step={100}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Backoff Coefficient</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={backoffCoefficient}
-                    onChange={(e) => setBackoffCoefficient(Number(e.target.value))}
-                    min={1}
-                    step={0.1}
-                  />
-                </div>
+                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
               </div>
-            )}
-          </div>
+
+              {retryEnabled && (
+                <div className="space-y-4">
+                  <div className="form-group">
+                    <label className="form-label">Max Attempts</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={maxAttempts}
+                      onChange={(e) => setMaxAttempts(Number(e.target.value))}
+                      min={1}
+                      max={10}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Initial Interval (ms)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={initialInterval}
+                      onChange={(e) => setInitialInterval(Number(e.target.value))}
+                      min={100}
+                      step={100}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Backoff Coefficient</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={backoffCoefficient}
+                      onChange={(e) => setBackoffCoefficient(Number(e.target.value))}
+                      min={1}
+                      step={0.1}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
         )}
       </div>
 
