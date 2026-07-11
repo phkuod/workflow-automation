@@ -307,7 +307,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
         {!step.type.startsWith('trigger-') && step.type !== 'if-else' && step.type !== 'wait' && (
           <details style={{ marginTop: '16px' }}>
             <summary style={{ cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
-              Advanced
+              Advanced (retries)
             </summary>
             <div className="mt-8 pt-6 border-t border-color">
               <div className="flex items-center justify-between mb-4">

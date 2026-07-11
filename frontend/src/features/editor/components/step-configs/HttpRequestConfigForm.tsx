@@ -112,7 +112,7 @@ export default function HttpRequestConfigForm({
       )}
       <details style={{ marginTop: '16px' }}>
         <summary style={{ cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
-          Advanced
+          Advanced (headers & timeout)
         </summary>
         <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
           <div className="form-group">
