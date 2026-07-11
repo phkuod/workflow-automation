@@ -139,4 +139,83 @@ describe('ExecutionsPage', () => {
       expect(screen.getByText('2 runs')).toBeInTheDocument();
     });
   });
+
+  it('keeps a row expanded when another row is expanded', async () => {
+    const executions = [
+      {
+        id: 'e1',
+        workflowId: 'w1',
+        workflowName: 'Workflow One',
+        status: 'completed',
+        triggeredBy: 'manual',
+        startTime: '2024-01-01T10:00:00Z',
+        endTime: '2024-01-01T10:00:05Z',
+        successRate: 100,
+        result: { stations: [{ stationId: 's1', stationName: 'Station Alpha', status: 'completed', steps: [] }] },
+      },
+      {
+        id: 'e2',
+        workflowId: 'w2',
+        workflowName: 'Workflow Two',
+        status: 'completed',
+        triggeredBy: 'manual',
+        startTime: '2024-01-01T09:00:00Z',
+        endTime: '2024-01-01T09:00:05Z',
+        successRate: 100,
+        result: { stations: [{ stationId: 's2', stationName: 'Station Beta', status: 'completed', steps: [] }] },
+      },
+    ];
+    mockGetAll.mockResolvedValue(executions);
+
+    render(<ExecutionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Workflow One')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Workflow One'));
+    await waitFor(() => {
+      expect(screen.getByText('Station Alpha')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Workflow Two'));
+    await waitFor(() => {
+      expect(screen.getByText('Station Beta')).toBeInTheDocument();
+    });
+
+    // The first row's expanded content must still be present.
+    expect(screen.getByText('Station Alpha')).toBeInTheDocument();
+  });
+
+  it('paginates runs 10 per page', async () => {
+    const executions = Array.from({ length: 25 }, (_, i) => ({
+      id: 'e' + i,
+      workflowId: 'w1',
+      workflowName: 'WF ' + i,
+      status: 'completed',
+      triggeredBy: 'manual',
+      startTime: new Date(2026, 0, 1, 0, i).toISOString(),
+      endTime: new Date(2026, 0, 1, 0, i, 30).toISOString(),
+      successRate: 100,
+    }));
+    mockGetAll.mockResolvedValue(executions);
+
+    render(<ExecutionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('WF 0')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText(/^WF \d+$/)).toHaveLength(10);
+    expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+    expect(screen.queryByText('WF 10')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('WF 10')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('WF 0')).not.toBeInTheDocument();
+    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+  });
 });

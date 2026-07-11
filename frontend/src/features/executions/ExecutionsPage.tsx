@@ -61,16 +61,19 @@ function formatDuration(start: string, end?: string): string {
   return `${(ms / 60000).toFixed(1)}m`;
 }
 
+const PAGE_SIZE = 10;
+
 export default function ExecutionsPage() {
   const navigate = useNavigate();
   const { confirm } = useConfirm();
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [logs, setLogs] = useState<Record<string, ExecutionLog[]>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
 
   const fetchExecutions = useCallback(async () => {
     try {
@@ -90,12 +93,12 @@ export default function ExecutionsPage() {
   }, [fetchExecutions]);
 
   const toggleExpand = async (id: string) => {
-    if (expandedId === id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(id);
-    if (!logs[id]) {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+    if (!expandedIds.has(id) && !logs[id]) {
       try {
         const logData = await executionApi.getLogs(id);
         setLogs(prev => ({ ...prev, [id]: logData }));
@@ -117,7 +120,11 @@ export default function ExecutionsPage() {
     try {
       await executionApi.delete(id);
       setExecutions(prev => prev.filter(e => e.id !== id));
-      if (expandedId === id) setExpandedId(null);
+      setExpandedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete run');
     }
@@ -137,6 +144,13 @@ export default function ExecutionsPage() {
     if (searchQuery && !exec.workflowName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredExecutions.length / PAGE_SIZE));
+  const pagedExecutions = filteredExecutions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="layout">
@@ -226,35 +240,48 @@ export default function ExecutionsPage() {
             <p className="text-muted">Try adjusting your search or filter criteria.</p>
           </div>
         ) : (
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <th style={thStyle}></th>
-                  <th style={thStyle}>Automation</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Trigger</th>
-                  <th style={thStyle}>Started</th>
-                  <th style={thStyle}>Duration</th>
-                  <th style={thStyle}>Success</th>
-                  <th style={thStyle}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredExecutions.map((exec) => (
-                  <ExecutionRow
-                    key={exec.id}
-                    execution={exec}
-                    isExpanded={expandedId === exec.id}
-                    logs={logs[exec.id]}
-                    onToggle={() => toggleExpand(exec.id)}
-                    onDelete={() => handleDelete(exec.id)}
-                    onCancel={() => handleCancel(exec.id)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <th style={thStyle}></th>
+                    <th style={thStyle}>Automation</th>
+                    <th style={thStyle}>Status</th>
+                    <th style={thStyle}>Trigger</th>
+                    <th style={thStyle}>Started</th>
+                    <th style={thStyle}>Duration</th>
+                    <th style={thStyle}>Success</th>
+                    <th style={thStyle}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedExecutions.map((exec) => (
+                    <ExecutionRow
+                      key={exec.id}
+                      execution={exec}
+                      isExpanded={expandedIds.has(exec.id)}
+                      logs={logs[exec.id]}
+                      onToggle={() => toggleExpand(exec.id)}
+                      onDelete={() => handleDelete(exec.id)}
+                      onCancel={() => handleCancel(exec.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
+                <button className="btn btn-sm btn-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                  Previous
+                </button>
+                <span className="text-sm text-muted">Page {page} of {totalPages}</span>
+                <button className="btn btn-sm btn-secondary" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
