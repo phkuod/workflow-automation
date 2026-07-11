@@ -150,7 +150,8 @@ export default function ExecutionsPage() {
   }, [searchQuery, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredExecutions.length / PAGE_SIZE));
-  const pagedExecutions = filteredExecutions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const currentPage = Math.min(page, totalPages);
+  const pagedExecutions = filteredExecutions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="layout">
@@ -272,11 +273,11 @@ export default function ExecutionsPage() {
             </div>
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
-                <button className="btn btn-sm btn-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                <button className="btn btn-sm btn-secondary" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
                   Previous
                 </button>
-                <span className="text-sm text-muted">Page {page} of {totalPages}</span>
-                <button className="btn btn-sm btn-secondary" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+                <span className="text-sm text-muted">Page {currentPage} of {totalPages}</span>
+                <button className="btn btn-sm btn-secondary" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)}>
                   Next
                 </button>
               </div>

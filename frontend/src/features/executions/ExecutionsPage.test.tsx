@@ -218,4 +218,44 @@ describe('ExecutionsPage', () => {
     expect(screen.queryByText('WF 0')).not.toBeInTheDocument();
     expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
   });
+
+  it('clamps the page when the run list shrinks below the current page', async () => {
+    const executions = Array.from({ length: 11 }, (_, i) => ({
+      id: 'e' + i,
+      workflowId: 'w1',
+      workflowName: 'WF ' + i,
+      status: 'completed',
+      triggeredBy: 'manual',
+      startTime: new Date(2026, 0, 1, 0, i).toISOString(),
+      endTime: new Date(2026, 0, 1, 0, i, 30).toISOString(),
+      successRate: 100,
+    }));
+    mockGetAll.mockResolvedValue(executions);
+    mockConfirm.mockResolvedValue(true);
+    mockDelete.mockResolvedValue(undefined);
+
+    render(<ExecutionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('WF 0')).toBeInTheDocument();
+    });
+
+    // Go to page 2: it holds the single overflow row.
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+    });
+    expect(screen.getAllByText(/^WF \d+$/)).toHaveLength(1);
+
+    // Delete the only row on page 2 (confirm dialog resolves true).
+    fireEvent.click(screen.getByTitle('Delete run record'));
+
+    // The page must clamp back so the remaining rows are visible again.
+    await waitFor(() => {
+      expect(screen.getAllByText(/^WF \d+$/)).toHaveLength(10);
+    });
+    // 10 rows = 1 page, so pagination controls are hidden.
+    expect(screen.queryByText(/Page \d+ of \d+/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /next/i })).not.toBeInTheDocument();
+  });
 });
