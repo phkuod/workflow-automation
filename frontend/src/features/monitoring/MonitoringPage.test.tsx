@@ -104,12 +104,16 @@ describe('MonitoringPage', () => {
     render(<MonitoringPage />);
 
     expect(screen.getByText('System Monitoring')).toBeInTheDocument();
+
+    // Let the fire-and-forget schedule fetch settle inside act() so its
+    // setSchedules update doesn't fire unguarded after the test body ends
+    await waitFor(() => expect(mockGetSchedules).toHaveBeenCalled());
   });
 
   // -------------------------------------------------------------------------
   // Test 2: skeleton loading state
   // -------------------------------------------------------------------------
-  it('shows loading skeletons initially before data resolves', () => {
+  it('shows loading skeletons initially before data resolves', async () => {
     // Keep fetch perpetually pending so the loading state stays visible
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
 
@@ -118,6 +122,10 @@ describe('MonitoringPage', () => {
     // The component renders 4 skeleton cards while isLoading && !metrics
     const skeletons = document.querySelectorAll('.skeleton');
     expect(skeletons.length).toBeGreaterThan(0);
+
+    // Let the fire-and-forget schedule fetch settle inside act() so its
+    // setSchedules update doesn't fire unguarded after the test body ends
+    await waitFor(() => expect(mockGetSchedules).toHaveBeenCalled());
   });
 
   // -------------------------------------------------------------------------
@@ -165,6 +173,10 @@ describe('MonitoringPage', () => {
     render(<MonitoringPage />);
 
     expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
+
+    // Let the fire-and-forget schedule fetch settle inside act() so its
+    // setSchedules update doesn't fire unguarded after the test body ends
+    await waitFor(() => expect(mockGetSchedules).toHaveBeenCalled());
   });
 
   // -------------------------------------------------------------------------
