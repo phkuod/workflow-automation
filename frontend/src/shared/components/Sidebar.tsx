@@ -16,7 +16,7 @@ interface SidebarProps {
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/executions', label: 'Executions', icon: List },
+  { path: '/executions', label: 'Runs', icon: List },
   { path: '/monitoring', label: 'Monitoring', icon: Activity },
 ];
 

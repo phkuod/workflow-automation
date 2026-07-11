@@ -21,11 +21,12 @@ describe('NodeLibrary', () => {
     expect(screen.getByText('Node Library')).toBeInTheDocument();
   });
 
-  it('shows all 3 categories', () => {
+  it('shows all 4 categories', () => {
     render(<NodeLibrary {...defaultProps} />);
-    expect(screen.getByText('📌 Triggers')).toBeInTheDocument();
-    expect(screen.getByText('⚙️ Actions')).toBeInTheDocument();
-    expect(screen.getByText('🔀 Flow Control')).toBeInTheDocument();
+    expect(screen.getByText('📌 When it starts')).toBeInTheDocument();
+    expect(screen.getByText('⚙️ Do something')).toBeInTheDocument();
+    expect(screen.getByText('🔀 Flow control')).toBeInTheDocument();
+    expect(screen.getByText('🛠️ Advanced')).toBeInTheDocument();
   });
 
   it('search filter shows only matching nodes', () => {
@@ -34,9 +35,9 @@ describe('NodeLibrary', () => {
     const searchInput = screen.getByPlaceholderText('Search nodes...');
     fireEvent.change(searchInput, { target: { value: 'java' } });
 
-    expect(screen.getByText('JavaScript')).toBeInTheDocument();
-    expect(screen.queryByText('Manual Trigger')).not.toBeInTheDocument();
-    expect(screen.queryByText('HTTP Request')).not.toBeInTheDocument();
+    expect(screen.getByText('Custom Script (JavaScript)')).toBeInTheDocument();
+    expect(screen.queryByText('Start manually')).not.toBeInTheDocument();
+    expect(screen.queryByText('Call an external service')).not.toBeInTheDocument();
   });
 
   it('close button calls onClose', () => {
@@ -53,8 +54,8 @@ describe('NodeLibrary', () => {
   it('clicking a node calls onAddStepToStation with the station id and step type', () => {
     render(<NodeLibrary {...defaultProps} />);
 
-    // All categories are expanded by default; click the "Manual Trigger" node button
-    fireEvent.click(screen.getByText('Manual Trigger'));
+    // All categories are expanded by default; click the "Start manually" node button
+    fireEvent.click(screen.getByText('Start manually'));
 
     expect(defaultProps.onAddStepToStation).toHaveBeenCalledTimes(1);
     expect(defaultProps.onAddStepToStation).toHaveBeenCalledWith('s1', 'trigger-manual');

@@ -78,7 +78,7 @@ export default function ExecutionsPage() {
       setExecutions(data);
       setError(null);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch executions');
+      setError(err instanceof Error ? err.message : 'Failed to fetch runs');
     } finally {
       setIsLoading(false);
     }
@@ -106,8 +106,8 @@ export default function ExecutionsPage() {
 
   const handleDelete = async (id: string) => {
     const isConfirmed = await confirm({
-      title: 'Delete Execution',
-      message: 'Are you sure you want to delete this execution record? This action cannot be undone.',
+      title: 'Delete run record',
+      message: 'Are you sure you want to delete this run record? This action cannot be undone.',
       confirmText: 'Delete',
       type: 'danger'
     });
@@ -118,7 +118,7 @@ export default function ExecutionsPage() {
       setExecutions(prev => prev.filter(e => e.id !== id));
       if (expandedId === id) setExpandedId(null);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to delete execution');
+      setError(err instanceof Error ? err.message : 'Failed to delete run');
     }
   };
 
@@ -127,7 +127,7 @@ export default function ExecutionsPage() {
       await executionApi.cancel(id);
       await fetchExecutions();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to cancel execution');
+      setError(err instanceof Error ? err.message : 'Failed to cancel run');
     }
   };
 
@@ -147,12 +147,12 @@ export default function ExecutionsPage() {
           <div>
             <h1 style={{ fontSize: '1.5rem' }}>
               <List size={24} style={{ marginRight: '10px', color: 'var(--accent-primary)' }} />
-              Execution History
+              Run History
             </h1>
             <p className="text-sm text-muted">
               {filteredExecutions.length === executions.length
-                ? `${executions.length} executions`
-                : `${filteredExecutions.length} of ${executions.length} executions`}
+                ? `${executions.length} runs`
+                : `${filteredExecutions.length} of ${executions.length} runs`}
             </p>
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function ExecutionsPage() {
               <input
                 type="text"
                 className="form-input"
-                placeholder="Search by workflow name..."
+                placeholder="Search by automation name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ paddingLeft: '34px' }}
@@ -210,18 +210,18 @@ export default function ExecutionsPage() {
         {isLoading && executions.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
             <Loader size={32} className="loading-spinner" style={{ margin: '0 auto 1rem', color: 'var(--accent-primary)' }} />
-            <p className="text-muted">Loading executions...</p>
+            <p className="text-muted">Loading runs...</p>
           </div>
         ) : executions.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
             <Clock size={48} style={{ margin: '0 auto 1rem', color: 'var(--text-muted)' }} />
-            <h3>No Executions Yet</h3>
-            <p className="text-muted">Run a workflow to see execution history here.</p>
+            <h3>No runs yet</h3>
+            <p className="text-muted">Run an automation to see its history here.</p>
           </div>
         ) : filteredExecutions.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
             <Search size={48} style={{ margin: '0 auto 1rem', color: 'var(--text-muted)' }} />
-            <h3>No Matching Executions</h3>
+            <h3>No matching runs</h3>
             <p className="text-muted">Try adjusting your search or filter criteria.</p>
           </div>
         ) : (
@@ -230,7 +230,7 @@ export default function ExecutionsPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <th style={thStyle}></th>
-                  <th style={thStyle}>Workflow</th>
+                  <th style={thStyle}>Automation</th>
                   <th style={thStyle}>Status</th>
                   <th style={thStyle}>Trigger</th>
                   <th style={thStyle}>Started</th>
@@ -312,7 +312,7 @@ function ExecutionRow({
             <button
               className="btn btn-ghost btn-icon btn-sm"
               onClick={(e) => { e.stopPropagation(); onCancel(); }}
-              title="Cancel execution"
+              title="Cancel run"
             >
               <XCircle size={14} style={{ color: 'var(--accent-warning)' }} />
             </button>
@@ -320,7 +320,7 @@ function ExecutionRow({
             <button
               className="btn btn-ghost btn-icon btn-sm"
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              title="Delete execution"
+              title="Delete run record"
             >
               <Trash2 size={14} style={{ color: 'var(--accent-error)' }} />
             </button>
@@ -333,7 +333,7 @@ function ExecutionRow({
             {/* Station/Step Results */}
             {execution.result?.stations && execution.result.stations.length > 0 && (
               <div style={{ marginTop: '12px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Station Results</h4>
+                <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Stage Results</h4>
                 {execution.result.stations.map((station) => (
                   <div key={station.stationId} style={{
                     marginBottom: '8px', padding: '10px 14px',

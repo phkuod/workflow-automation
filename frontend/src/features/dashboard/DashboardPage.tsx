@@ -66,7 +66,7 @@ function DashboardPage() {
       setNameTouched(false);
       navigate(`/editor/${workflow.id}`);
     } catch {
-      toast.error('Failed to create workflow');
+      toast.error('Failed to create automation');
     }
   }, [newWorkflowName, newWorkflowDesc, createWorkflow, navigate]);
 
@@ -74,8 +74,8 @@ function DashboardPage() {
     e.stopPropagation();
 
     const isConfirmed = await confirm({
-      title: 'Delete Workflow',
-      message: 'Are you sure you want to delete this workflow? This action cannot be undone.',
+      title: 'Delete Automation',
+      message: 'Are you sure you want to delete this automation? This action cannot be undone.',
       confirmText: 'Delete',
       type: 'danger'
     });
@@ -95,7 +95,7 @@ function DashboardPage() {
     e.stopPropagation();
 
     const isConfirmed = await confirm({
-      title: 'Execute Workflow',
+      title: 'Execute Automation',
       message: `Are you sure you want to execute "${workflow.name}"?`,
       confirmText: 'Execute',
       type: 'info'
@@ -109,10 +109,10 @@ function DashboardPage() {
     }
     try {
       await workflowApi.execute(workflow.id);
-      toast.success(`Workflow "${workflow.name}" execution started`);
+      toast.success(`Automation "${workflow.name}" run started`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      toast.error(`Execution failed: ${msg}`);
+      toast.error(`Run failed: ${msg}`);
     }
   }, [confirm]);
 
@@ -121,10 +121,10 @@ function DashboardPage() {
     setExecuteTarget(null);
     try {
       await workflowApi.execute(executeTarget.id, inputData);
-      toast.success(`Workflow "${executeTarget.name}" execution started`);
+      toast.success(`Automation "${executeTarget.name}" run started`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      toast.error(`Execution failed: ${msg}`);
+      toast.error(`Run failed: ${msg}`);
     }
   }, [executeTarget]);
 
@@ -137,7 +137,7 @@ function DashboardPage() {
         workflow.definition
       );
     } catch {
-      toast.error('Failed to copy workflow');
+      toast.error('Failed to copy automation');
     }
   }, [createWorkflow]);
 
@@ -165,13 +165,13 @@ function DashboardPage() {
       const text = await file.text();
       const data = JSON.parse(text);
       if (!data.name || !data.definition) {
-        toast.error('Invalid workflow file: missing name or definition');
+        toast.error('Invalid automation file: missing name or definition');
         return;
       }
       await createWorkflow(data.name, data.description, data.definition);
-      toast.success('Workflow imported successfully');
+      toast.success('Automation imported successfully');
     } catch (err) {
-      toast.error('Failed to import workflow: Invalid JSON');
+      toast.error('Failed to import automation: Invalid JSON');
     }
     e.target.value = '';
   }, [createWorkflow]);
@@ -209,7 +209,7 @@ function DashboardPage() {
           </label>
           <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
             <Plus size={18} />
-            New Workflow
+            New Automation
           </button>
         </div>
       </header>
@@ -218,7 +218,7 @@ function DashboardPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-4 mb-4">
           <div className="card stat-card stat-primary">
-            <div className="text-muted text-sm">Total Workflows</div>
+            <div className="text-muted text-sm">Total Automations</div>
             <div className="text-3xl font-semibold mt-2">{stats.total}</div>
           </div>
           <div className="card stat-card stat-success">
@@ -238,7 +238,7 @@ function DashboardPage() {
         {/* Workflows List */}
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">Workflows</h2>
+            <h2 className="card-title">Automations</h2>
           </div>
 
           {error && (
@@ -251,19 +251,19 @@ function DashboardPage() {
           {isLoading ? (
             <div className="empty-state">
               <div className="loading-spinner"></div>
-              <p className="mt-2">Loading workflows...</p>
+              <p className="mt-2">Loading automations...</p>
             </div>
           ) : workflows.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">📋</div>
-              <h3>No workflows yet</h3>
-              <p className="text-muted">Create your first workflow to get started</p>
-              <button 
+              <h3>No automations yet</h3>
+              <p className="text-muted">Create your first automation to get started</p>
+              <button
                 className="btn btn-primary mt-4"
                 onClick={() => setShowCreateModal(true)}
               >
                 <Plus size={18} />
-                Create Workflow
+                Create Automation
               </button>
             </div>
           ) : (
@@ -272,7 +272,7 @@ function DashboardPage() {
                 <tr>
                   <th>Name</th>
                   <th>Status</th>
-                  <th>Stations</th>
+                  <th>Stages</th>
                   <th>Updated</th>
                   <th>Actions</th>
                 </tr>
@@ -291,7 +291,7 @@ function DashboardPage() {
                       )}
                     </td>
                     <td>{getStatusBadge(workflow.status)}</td>
-                    <td>{workflow.definition.stations.length} {workflow.definition.stations.length === 1 ? 'station' : 'stations'}</td>
+                    <td>{workflow.definition.stations.length} {workflow.definition.stations.length === 1 ? 'stage' : 'stages'}</td>
                     <td className="text-muted text-sm">
                       {new Date(workflow.updatedAt).toLocaleDateString()}
                     </td>
@@ -365,9 +365,9 @@ function DashboardPage() {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={() => { setShowCreateModal(false); setNameTouched(false); }}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Create New Workflow" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Create New Automation" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 className="modal-title">Create New Workflow</h3>
+              <h3 className="modal-title">Create New Automation</h3>
               <button
                 className="btn btn-ghost btn-icon"
                 onClick={() => { setShowCreateModal(false); setNameTouched(false); }}
@@ -377,7 +377,7 @@ function DashboardPage() {
             </div>
             <div className="modal-body">
               <div className="form-group">
-                <label className="form-label">Workflow Name</label>
+                <label className="form-label">Automation Name</label>
                 <input
                   type="text"
                   className="form-input"
@@ -389,7 +389,7 @@ function DashboardPage() {
                 />
                 {nameTouched && !newWorkflowName.trim() && (
                   <p className="text-sm" style={{ color: 'var(--accent-error)', marginTop: '4px' }}>
-                    Workflow name is required
+                    Automation name is required
                   </p>
                 )}
               </div>
@@ -397,7 +397,7 @@ function DashboardPage() {
                 <label className="form-label">Description (optional)</label>
                 <textarea
                   className="form-textarea"
-                  placeholder="What does this workflow do?"
+                  placeholder="What does this automation do?"
                   value={newWorkflowDesc}
                   onChange={(e) => setNewWorkflowDesc(e.target.value)}
                   rows={3}

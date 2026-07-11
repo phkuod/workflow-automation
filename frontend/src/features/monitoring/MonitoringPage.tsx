@@ -274,7 +274,7 @@ export default function MonitoringPage() {
               <div className="card">
                 <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <HardDrive size={18} />
-                  Workflows
+                  Automations
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -300,7 +300,7 @@ export default function MonitoringPage() {
               <div className="card">
                 <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Activity size={18} />
-                  Executions
+                  Runs
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -361,7 +361,7 @@ export default function MonitoringPage() {
               <div className="card">
                 <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <TrendingUp size={18} />
-                  Execution Trend (Last 7 Days)
+                  Run Trend (Last 7 Days)
                 </h3>
                 <div style={{ height: '250px' }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -402,7 +402,7 @@ export default function MonitoringPage() {
               <div className="card">
                 <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Activity size={18} />
-                  Execution Results
+                  Run Results
                 </h3>
                 <div style={{ height: '250px' }}>
                   <ResponsiveContainer width="100%" height="100%">

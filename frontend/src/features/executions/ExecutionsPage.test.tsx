@@ -75,7 +75,7 @@ describe('ExecutionsPage', () => {
 
     render(<ExecutionsPage />);
 
-    expect(screen.getByText('Loading executions...')).toBeInTheDocument();
+    expect(screen.getByText('Loading runs...')).toBeInTheDocument();
   });
 
   it('shows executions after loading', async () => {
@@ -99,16 +99,16 @@ describe('ExecutionsPage', () => {
     render(<ExecutionsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('No Executions Yet')).toBeInTheDocument();
+      expect(screen.getByText('No runs yet')).toBeInTheDocument();
     });
   });
 
-  it('shows "Execution History" title', async () => {
+  it('shows "Run History" title', async () => {
     mockGetAll.mockResolvedValue([]);
 
     render(<ExecutionsPage />);
 
-    expect(screen.getByText('Execution History')).toBeInTheDocument();
+    expect(screen.getByText('Run History')).toBeInTheDocument();
   });
 
   it('Refresh button calls fetchExecutions again', async () => {
@@ -136,7 +136,7 @@ describe('ExecutionsPage', () => {
     render(<ExecutionsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('2 executions')).toBeInTheDocument();
+      expect(screen.getByText('2 runs')).toBeInTheDocument();
     });
   });
 });

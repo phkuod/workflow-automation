@@ -64,7 +64,7 @@ export default function TriggerConfigForm({
   // trigger-manual
   return (
     <div className="text-muted text-sm">
-      This trigger is activated manually when you run the workflow.
+      This trigger is activated manually when you run the automation.
     </div>
   );
 }

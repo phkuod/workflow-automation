@@ -94,21 +94,21 @@ describe('DashboardPage', () => {
   it('shows loading state', () => {
     mockStore.isLoading = true;
     render(<DashboardPage />);
-    expect(screen.getByText('Loading workflows...')).toBeInTheDocument();
+    expect(screen.getByText('Loading automations...')).toBeInTheDocument();
   });
 
   it('shows empty state when no workflows', () => {
     mockStore.workflows = [];
     render(<DashboardPage />);
-    expect(screen.getByText('No workflows yet')).toBeInTheDocument();
+    expect(screen.getByText('No automations yet')).toBeInTheDocument();
   });
 
   it('shows stats cards with correct counts', () => {
     mockStore.workflows = mockWorkflows as typeof mockStore.workflows;
     render(<DashboardPage />);
 
-    // Total Workflows = 3
-    const totalLabel = screen.getByText('Total Workflows');
+    // Total Automations = 3
+    const totalLabel = screen.getByText('Total Automations');
     const totalCard = totalLabel.closest('.stat-card');
     expect(totalCard).not.toBeNull();
     expect(totalCard!.querySelector('.text-3xl')?.textContent).toBe('3');
@@ -147,10 +147,10 @@ describe('DashboardPage', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
 
     await act(async () => {
-      fireEvent.click(screen.getByText('New Workflow'));
+      fireEvent.click(screen.getByText('New Automation'));
     });
 
-    expect(screen.getByRole('dialog', { name: 'Create New Workflow' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Create New Automation' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('e.g., Daily Report Generator')).toBeInTheDocument();
   });
 

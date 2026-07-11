@@ -74,7 +74,7 @@ function EmailForm({ stepId, workflow, emailTo, emailSubject, emailBody, onEmail
           className="form-input"
           value={emailSubject}
           onChange={(e) => onEmailSubjectChange(e.target.value)}
-          placeholder="Workflow Notification"
+          placeholder="Automation Notification"
         />
       </div>
       <div className="form-group">
@@ -137,7 +137,7 @@ function SlackForm({ stepId, workflow, slackWebhookUrl, slackMessage, onSlackWeb
           className="form-textarea"
           value={slackMessage}
           onChange={(e) => onSlackMessageChange(e.target.value)}
-          placeholder="Workflow notification: {{status}}"
+          placeholder="Automation notification: {{status}}"
           style={{ minHeight: '100px' }}
         />
         {showPicker && (

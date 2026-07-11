@@ -86,11 +86,11 @@ function EditorPage() {
     if (id === 'new') {
       if (creatingRef.current) return;
       creatingRef.current = true;
-      createWorkflow('Untitled Workflow').then((workflow) => {
+      createWorkflow('Untitled Automation').then((workflow) => {
         navigate(`/editor/${workflow.id}`, { replace: true });
       }).catch(() => {
         creatingRef.current = false;
-        toast.error('Failed to create workflow');
+        toast.error('Failed to create automation');
         navigate('/dashboard');
       });
     } else if (id) {
@@ -146,7 +146,7 @@ function EditorPage() {
     const items = [
       {
         id: 'workflow',
-        label: currentWorkflow?.name || 'Workflow',
+        label: currentWorkflow?.name || 'Automation',
         onClick: editorView.type === 'step-view' 
           ? () => {
               setEditorView({ type: 'stage-view' });
@@ -221,9 +221,9 @@ function EditorPage() {
   const handleSave = useCallback(async () => {
     try {
       await saveWorkflow();
-      toast.success('Workflow saved');
+      toast.success('Automation saved');
     } catch {
-      toast.error('Failed to save workflow');
+      toast.error('Failed to save automation');
     }
   }, [saveWorkflow]);
 
@@ -237,7 +237,7 @@ function EditorPage() {
     try {
       await simulateWorkflow();
     } catch {
-      toast.error('Simulation failed');
+      toast.error('Test run failed');
     }
   }, [simulateWorkflow, currentWorkflow]);
 
@@ -252,7 +252,7 @@ function EditorPage() {
         await executeWorkflow(inputData);
       }
     } catch {
-      toast.error('Execution failed');
+      toast.error('Run failed');
     }
   }, [showExecuteDialog, simulateWorkflow, executeWorkflow]);
 
@@ -298,7 +298,7 @@ function EditorPage() {
     return (
       <div className="layout">
         <div className="flex flex-col items-center justify-center" style={{ height: '100vh' }}>
-          <p className="text-muted">Workflow not found</p>
+          <p className="text-muted">Automation not found</p>
           <button className="btn btn-primary mt-4" onClick={() => navigate('/dashboard')}>
             Back to Dashboard
           </button>
@@ -439,7 +439,7 @@ function EditorPage() {
             ) : (
               <Play size={18} />
             )}
-            Simulate
+            Test
           </button>
         </div>
       </header>
