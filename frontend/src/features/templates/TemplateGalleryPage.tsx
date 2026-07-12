@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Sparkles, Wand2 } from 'lucide-react';
 import { AUTOMATION_TEMPLATES, TEMPLATE_CATEGORIES } from './templates';
 import type { AutomationTemplate } from './templates';
-import { workflowApi } from '../../shared/api/workflowApi';
+import { workflowApi, aiApi } from '../../shared/api/workflowApi';
+import { useAiEnabled } from '../../shared/hooks/useAiEnabled';
 import { STEP_TYPE_INFO } from '../../shared/types/workflow';
 import { toast } from '../../shared/stores/toastStore';
 
@@ -16,6 +17,9 @@ function iconSequence(template: AutomationTemplate): string[] {
 export default function TemplateGalleryPage() {
   const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
+  const aiEnabled = useAiEnabled();
+  const [aiDescription, setAiDescription] = useState('');
+  const [isDrafting, setIsDrafting] = useState(false);
 
   const createFrom = async (name: string, description: string | undefined, definition: AutomationTemplate['definition']) => {
     if (isCreating) return;
@@ -26,6 +30,19 @@ export default function TemplateGalleryPage() {
     } catch {
       toast.error('Failed to create automation');
       setIsCreating(false);
+    }
+  };
+
+  const draftWithAi = async () => {
+    const description = aiDescription.trim();
+    if (!description || isDrafting) return;
+    setIsDrafting(true);
+    try {
+      const created = await aiApi.draft(description);
+      navigate(`/editor/${created.id}`);
+    } catch {
+      toast.error('AI draft failed — try a template instead');
+      setIsDrafting(false);
     }
   };
 
@@ -47,6 +64,33 @@ export default function TemplateGalleryPage() {
       </header>
 
       <main className="main-content">
+        {aiEnabled && (
+          <section className="card" style={{ marginBottom: '2rem', padding: '16px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <Wand2 size={18} style={{ color: 'var(--accent-primary)' }} />
+              <h3 style={{ fontSize: '15px' }}>Describe it, we'll draft it</h3>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                className="form-input"
+                style={{ flex: '1 1 320px' }}
+                placeholder="Describe what you want to automate…"
+                value={aiDescription}
+                onChange={(e) => setAiDescription(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') draftWithAi(); }}
+                disabled={isDrafting}
+              />
+              <button
+                className="btn btn-primary"
+                onClick={draftWithAi}
+                disabled={isDrafting || !aiDescription.trim()}
+              >
+                {isDrafting ? 'Drafting…' : 'Draft it for me'}
+              </button>
+            </div>
+          </section>
+        )}
         {TEMPLATE_CATEGORIES.map(category => {
           const templates = AUTOMATION_TEMPLATES.filter(t => t.category === category);
           if (templates.length === 0) return null;

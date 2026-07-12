@@ -3,7 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TemplateGalleryPage from './TemplateGalleryPage';
 import { AUTOMATION_TEMPLATES } from './templates';
-import { workflowApi } from '../../shared/api/workflowApi';
+import { workflowApi, aiApi } from '../../shared/api/workflowApi';
+import { useAiEnabled } from '../../shared/hooks/useAiEnabled';
+import { toast } from '../../shared/stores/toastStore';
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -12,6 +14,11 @@ vi.mock('react-router-dom', async (importOriginal) => {
 });
 vi.mock('../../shared/api/workflowApi', () => ({
   workflowApi: { create: vi.fn() },
+  aiApi: { draft: vi.fn() },
+}));
+vi.mock('../../shared/hooks/useAiEnabled', () => ({ useAiEnabled: vi.fn() }));
+vi.mock('../../shared/stores/toastStore', () => ({
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
 }));
 
 function renderPage() {
@@ -19,7 +26,10 @@ function renderPage() {
 }
 
 describe('TemplateGalleryPage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useAiEnabled).mockReturnValue(false);
+  });
 
   it('renders every template as a card', () => {
     renderPage();
@@ -58,6 +68,44 @@ describe('TemplateGalleryPage', () => {
         definition: { stations: [] },
       });
       expect(navigateMock).toHaveBeenCalledWith('/editor/wf-blank');
+    });
+  });
+});
+
+describe('AI describe-it box', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('is hidden when AI is disabled', () => {
+    vi.mocked(useAiEnabled).mockReturnValue(false);
+    renderPage();
+    expect(screen.queryByPlaceholderText('Describe what you want to automate…')).not.toBeInTheDocument();
+  });
+
+  it('drafts an automation and navigates to the editor', async () => {
+    vi.mocked(useAiEnabled).mockReturnValue(true);
+    vi.mocked(aiApi.draft).mockResolvedValue({ id: 'wf-ai' } as never);
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText('Describe what you want to automate…'), {
+      target: { value: 'email me the weather every morning' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Draft it for me' }));
+    await waitFor(() => {
+      expect(aiApi.draft).toHaveBeenCalledWith('email me the weather every morning');
+      expect(navigateMock).toHaveBeenCalledWith('/editor/wf-ai');
+    });
+  });
+
+  it('shows the graceful error toast when drafting fails', async () => {
+    vi.mocked(useAiEnabled).mockReturnValue(true);
+    vi.mocked(aiApi.draft).mockRejectedValue(new Error('bad'));
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText('Describe what you want to automate…'), {
+      target: { value: 'x' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Draft it for me' }));
+    await waitFor(() => {
+      expect(aiApi.draft).toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith('AI draft failed — try a template instead');
     });
   });
 });
