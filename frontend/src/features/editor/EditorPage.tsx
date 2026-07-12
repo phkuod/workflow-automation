@@ -15,6 +15,7 @@ import StationConfigPanel from './components/StationConfigPanel';
 import SimulationPanel from './components/SimulationPanel';
 import VersionHistoryPanel from './components/VersionHistoryPanel';
 import ExecuteDialog from './components/ExecuteDialog';
+import CoachMarks from './components/CoachMarks';
 import { toast } from '../../shared/stores/toastStore';
 import type { StepType } from '../../shared/types/workflow';
 import InputParametersEditor from './components/InputParametersEditor';
@@ -87,7 +88,13 @@ function EditorPage() {
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showExecuteDialog, setShowExecuteDialog] = useState<'execute' | 'simulate' | null>(null);
   const [showInputParams, setShowInputParams] = useState(false);
-  
+  const [showCoachMarks, setShowCoachMarks] = useState(() => !localStorage.getItem('editor.coachMarksSeen'));
+
+  const dismissCoachMarks = useCallback(() => {
+    localStorage.setItem('editor.coachMarksSeen', '1');
+    setShowCoachMarks(false);
+  }, []);
+
   // Use store's isDirty for unsaved changes tracking
   const hasUnsavedChanges = isDirty;
 
@@ -615,6 +622,11 @@ function EditorPage() {
           onSubmit={handleExecuteWithParams}
           onCancel={() => setShowExecuteDialog(null)}
         />
+      )}
+
+      {/* First-visit coach marks (Plan View only) */}
+      {showCoachMarks && currentWorkflow && viewMode === 'plan' && (
+        <CoachMarks onDone={dismissCoachMarks} />
       )}
     </div>
   );
