@@ -91,6 +91,7 @@ describe('EditorPage view toggle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    window.localStorage.setItem('editor.coachMarksSeen', '1');
     mockStore.currentWorkflow = workflow;
     mockStore.selectedStepId = null;
     mockStore.selectedStationId = null;
@@ -150,7 +151,7 @@ describe('EditorPage view toggle', () => {
   it('opens the action config panel when a plan row edit button is clicked', () => {
     const { rerender } = render(<EditorPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Call an external service (api.example.com)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Fetch: Call an external service (api.example.com)' }));
     expect(mockStore.selectStep).toHaveBeenCalledWith('s2');
 
     rerender(<EditorPage />);

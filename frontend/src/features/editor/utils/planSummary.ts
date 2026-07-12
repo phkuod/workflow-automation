@@ -3,7 +3,7 @@ import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
 
 function hostOf(url: string): string {
   try {
-    return new URL(url).host || url;
+    return new URL(url).hostname || url;
   } catch {
     return url;
   }

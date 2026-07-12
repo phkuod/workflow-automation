@@ -57,7 +57,7 @@ describe('PlanView', () => {
 
   it('fires onEditStep with the action id when an action edit button is clicked', () => {
     const props = renderView();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Call an external service (api.example.com)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Fetch: Call an external service (api.example.com)' }));
     expect(props.onEditStep).toHaveBeenCalledWith('s2');
   });
 

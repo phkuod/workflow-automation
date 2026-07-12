@@ -68,7 +68,7 @@ export default function PlanView({ workflow, onEditStep, onEditStage, onAddStage
                   <span style={{ flex: 1 }}>{line}</span>
                   <button
                     className="btn btn-ghost btn-icon btn-sm"
-                    aria-label={`Edit ${line}`}
+                    aria-label={`Edit ${step.name}: ${line}`}
                     onClick={() => onEditStep(step.id)}
                   >
                     <Pencil size={14} />

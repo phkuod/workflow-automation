@@ -40,6 +40,11 @@ describe('describeAction', () => {
       .toBe('Call an external service (api.example.com)');
   });
 
+  it('strips the port from the host for external service calls', () => {
+    expect(describeAction(step({ type: 'http-request', config: { url: 'https://api.example.com:8080/data' } })))
+      .toBe('Call an external service (api.example.com)');
+  });
+
   it('omits the parenthetical when url is missing', () => {
     expect(describeAction(step({ type: 'http-request', config: {} })))
       .toBe('Call an external service');
