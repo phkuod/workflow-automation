@@ -165,3 +165,26 @@ export const scheduleApi = {
     return response.data.data!;
   },
 };
+
+// AI Assist API
+export const aiApi = {
+  getStatus: async (): Promise<{ enabled: boolean }> => {
+    const response = await api.get<ApiResponse<{ enabled: boolean }>>('/ai/status');
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+
+  draft: async (description: string): Promise<Workflow> => {
+    const response = await api.post<ApiResponse<Workflow>>('/ai/draft', { description });
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+
+  explain: async (ctx: {
+    workflowName: string; stationName: string; stepName: string; stepType: string; errorMessage: string;
+  }): Promise<string> => {
+    const response = await api.post<ApiResponse<{ explanation: string }>>('/ai/explain', ctx);
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!.explanation;
+  },
+};
