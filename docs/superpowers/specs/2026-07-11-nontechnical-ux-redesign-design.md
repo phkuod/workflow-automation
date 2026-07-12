@@ -106,7 +106,7 @@ Stage 2 — Send report
 
 - **Entry:** an input above the template wall — "Describe what you want to automate…" → `POST /api/ai/draft` → LLM generates a `WorkflowDefinition` JSON → opens as a draft in Plan View. AI output lands on the plain-language surface, so users can read and edit it.
 - **Run failure explanation:** error nodes in the Run Timeline get an "Explain this" button → `POST /api/ai/explain` with error context → plain-language explanation and suggestion.
-- **Architecture:** new `backend/src/services/aiAssistant.ts`; LLM key via `ANTHROPIC_API_KEY` env var. **When the key is unset, all AI UI is hidden** — this is the concrete mechanism making the phase independent; the product is fully functional without it.
+- **Architecture:** new `backend/src/services/aiAssistant.ts` calling an **OpenAI-compatible chat-completions endpoint** (works with OpenRouter, NVIDIA NIM, and any compatible provider). Configuration via env vars: `AI_API_KEY` (required to enable), `AI_API_BASE_URL` (default `https://openrouter.ai/api/v1`), `AI_MODEL` (required). **When `AI_API_KEY` is unset, all AI UI is hidden** (frontend learns availability from `GET /api/ai/status`) — this is the concrete mechanism making the phase independent; the product is fully functional without it. *(Amended 2026-07-12: originally specced as `ANTHROPIC_API_KEY`; changed to provider-agnostic OpenAI-compatible config per user requirement for OpenRouter / NVIDIA keys.)*
 - LLM output is validated against a JSON Schema before persisting; on failure, show "AI draft failed — try a template instead."
 
 ---
