@@ -7,6 +7,12 @@ const router = Router();
 const log = createLogger('ai');
 
 const MAX_DESCRIPTION_LENGTH = 2000;
+const MAX_ERROR_MESSAGE_LENGTH = 4000;
+const MAX_CONTEXT_FIELD_LENGTH = 200;
+
+function truncateField(value: unknown): string {
+  return String(value ?? '').slice(0, MAX_CONTEXT_FIELD_LENGTH);
+}
 
 router.get('/status', (req, res) => {
   res.json({ success: true, data: { enabled: isAiEnabled() } });
@@ -45,12 +51,15 @@ router.post('/explain', async (req, res) => {
   if (typeof errorMessage !== 'string' || !errorMessage.trim()) {
     return res.status(400).json({ success: false, error: 'errorMessage is required' });
   }
+  if (errorMessage.length > MAX_ERROR_MESSAGE_LENGTH) {
+    return res.status(400).json({ success: false, error: `errorMessage must be at most ${MAX_ERROR_MESSAGE_LENGTH} characters` });
+  }
   try {
     const explanation = await explainRunError({
-      workflowName: String(workflowName ?? ''),
-      stationName: String(stationName ?? ''),
-      stepName: String(stepName ?? ''),
-      stepType: String(stepType ?? ''),
+      workflowName: truncateField(workflowName),
+      stationName: truncateField(stationName),
+      stepName: truncateField(stepName),
+      stepType: truncateField(stepType),
       errorMessage,
     });
     res.json({ success: true, data: { explanation } });

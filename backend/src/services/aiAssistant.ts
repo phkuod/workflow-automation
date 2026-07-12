@@ -20,6 +20,8 @@ interface ChatMessage {
   content: string;
 }
 
+const AI_REQUEST_TIMEOUT_MS = 60_000;
+
 async function chat(messages: ChatMessage[]): Promise<string> {
   const baseUrl = process.env.AI_API_BASE_URL || 'https://openrouter.ai/api/v1';
   const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -33,6 +35,7 @@ async function chat(messages: ChatMessage[]): Promise<string> {
       messages,
       temperature: 0.2,
     }),
+    signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
   });
   if (!response.ok) {
     throw new Error(`AI provider returned status ${response.status}`);
@@ -102,10 +105,16 @@ export function parseDraft(content: string): AiDraft {
   }
 
   const stations: Station[] = (raw.stations as RawDraftStation[]).map((st, i) => {
+    if (!st || typeof st !== 'object' || Array.isArray(st)) {
+      throw new Error('Every stage must be an object');
+    }
     if (!Array.isArray(st.steps) || st.steps.length === 0) {
       throw new Error('Every stage must contain at least one action');
     }
     const steps: Step[] = (st.steps as RawDraftStep[]).map((s, j) => {
+      if (!s || typeof s !== 'object' || Array.isArray(s)) {
+        throw new Error('Every action must be an object');
+      }
       if (typeof s.type !== 'string' || !VALID_STEP_TYPES.includes(s.type as StepType)) {
         throw new Error(`Unknown step type: ${String(s.type)}`);
       }

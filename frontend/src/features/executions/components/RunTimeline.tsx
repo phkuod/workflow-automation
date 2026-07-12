@@ -26,10 +26,12 @@ function StepLine({ step, stationName, workflowName }: {
   const aiEnabled = useAiEnabled();
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
+  const [explainFailed, setExplainFailed] = useState(false);
 
   const explain = async () => {
     if (isExplaining || !step.error) return;
     setIsExplaining(true);
+    setExplainFailed(false);
     try {
       setExplanation(await aiApi.explain({
         workflowName: workflowName ?? '',
@@ -39,7 +41,7 @@ function StepLine({ step, stationName, workflowName }: {
         errorMessage: step.error.message,
       }));
     } catch {
-      setExplanation("Couldn't get an explanation right now.");
+      setExplainFailed(true);
     } finally {
       setIsExplaining(false);
     }
@@ -71,6 +73,9 @@ function StepLine({ step, stationName, workflowName }: {
           )}
           {explanation && (
             <div style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>{explanation}</div>
+          )}
+          {explainFailed && (
+            <div style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>Couldn't get an explanation right now.</div>
           )}
           {translated.matched && (
             <details style={{ marginTop: '4px' }}>

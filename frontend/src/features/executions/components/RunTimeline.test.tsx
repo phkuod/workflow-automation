@@ -84,13 +84,30 @@ describe('Explain this', () => {
     });
   });
 
-  it('shows a gentle inline message when the explanation fails', async () => {
+  it('shows a gentle inline message when the explanation fails, and keeps the button for retry', async () => {
     vi.mocked(useAiEnabled).mockReturnValue(true);
     vi.mocked(aiApi.explain).mockRejectedValue(new Error('nope'));
     render(<RunTimeline result={result} workflowName="My flow" />);
     fireEvent.click(screen.getByRole('button', { name: 'Explain this' }));
     await waitFor(() => {
       expect(screen.getByText("Couldn't get an explanation right now.")).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Explain this' })).toBeInTheDocument();
+  });
+
+  it('allows retrying after a failure and shows the explanation on success', async () => {
+    vi.mocked(useAiEnabled).mockReturnValue(true);
+    vi.mocked(aiApi.explain)
+      .mockRejectedValueOnce(new Error('nope'))
+      .mockResolvedValueOnce('The mail server took too long. Try again later.');
+    render(<RunTimeline result={result} workflowName="My flow" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Explain this' }));
+    await waitFor(() => {
+      expect(screen.getByText("Couldn't get an explanation right now.")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Explain this' }));
+    await waitFor(() => {
+      expect(screen.getByText('The mail server took too long. Try again later.')).toBeInTheDocument();
     });
   });
 });

@@ -110,6 +110,31 @@ describe('POST /api/ai/explain', () => {
     expect(res.status).toBe(400);
   });
 
+  it('400 when errorMessage exceeds 4000 chars', async () => {
+    vi.mocked(isAiEnabled).mockReturnValue(true);
+    const res = await request(app).post('/api/ai/explain').send({ ...CTX, errorMessage: 'a'.repeat(4001) });
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ success: false, error: 'errorMessage must be at most 4000 characters' });
+  });
+
+  it('truncates long name/type fields to 200 chars', async () => {
+    vi.mocked(isAiEnabled).mockReturnValue(true);
+    vi.mocked(explainRunError).mockResolvedValue('ok');
+    const longField = 'x'.repeat(250);
+    const res = await request(app).post('/api/ai/explain').send({
+      workflowName: longField, stationName: longField, stepName: longField,
+      stepType: longField, errorMessage: 'boom',
+    });
+    expect(res.status).toBe(200);
+    expect(explainRunError).toHaveBeenCalledWith({
+      workflowName: 'x'.repeat(200),
+      stationName: 'x'.repeat(200),
+      stepName: 'x'.repeat(200),
+      stepType: 'x'.repeat(200),
+      errorMessage: 'boom',
+    });
+  });
+
   it('returns the explanation', async () => {
     vi.mocked(isAiEnabled).mockReturnValue(true);
     vi.mocked(explainRunError).mockResolvedValue('The mail server said no.');

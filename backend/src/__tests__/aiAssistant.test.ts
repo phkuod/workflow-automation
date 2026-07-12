@@ -96,6 +96,18 @@ describe('parseDraft', () => {
     expect(() => parseDraft(JSON.stringify(bad))).toThrow(/at least one action/i);
   });
 
+  it('rejects a null entry in stations', () => {
+    const bad = JSON.parse(VALID_DRAFT_JSON);
+    bad.stations = [null];
+    expect(() => parseDraft(JSON.stringify(bad))).toThrow(/every stage must be an object/i);
+  });
+
+  it('rejects a null entry in steps', () => {
+    const bad = JSON.parse(VALID_DRAFT_JSON);
+    bad.stations[0].steps = [null];
+    expect(() => parseDraft(JSON.stringify(bad))).toThrow(/every action must be an object/i);
+  });
+
   it('defaults a missing config to an empty object', () => {
     const loose = JSON.parse(VALID_DRAFT_JSON);
     delete loose.stations[0].steps[0].config;
@@ -129,6 +141,15 @@ describe('draftAutomation / explainRunError (fetch behavior)', () => {
     expect(body.model).toBe('test-model');
     expect(body.messages.at(-1).content).toContain('email me the weather every morning');
     expect(draft.definition.stations).toHaveLength(2);
+    expect(init.signal).toBeDefined();
+  });
+
+  it('rejects when the request times out', async () => {
+    const timeoutError = typeof DOMException !== 'undefined'
+      ? new DOMException('The operation timed out', 'TimeoutError')
+      : new Error('The operation timed out');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeoutError));
+    await expect(draftAutomation('x')).rejects.toThrow();
   });
 
   it('defaults the base url to OpenRouter when AI_API_BASE_URL is unset', async () => {
