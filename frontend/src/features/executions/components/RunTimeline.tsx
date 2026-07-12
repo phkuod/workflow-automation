@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { CheckCircle, XCircle, MinusCircle, Loader } from 'lucide-react';
 import type { ExecutionResult, StationResult, StepResult } from '../../../shared/types/workflow';
 import { STEP_TYPE_INFO } from '../../../shared/types/workflow';
 import { summarizeStep } from '../../../shared/utils/runSummary';
 import { translateError } from '../../../shared/utils/errorTranslation';
 import { EDGE_COLORS } from '../../../shared/constants/colors';
+import { useAiEnabled } from '../../../shared/hooks/useAiEnabled';
+import { aiApi } from '../../../shared/api/workflowApi';
 
 function StatusIcon({ status }: { status: StationResult['status'] | StepResult['status'] }) {
   switch (status) {
@@ -14,10 +17,33 @@ function StatusIcon({ status }: { status: StationResult['status'] | StepResult['
   }
 }
 
-function StepLine({ step }: { step: StepResult }) {
+function StepLine({ step, stationName, workflowName }: {
+  step: StepResult; stationName: string; workflowName?: string;
+}) {
   const info = STEP_TYPE_INFO[step.stepType] ?? { icon: '📦' };
   const failed = step.status === 'failed';
   const translated = failed && step.error ? translateError(step.error.message) : null;
+  const aiEnabled = useAiEnabled();
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [isExplaining, setIsExplaining] = useState(false);
+
+  const explain = async () => {
+    if (isExplaining || !step.error) return;
+    setIsExplaining(true);
+    try {
+      setExplanation(await aiApi.explain({
+        workflowName: workflowName ?? '',
+        stationName,
+        stepName: step.stepName,
+        stepType: step.stepType,
+        errorMessage: step.error.message,
+      }));
+    } catch {
+      setExplanation("Couldn't get an explanation right now.");
+    } finally {
+      setIsExplaining(false);
+    }
+  };
 
   return (
     <div style={{ padding: '6px 0' }}>
@@ -38,6 +64,14 @@ function StepLine({ step }: { step: StepResult }) {
           {translated.suggestion && (
             <div style={{ marginTop: '2px', color: 'var(--text-secondary)' }}>{translated.suggestion}</div>
           )}
+          {aiEnabled && !explanation && (
+            <button className="btn btn-ghost btn-sm" style={{ marginTop: '6px' }} onClick={explain} disabled={isExplaining}>
+              {isExplaining ? 'Thinking…' : 'Explain this'}
+            </button>
+          )}
+          {explanation && (
+            <div style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>{explanation}</div>
+          )}
           {translated.matched && (
             <details style={{ marginTop: '4px' }}>
               <summary style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>Technical details</summary>
@@ -50,7 +84,7 @@ function StepLine({ step }: { step: StepResult }) {
   );
 }
 
-export default function RunTimeline({ result }: { result: ExecutionResult }) {
+export default function RunTimeline({ result, workflowName }: { result: ExecutionResult; workflowName?: string }) {
   return (
     <div style={{ marginTop: '12px' }}>
       {result.stations.map((station, i) => (
@@ -68,7 +102,7 @@ export default function RunTimeline({ result }: { result: ExecutionResult }) {
               {station.stationName}
             </div>
             {station.steps.map((step) => (
-              <StepLine key={step.stepId} step={step} />
+              <StepLine key={step.stepId} step={step} stationName={station.stationName} workflowName={workflowName} />
             ))}
           </div>
         </div>

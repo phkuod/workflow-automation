@@ -361,7 +361,7 @@ function ExecutionRow({
           <td colSpan={8} style={{ padding: '0 16px 16px 40px', background: 'var(--bg-tertiary)' }}>
             {/* Run Timeline */}
             {execution.result?.stations && execution.result.stations.length > 0 && (
-              <RunTimeline result={execution.result} />
+              <RunTimeline result={execution.result} workflowName={execution.workflowName} />
             )}
 
             {/* Logs */}
