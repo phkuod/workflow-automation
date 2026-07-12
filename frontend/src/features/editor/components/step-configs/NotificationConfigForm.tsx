@@ -104,6 +104,23 @@ function EmailForm({ stepId, workflow, emailTo, emailSubject, emailBody, onEmail
           </div>
         )}
       </div>
+      <div style={{ marginTop: '12px' }}>
+        <div className="form-label">Preview</div>
+        <div style={{
+          border: '1px solid var(--border-color)', borderRadius: '8px',
+          background: 'var(--bg-primary)', padding: '12px 14px', fontSize: '13px',
+        }}>
+          <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>
+            To: {emailTo || '(no recipient)'}
+          </div>
+          <div style={{ fontWeight: 600, marginBottom: '8px' }}>
+            {emailSubject || '(no subject)'}
+          </div>
+          <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>
+            {emailBody || 'Your message will appear here.'}
+          </div>
+        </div>
+      </div>
     </>
   );
 }
