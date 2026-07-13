@@ -491,7 +491,7 @@ export class ExecutionEngine {
               }
               result = await ScriptRunner.executeHttpRequest(
                 step.config,
-                { ...context.variables, inputData: stepResult.input }
+                { ...context.variables, inputData: stepResult.input, steps: context.steps }
               );
             }
             break;
@@ -519,7 +519,8 @@ export class ExecutionEngine {
             const condition = step.config.condition || 'true';
             const conditionResult = ScriptRunner.evaluateCondition(condition, {
               ...context.variables,
-              inputData: stepResult.input
+              inputData: stepResult.input,
+              steps: context.steps
             });
             result = {
               success: true,
@@ -532,7 +533,7 @@ export class ExecutionEngine {
             const varName = step.config.variableName || 'variable';
             const varValue = ScriptRunner.interpolateVariables(
               step.config.variableValue || '',
-              { ...context.variables, inputData: stepResult.input }
+              { ...context.variables, inputData: stepResult.input, steps: context.steps }
             );
             context.variables[varName] = varValue;
             result = {
@@ -554,8 +555,8 @@ export class ExecutionEngine {
 
           case 'notification-slack':
           case 'action-slack': {
-            const slackUrl = ScriptRunner.interpolateVariables(step.config.slackWebhookUrl || '', { ...context.variables, inputData: stepResult.input });
-            const slackMsg = ScriptRunner.interpolateVariables(step.config.slackMessage || '', { ...context.variables, inputData: stepResult.input });
+            const slackUrl = ScriptRunner.interpolateVariables(step.config.slackWebhookUrl || '', { ...context.variables, inputData: stepResult.input, steps: context.steps });
+            const slackMsg = ScriptRunner.interpolateVariables(step.config.slackMessage || '', { ...context.variables, inputData: stepResult.input, steps: context.steps });
 
             if (context.simulate) {
               this.log(context, 'info', `[SIMULATE] Skipping Slack message`, { message: slackMsg }, undefined, step.id);
@@ -572,16 +573,16 @@ export class ExecutionEngine {
                   method: 'POST',
                   body: JSON.stringify({ text: slackMsg })
                 },
-                { ...context.variables, inputData: stepResult.input }
+                { ...context.variables, inputData: stepResult.input, steps: context.steps }
               );
             }
             break;
           }
 
           case 'action-email': {
-            const to = ScriptRunner.interpolateVariables(step.config.emailTo || '', { ...context.variables, inputData: stepResult.input });
-            const subject = ScriptRunner.interpolateVariables(step.config.emailSubject || '', { ...context.variables, inputData: stepResult.input });
-            const emailBody = ScriptRunner.interpolateVariables(step.config.emailBody || '', { ...context.variables, inputData: stepResult.input });
+            const to = ScriptRunner.interpolateVariables(step.config.emailTo || '', { ...context.variables, inputData: stepResult.input, steps: context.steps });
+            const subject = ScriptRunner.interpolateVariables(step.config.emailSubject || '', { ...context.variables, inputData: stepResult.input, steps: context.steps });
+            const emailBody = ScriptRunner.interpolateVariables(step.config.emailBody || '', { ...context.variables, inputData: stepResult.input, steps: context.steps });
 
             if (context.simulate) {
               this.log(context, 'info', `[SIMULATE] Skipping email to ${to}`, { subject }, undefined, step.id);
@@ -622,7 +623,7 @@ export class ExecutionEngine {
           case 'connector-db': {
             const dbQuery = ScriptRunner.interpolateVariables(
               step.config.dbQuery || '',
-              { ...context.variables, inputData: stepResult.input }
+              { ...context.variables, inputData: stepResult.input, steps: context.steps }
             );
 
             if (context.simulate) {

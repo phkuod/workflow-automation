@@ -406,14 +406,44 @@ exec(compile(_payload['code'], '<user_script>', 'exec'))
   }
 
   /**
-   * Get value from object by dot-notation path
+   * Get value from object by dot-notation path. Also supports the bracket
+   * syntax the VariablePicker inserts: `['quoted key']` (with escaped quotes)
+   * and numeric array indices `[0]`, in any combination with dot segments,
+   * e.g. `steps['My Step'].output.rows[0]['content-type']`.
    */
   static getValueByPath(obj: Record<string, unknown>, path: string): unknown {
-    return path.split('.').reduce<unknown>((current, key) => {
+    return this.tokenizePath(path).reduce<unknown>((current, key) => {
       if (current && typeof current === 'object' && key in (current as Record<string, unknown>)) {
         return (current as Record<string, unknown>)[key];
       }
       return undefined;
     }, obj);
+  }
+
+  /**
+   * Token grammar (each alternative anchored to the start of the remaining string):
+   *  - a leading bare identifier (only valid at position 0, e.g. "steps")
+   *  - `.identifier` for plain dot-notation segments
+   *  - `[123]` for numeric array indices
+   *  - `['...']` / `["..."]` for quoted keys, with backslash-escaped quotes
+   */
+  private static readonly PATH_TOKEN_REGEX =
+    /^([A-Za-z_$][A-Za-z0-9_$]*)|^\.([A-Za-z_$][A-Za-z0-9_$]*)|^\[(\d+)\]|^\['((?:\\.|[^'\\])*)'\]|^\["((?:\\.|[^"\\])*)"\]/;
+
+  private static tokenizePath(path: string): string[] {
+    const keys: string[] = [];
+    let rest = path;
+    while (rest.length > 0) {
+      const match = this.PATH_TOKEN_REGEX.exec(rest);
+      if (!match) break; // unrecognized syntax — stop parsing gracefully rather than throw
+      const [full, plain, dotted, index, singleQuoted, doubleQuoted] = match;
+      if (plain !== undefined) keys.push(plain);
+      else if (dotted !== undefined) keys.push(dotted);
+      else if (index !== undefined) keys.push(index);
+      else if (singleQuoted !== undefined) keys.push(singleQuoted.replace(/\\(.)/g, '$1'));
+      else if (doubleQuoted !== undefined) keys.push(doubleQuoted.replace(/\\(.)/g, '$1'));
+      rest = rest.slice(full.length);
+    }
+    return keys;
   }
 }

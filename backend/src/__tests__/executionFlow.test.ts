@@ -385,6 +385,88 @@ describe('ExecutionEngine — Flow Tests', () => {
     });
   });
 
+  // ── Picker-inserted steps[...] reference resolution ────────────────
+
+  describe('Picker-inserted steps[...] reference resolution', () => {
+    it('resolves a ${steps[\'Step Name\'].output....} reference in a later step (set-variable)', async () => {
+      const fetchStep = makeStep({
+        id: 'fetch1',
+        name: 'Fetch Data',
+        type: 'script-js',
+        config: { code: "return { data: { orderId: 'ORD-123' } };" },
+      });
+      const extractStep = makeStep({
+        id: 'extract1',
+        name: 'Extract Order Id',
+        type: 'set-variable',
+        config: {
+          variableName: 'orderId',
+          variableValue: "${steps['Fetch Data'].output.data.orderId}",
+        },
+      });
+      const station = makeStation({
+        id: 'st-picker',
+        name: 'Picker Station',
+        steps: [fetchStep, extractStep],
+      });
+      const workflow = makeWorkflow([station]);
+
+      const { execution } = await setupAndExecute(workflow, { simulate: true });
+
+      expect(execution.status).toBe('completed');
+      const extractResult = execution.result!.stations[0].steps.find(s => s.stepName === 'Extract Order Id');
+      expect(extractResult!.status).toBe('completed');
+      expect(extractResult!.output).toEqual({ orderId: 'ORD-123' });
+    });
+
+    it('resolves a steps[...] reference in an if-else condition and takes the expected branch', async () => {
+      const fetchStep = makeStep({
+        id: 'fetch2',
+        name: 'Check Status',
+        type: 'script-js',
+        config: { code: "return { status: 'ok' };" },
+      });
+      const ifStep = makeStep({
+        id: 'if-picker',
+        name: 'Status check',
+        type: 'if-else',
+        config: { condition: "steps['Check Status'].output.status === 'ok'" },
+      });
+      const trueStep = makeStep({
+        id: 'true-step-picker',
+        name: 'True branch',
+        type: 'set-variable',
+        config: { variableName: 'branch', variableValue: 'took-true' },
+      });
+      const falseStep = makeStep({
+        id: 'false-step-picker',
+        name: 'False branch',
+        type: 'set-variable',
+        config: { variableName: 'branch', variableValue: 'took-false' },
+      });
+
+      const station = makeStation({
+        id: 'st-picker-cond',
+        name: 'Picker Condition Station',
+        steps: [fetchStep, ifStep, trueStep, falseStep],
+        edges: [
+          { id: 'e1', source: 'if-picker', target: 'true-step-picker', sourceHandle: 'true' },
+          { id: 'e2', source: 'if-picker', target: 'false-step-picker', sourceHandle: 'false' },
+        ],
+      });
+      const workflow = makeWorkflow([station]);
+
+      const { execution } = await setupAndExecute(workflow, { simulate: true });
+
+      expect(execution.status).toBe('completed');
+      const stationSteps = execution.result!.stations[0].steps;
+      const trueResult = stationSteps.find(s => s.stepName === 'True branch');
+      const falseResult = stationSteps.find(s => s.stepName === 'False branch');
+      expect(trueResult!.status).toBe('completed');
+      expect(falseResult!.status).toBe('skipped');
+    });
+  });
+
   // ── Error handling ────────────────────────────────────────────────
 
   describe('Error handling', () => {
