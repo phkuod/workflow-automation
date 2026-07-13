@@ -53,6 +53,17 @@ describe('ShapeTree', () => {
     expect(onSelectPath).toHaveBeenCalledWith("['content-type']");
   });
 
+  it('escapes single quotes in bracketed field names', () => {
+    const quoteShape: ShapeNode = {
+      name: '', type: 'object',
+      children: [{ name: "user's-id", type: 'string', sample: '42' }],
+    };
+    const onSelectPath = vi.fn();
+    render(<ShapeTree shape={quoteShape} onSelectPath={onSelectPath} />);
+    fireEvent.click(screen.getByRole('button', { name: /user's-id/ }));
+    expect(onSelectPath).toHaveBeenCalledWith("['user\\'s-id']");
+  });
+
   it('renders plain text (no buttons) when onSelectPath is not provided', () => {
     render(<ShapeTree shape={shape} />);
     expect(screen.queryAllByRole('button')).toHaveLength(0);

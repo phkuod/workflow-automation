@@ -1,6 +1,21 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Workflow, Step } from '../../../shared/types/workflow';
-import { Database } from 'lucide-react';
+import type { ShapeNode, StepShapeEntry, DataShapesSource } from '../../../shared/types/shapes';
+import { Database, Sparkles } from 'lucide-react';
+import { ShapeTree } from '../../../shared/components/ShapeTree';
+import { aiApi } from '../../../shared/api/workflowApi';
+import { useAiEnabled } from '../../../shared/hooks/useAiEnabled';
+import { useDataShapes } from '../hooks/useDataShapes';
+
+const aiShapeCache = new Map<string, ShapeNode>();
+
+export function clearAiShapeCacheForTests(): void {
+  aiShapeCache.clear();
+}
+
+function outputPath(stepName: string, path: string): string {
+  return `steps['${stepName}'].output${path.startsWith('[') ? '' : '.'}${path}`;
+}
 
 interface VariablePickerProps {
   workflow: Workflow;
@@ -27,6 +42,9 @@ export function VariablePicker({ workflow, currentStepId, onSelect }: VariablePi
     return steps;
   }, [workflow, currentStepId]);
 
+  const shapes = useDataShapes(workflow.id);
+  const aiEnabled = useAiEnabled();
+
   if (availableSteps.length === 0) {
     return (
       <div className="p-3 text-xs text-muted italic border rounded bg-tertiary">
@@ -47,6 +65,13 @@ export function VariablePicker({ workflow, currentStepId, onSelect }: VariablePi
             <div className="p-2 py-1.5 bg-bg-primary/50 text-[11px] font-semibold flex items-center gap-1">
               <span className="opacity-70 dark:opacity-50">#</span> {step.name}
             </div>
+            <StepShapeSection
+              step={step}
+              entry={shapes?.steps[step.id]}
+              source={shapes?.source}
+              aiEnabled={aiEnabled}
+              onSelect={onSelect}
+            />
             <div className="p-1 px-2 pb-2 flex flex-wrap gap-1">
               <button
                 onClick={() => onSelect(`steps['${step.name}'].output`)}
@@ -97,6 +122,80 @@ export function VariablePicker({ workflow, currentStepId, onSelect }: VariablePi
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+interface StepShapeSectionProps {
+  step: Step;
+  entry?: StepShapeEntry;
+  source?: DataShapesSource;
+  aiEnabled: boolean;
+  onSelect: (variablePath: string) => void;
+}
+
+function StepShapeSection({ step, entry, source, aiEnabled, onSelect }: StepShapeSectionProps) {
+  const [aiShape, setAiShape] = useState<ShapeNode | null>(null);
+  const [aiState, setAiState] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  const handleSelect = (path: string) => onSelect(outputPath(step.name, path));
+
+  if (entry?.shape) {
+    return (
+      <div className="px-2 pb-1">
+        <div className="text-[9px] text-muted mb-0.5">
+          📸 From run at {source?.time ? new Date(source.time).toLocaleString() : 'unknown time'}
+        </div>
+        <ShapeTree shape={entry.shape} onSelectPath={handleSelect} />
+      </div>
+    );
+  }
+
+  if (aiShape) {
+    return (
+      <div className="px-2 pb-1">
+        <div className="text-[9px] text-muted mb-0.5">✨ AI guess — verify before relying on it</div>
+        <ShapeTree shape={aiShape} onSelectPath={handleSelect} />
+      </div>
+    );
+  }
+
+  const predict = async () => {
+    const cacheKey = `${step.type}:${JSON.stringify(step.config)}`;
+    const cached = aiShapeCache.get(cacheKey);
+    if (cached) {
+      setAiShape(cached);
+      return;
+    }
+    setAiState('loading');
+    try {
+      const shape = await aiApi.inferShape({ name: step.name, type: step.type, config: step.config as Record<string, unknown> });
+      aiShapeCache.set(cacheKey, shape);
+      setAiShape(shape);
+      setAiState('idle');
+    } catch {
+      setAiState('error');
+    }
+  };
+
+  return (
+    <div className="px-2 pb-1 flex items-center gap-2">
+      {entry && entry.status !== 'completed' && (
+        <span className="text-[10px] text-muted italic">No data from last run</span>
+      )}
+      {aiEnabled && (
+        <button
+          onClick={predict}
+          disabled={aiState === 'loading'}
+          className="text-[10px] flex items-center gap-1 text-purple-600 dark:text-purple-400 hover:underline disabled:opacity-50"
+        >
+          <Sparkles size={10} />
+          {aiState === 'loading' ? 'Predicting…' : 'Predict fields'}
+        </button>
+      )}
+      {aiState === 'error' && (
+        <span className="text-[10px] text-red-500">Could not predict — try again</span>
+      )}
     </div>
   );
 }
