@@ -85,6 +85,12 @@ describe('Variable Interpolation', () => {
       const result = ScriptRunner.interpolateVariables("Missing: ${steps['Unknown'].output.data.orderId}", context);
       expect(result).toBe('Missing: ');
     });
+
+    it('falls back to legacy dot-split for a hand-typed step name containing a space', () => {
+      const context = { 'My Step': { output: { x: 'legacy-value' } } };
+      const result = ScriptRunner.interpolateVariables('Value: ${My Step.output.x}', context);
+      expect(result).toBe('Value: legacy-value');
+    });
   });
 
   describe('getValueByPath', () => {
@@ -125,6 +131,21 @@ describe('Variable Interpolation', () => {
       const obj = { steps: { X: { output: { data: {} } } } };
       expect(ScriptRunner.getValueByPath(obj, "steps['Unknown Step'].output.data.orderId")).toBeUndefined();
       expect(ScriptRunner.getValueByPath(obj, "steps['X'].output.data.missingField")).toBeUndefined();
+    });
+
+    it('falls back to legacy dot-split when a segment contains a space (no brackets)', () => {
+      const obj = { 'My Step': { output: { x: 42 } } };
+      expect(ScriptRunner.getValueByPath(obj, 'My Step.output.x')).toBe(42);
+    });
+
+    it('still uses the bracket-aware tokenizer when brackets are present (no regression)', () => {
+      const obj = { steps: { X: { output: { rows: [{ id: 9 }] } } } };
+      expect(ScriptRunner.getValueByPath(obj, "steps['X'].output.rows[0].id")).toBe(9);
+    });
+
+    it('does not crash on a mixed nonsense path', () => {
+      expect(() => ScriptRunner.getValueByPath({}, "some][invalid('path")).not.toThrow();
+      expect(ScriptRunner.getValueByPath({}, "some][invalid('path")).toBeUndefined();
     });
   });
 

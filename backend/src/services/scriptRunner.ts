@@ -444,6 +444,12 @@ exec(compile(_payload['code'], '<user_script>', 'exec'))
       else if (doubleQuoted !== undefined) keys.push(doubleQuoted.replace(/\\(.)/g, '$1'));
       rest = rest.slice(full.length);
     }
+    if (rest.length > 0) {
+      // Bracket-aware tokenizer couldn't consume the whole path — most likely a
+      // legacy hand-typed reference with a space in a segment (e.g. "My Step.output.x").
+      // Fall back to the pre-c90f880 naive dot-split behavior for the full path.
+      return path.split('.');
+    }
     return keys;
   }
 }
