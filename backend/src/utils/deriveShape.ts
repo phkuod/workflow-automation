@@ -27,12 +27,26 @@ export function redactRecord(record: Record<string, unknown>): Record<string, un
   return out;
 }
 
+// Matches `?key=value` / `&key=value` query-string segments; only the VALUE is
+// replaced when the parameter NAME matches SENSITIVE_FIELD_PATTERN — this is
+// deliberately scoped to query-param names, not general secret sniffing.
+const QUERY_PARAM_PATTERN = /([?&])([A-Za-z0-9_-]+)=([^&#\s]*)/g;
+
+function redactQueryParamValues(value: string): string {
+  return value.replace(QUERY_PARAM_PATTERN, (match, sep, key) =>
+    SENSITIVE_FIELD_PATTERN.test(key) ? `${sep}${key}=***` : match
+  );
+}
+
 function redactValue(val: unknown): unknown {
   if (Array.isArray(val)) {
-    return val.map(item => (isPlainObject(item) ? redactRecord(item) : item));
+    return val.map(item => redactValue(item));
   }
   if (isPlainObject(val)) {
     return redactRecord(val);
+  }
+  if (typeof val === 'string') {
+    return redactQueryParamValues(val);
   }
   return val;
 }

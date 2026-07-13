@@ -125,4 +125,24 @@ describe('redactRecord', () => {
     expect(redactRecord({ targets: [{ url: 'https://a.test', apiKey: 'k1' }, 'plain', 7] }))
       .toEqual({ targets: [{ url: 'https://a.test', apiKey: '***' }, 'plain', 7] });
   });
+
+  it('redacts sensitive query-parameter values embedded in a string under a non-sensitive key', () => {
+    expect(redactRecord({ url: 'https://api.test/data?api_key=SECRET&page=1' }))
+      .toEqual({ url: 'https://api.test/data?api_key=***&page=1' });
+  });
+
+  it('leaves non-sensitive query params and the rest of the URL untouched', () => {
+    expect(redactRecord({ url: 'https://api.test/data?page=1&limit=10' }))
+      .toEqual({ url: 'https://api.test/data?page=1&limit=10' });
+  });
+
+  it('leaves strings with no query params untouched', () => {
+    expect(redactRecord({ note: 'no query params here, just a sentence.' }))
+      .toEqual({ note: 'no query params here, just a sentence.' });
+  });
+
+  it('redacts sensitive query-param values inside nested objects and arrays too', () => {
+    expect(redactRecord({ targets: [{ url: 'https://a.test?token=abc123&ok=1' }] }))
+      .toEqual({ targets: [{ url: 'https://a.test?token=***&ok=1' }] });
+  });
 });
