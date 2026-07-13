@@ -15,7 +15,7 @@ const MAX_FIELDS_PER_LEVEL = 30;
 
 /** Convert an arbitrary JSON value into a bounded, redacted shape tree. */
 export function deriveShape(value: unknown, name = ''): ShapeNode {
-  return derive(value, name, 0);
+  return derive(value, name, 0, false);
 }
 
 /** Mask values of sensitive keys (shallow) — used before sending configs to the AI provider. */
@@ -27,8 +27,8 @@ export function redactRecord(record: Record<string, unknown>): Record<string, un
   return out;
 }
 
-function derive(value: unknown, name: string, depth: number): ShapeNode {
-  const redacted = SENSITIVE_FIELD_PATTERN.test(name);
+function derive(value: unknown, name: string, depth: number, inheritedRedacted: boolean): ShapeNode {
+  const redacted = inheritedRedacted || SENSITIVE_FIELD_PATTERN.test(name);
 
   if (value === null || value === undefined) {
     return { name, type: 'null' };
@@ -43,7 +43,7 @@ function derive(value: unknown, name: string, depth: number): ShapeNode {
     const node: ShapeNode = { name, type: 'array', sample: `${value.length} items` };
     if (value.length > 0) {
       if (depth < MAX_DEPTH) {
-        node.children = [derive(value[0], '[0]', depth + 1)];
+        node.children = [derive(value[0], '[0]', depth + 1, redacted)];
       } else {
         node.truncated = true;
       }
@@ -58,7 +58,7 @@ function derive(value: unknown, name: string, depth: number): ShapeNode {
     node.omittedCount = entries.length;
     return node;
   }
-  node.children = entries.slice(0, MAX_FIELDS_PER_LEVEL).map(([key, val]) => derive(val, key, depth + 1));
+  node.children = entries.slice(0, MAX_FIELDS_PER_LEVEL).map(([key, val]) => derive(val, key, depth + 1, redacted));
   if (entries.length > MAX_FIELDS_PER_LEVEL) {
     node.truncated = true;
     node.omittedCount = entries.length - MAX_FIELDS_PER_LEVEL;

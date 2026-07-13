@@ -63,6 +63,26 @@ describe('deriveShape', () => {
     expect(byName.count.sample).toBe('7');
   });
 
+  it('propagates redaction into array children of sensitive-named fields', () => {
+    const shape = deriveShape({ apiKeys: ['sk_live_1234'] });
+    const apiKeys = shape.children![0];
+    expect(apiKeys.name).toBe('apiKeys');
+    const first = apiKeys.children![0];
+    expect(first.name).toBe('[0]');
+    expect(first.type).toBe('string');
+    expect(first.sample).toBe('***');
+  });
+
+  it('propagates redaction into object children of sensitive-named fields', () => {
+    const shape = deriveShape({ secrets: { a: 'x' } });
+    const secrets = shape.children![0];
+    expect(secrets.name).toBe('secrets');
+    const a = secrets.children![0];
+    expect(a.name).toBe('a');
+    expect(a.type).toBe('string');
+    expect(a.sample).toBe('***');
+  });
+
   it('handles an empty object and empty array', () => {
     expect(deriveShape({})).toEqual({ name: '', type: 'object', children: [] });
     expect(deriveShape([], 'list')).toEqual({ name: 'list', type: 'array', sample: '0 items' });
