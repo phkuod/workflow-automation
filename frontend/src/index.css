@@ -636,6 +636,15 @@ body {
   background: var(--bg-tertiary);
 }
 
+.cell-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  max-width: 480px;
+}
+
 /* React Flow custom styles */
 .react-flow {
   background: var(--bg-primary) !important;

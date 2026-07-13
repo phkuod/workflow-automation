@@ -7,6 +7,7 @@ import { useInput } from '../../shared/components/InputDialog';
 import { useConfirm } from '../../shared/components/ConfirmDialog';
 import StageCanvas from './components/StageCanvas';
 import StepCanvas from './components/StepCanvas';
+import PlanView from './components/PlanView';
 import EditorBreadcrumb from './components/EditorBreadcrumb';
 import NodeLibrary from './components/NodeLibrary';
 import NodeConfigPanel from './components/NodeConfigPanel';
@@ -14,6 +15,7 @@ import StationConfigPanel from './components/StationConfigPanel';
 import SimulationPanel from './components/SimulationPanel';
 import VersionHistoryPanel from './components/VersionHistoryPanel';
 import ExecuteDialog from './components/ExecuteDialog';
+import CoachMarks from './components/CoachMarks';
 import { toast } from '../../shared/stores/toastStore';
 import type { StepType } from '../../shared/types/workflow';
 import InputParametersEditor from './components/InputParametersEditor';
@@ -69,12 +71,30 @@ function EditorPage() {
 
   // View state
   const [editorView, setEditorView] = useState<EditorView>({ type: 'stage-view' });
+  const [viewMode, setViewMode] = useState<'plan' | 'canvas'>(() =>
+    (localStorage.getItem('editor.viewMode') as 'plan' | 'canvas' | null) ?? 'plan'
+  );
+  const switchViewMode = useCallback((mode: 'plan' | 'canvas') => {
+    setViewMode(mode);
+    localStorage.setItem('editor.viewMode', mode);
+    if (mode === 'plan') {
+      // Plan View has no drill-in concept: reset the canvas navigation so the
+      // breadcrumb and step-view state don't go stale behind the plan.
+      setEditorView({ type: 'stage-view' });
+    }
+  }, []);
   const [showLibrary, setShowLibrary] = useState(true);
   const [showSimulation, setShowSimulation] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showExecuteDialog, setShowExecuteDialog] = useState<'execute' | 'simulate' | null>(null);
   const [showInputParams, setShowInputParams] = useState(false);
-  
+  const [showCoachMarks, setShowCoachMarks] = useState(() => !localStorage.getItem('editor.coachMarksSeen'));
+
+  const dismissCoachMarks = useCallback(() => {
+    localStorage.setItem('editor.coachMarksSeen', '1');
+    setShowCoachMarks(false);
+  }, []);
+
   // Use store's isDirty for unsaved changes tracking
   const hasUnsavedChanges = isDirty;
 
@@ -86,11 +106,11 @@ function EditorPage() {
     if (id === 'new') {
       if (creatingRef.current) return;
       creatingRef.current = true;
-      createWorkflow('Untitled Workflow').then((workflow) => {
+      createWorkflow('Untitled Automation').then((workflow) => {
         navigate(`/editor/${workflow.id}`, { replace: true });
       }).catch(() => {
         creatingRef.current = false;
-        toast.error('Failed to create workflow');
+        toast.error('Failed to create automation');
         navigate('/dashboard');
       });
     } else if (id) {
@@ -146,7 +166,7 @@ function EditorPage() {
     const items = [
       {
         id: 'workflow',
-        label: currentWorkflow?.name || 'Workflow',
+        label: currentWorkflow?.name || 'Automation',
         onClick: editorView.type === 'step-view' 
           ? () => {
               setEditorView({ type: 'stage-view' });
@@ -208,10 +228,10 @@ function EditorPage() {
 
   const handleAddStep = useCallback(async (stationId: string, type: StepType) => {
     const name = await showInputDialog({
-      title: 'Add Step',
-      message: `Enter a name for the new ${type.replace('-', ' ')} step:`,
-      placeholder: 'Step name...',
-      confirmText: 'Create Step',
+      title: 'Add Action',
+      message: `Enter a name for the new ${type.replace('-', ' ')} action:`,
+      placeholder: 'Action name...',
+      confirmText: 'Create Action',
     });
     if (name) {
       addStep(stationId, type, name);
@@ -221,9 +241,9 @@ function EditorPage() {
   const handleSave = useCallback(async () => {
     try {
       await saveWorkflow();
-      toast.success('Workflow saved');
+      toast.success('Automation saved');
     } catch {
-      toast.error('Failed to save workflow');
+      toast.error('Failed to save automation');
     }
   }, [saveWorkflow]);
 
@@ -237,7 +257,7 @@ function EditorPage() {
     try {
       await simulateWorkflow();
     } catch {
-      toast.error('Simulation failed');
+      toast.error('Test run failed');
     }
   }, [simulateWorkflow, currentWorkflow]);
 
@@ -252,7 +272,7 @@ function EditorPage() {
         await executeWorkflow(inputData);
       }
     } catch {
-      toast.error('Execution failed');
+      toast.error('Run failed');
     }
   }, [showExecuteDialog, simulateWorkflow, executeWorkflow]);
 
@@ -267,6 +287,11 @@ function EditorPage() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+        return;
+      }
       if (e.key === 'Escape') {
         if (selectedStepId) {
           selectStep(null);
@@ -280,7 +305,7 @@ function EditorPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedStepId, selectedStationId, editorView, selectStep, selectStation, handleBackToStageView]);
+  }, [selectedStepId, selectedStationId, editorView, selectStep, selectStation, handleBackToStageView, handleSave]);
 
   // Loading state
   if (isLoading && !currentWorkflow) {
@@ -298,7 +323,7 @@ function EditorPage() {
     return (
       <div className="layout">
         <div className="flex flex-col items-center justify-center" style={{ height: '100vh' }}>
-          <p className="text-muted">Workflow not found</p>
+          <p className="text-muted">Automation not found</p>
           <button className="btn btn-primary mt-4" onClick={() => navigate('/dashboard')}>
             Back to Dashboard
           </button>
@@ -321,47 +346,67 @@ function EditorPage() {
         </div>
         
         <div className="header-actions">
-          {/* View indicator */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            padding: '6px 12px',
-            background: 'var(--bg-tertiary)',
-            borderRadius: '8px',
-            fontSize: '12px',
-            color: 'var(--text-secondary)',
-          }}>
-            <Layers size={14} />
-            {editorView.type === 'stage-view' ? 'Stage View' : 'Step View'}
+          {/* Plan / Canvas view toggle */}
+          <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-tertiary)', borderRadius: '8px', padding: '2px' }}>
+            <button
+              className={`btn btn-sm ${viewMode === 'plan' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => switchViewMode('plan')}
+            >
+              Plan View
+            </button>
+            <button
+              className={`btn btn-sm ${viewMode === 'canvas' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => switchViewMode('canvas')}
+            >
+              Canvas View
+            </button>
           </div>
 
-          {editorView.type === 'step-view' && (
-            <button 
-              className="btn btn-secondary"
-              onClick={handleBackToStageView}
-            >
-              <ArrowLeft size={18} />
-              Back to Stages
-            </button>
-          )}
+          {viewMode === 'canvas' && (
+            <>
+              {/* View indicator */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 12px',
+                background: 'var(--bg-tertiary)',
+                borderRadius: '8px',
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+              }}>
+                <Layers size={14} />
+                {editorView.type === 'stage-view' ? 'Stage View' : 'Action View'}
+              </div>
 
-          {editorView.type === 'stage-view' ? (
-            <button 
-              className="btn btn-secondary"
-              onClick={handleAddStation}
-            >
-              <Plus size={18} />
-              Add Stage
-            </button>
-          ) : (
-            <button 
-              className="btn btn-secondary"
-              onClick={() => setShowLibrary(!showLibrary)}
-            >
-              <Plus size={18} />
-              Add Step
-            </button>
+              {editorView.type === 'step-view' && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleBackToStageView}
+                >
+                  <ArrowLeft size={18} />
+                  Back to Stages
+                </button>
+              )}
+
+              {editorView.type === 'stage-view' ? (
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleAddStation}
+                >
+                  <Plus size={18} />
+                  Add Stage
+                </button>
+              ) : (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowLibrary(!showLibrary)}
+                >
+                  <Plus size={18} />
+                  Add Action
+                </button>
+              )}
+            </>
           )}
 
           {/* Workflow Status */}
@@ -439,7 +484,7 @@ function EditorPage() {
             ) : (
               <Play size={18} />
             )}
-            Simulate
+            Test
           </button>
         </div>
       </header>
@@ -447,8 +492,8 @@ function EditorPage() {
       {/* Main Editor Area */}
       <div className="flex" style={{ flex: 1, overflow: 'hidden' }}>
         {/* Node Library Panel (only in Step View) */}
-        {showLibrary && editorView.type === 'step-view' && currentStage && (
-          <NodeLibrary 
+        {viewMode === 'canvas' && showLibrary && editorView.type === 'step-view' && currentStage && (
+          <NodeLibrary
             onAddStep={(type) => handleAddStep(currentStage.id, type)}
             stations={currentWorkflow?.definition.stations || []}
             onAddStepToStation={handleAddStep}
@@ -458,29 +503,40 @@ function EditorPage() {
 
         {/* Canvas Area */}
         <div style={{ flex: 1, height: '100%' }}>
-          {currentWorkflow && editorView.type === 'stage-view' && (
-            <StageCanvas
+          {currentWorkflow && viewMode === 'plan' ? (
+            <PlanView
               workflow={currentWorkflow}
-              execution={currentExecution}
-              isSimulating={isSimulating}
-              onStageDoubleClick={handleStageDoubleClick}
-              onStageClick={handleStationClick}
-              onAddStation={handleAddStation}
+              onEditStep={(stepId) => selectStep(stepId)}
+              onEditStage={(stageId) => selectStation(stageId)}
+              onAddStage={handleAddStation}
             />
-          )}
+          ) : (
+            <>
+              {currentWorkflow && editorView.type === 'stage-view' && (
+                <StageCanvas
+                  workflow={currentWorkflow}
+                  execution={currentExecution}
+                  isSimulating={isSimulating}
+                  onStageDoubleClick={handleStageDoubleClick}
+                  onStageClick={handleStationClick}
+                  onAddStation={handleAddStation}
+                />
+              )}
 
-          {currentWorkflow && editorView.type === 'step-view' && currentStage && (
-            <StepCanvas
-              station={currentStage}
-              execution={currentExecution}
-              isSimulating={isSimulating}
-              selectedStepId={selectedStepId}
-              onStepClick={handleStepClick}
-              onStepUpdate={updateStep}
-              onStepConnect={(sourceId, targetId, sourceHandle) =>
-                connectSteps(currentStage.id, sourceId, targetId, sourceHandle)
-              }
-            />
+              {currentWorkflow && editorView.type === 'step-view' && currentStage && (
+                <StepCanvas
+                  station={currentStage}
+                  execution={currentExecution}
+                  isSimulating={isSimulating}
+                  selectedStepId={selectedStepId}
+                  onStepClick={handleStepClick}
+                  onStepUpdate={updateStep}
+                  onStepConnect={(sourceId, targetId, sourceHandle) =>
+                    connectSteps(currentStage.id, sourceId, targetId, sourceHandle)
+                  }
+                />
+              )}
+            </>
           )}
         </div>
 
@@ -495,7 +551,7 @@ function EditorPage() {
           />
         )}
 
-        {selectedStation && currentWorkflow && editorView.type === 'stage-view' && (
+        {selectedStation && currentWorkflow && (editorView.type === 'stage-view' || viewMode === 'plan') && (
           <StationConfigPanel 
             station={selectedStation}
             workflow={currentWorkflow}
@@ -566,6 +622,11 @@ function EditorPage() {
           onSubmit={handleExecuteWithParams}
           onCancel={() => setShowExecuteDialog(null)}
         />
+      )}
+
+      {/* First-visit coach marks (Plan View only) */}
+      {showCoachMarks && currentWorkflow && viewMode === 'plan' && (
+        <CoachMarks onDone={dismissCoachMarks} />
       )}
     </div>
   );

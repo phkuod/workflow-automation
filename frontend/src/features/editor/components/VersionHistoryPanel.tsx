@@ -80,7 +80,7 @@ export default function VersionHistoryPanel({ workflowId, onRestore, onClose }: 
           </div>
         ) : versions.length === 0 ? (
           <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '24px' }}>
-            No version history yet. Versions are saved when you update the workflow.
+            No version history yet. Versions are saved when you update the automation.
           </p>
         ) : (
           versions.map((version) => (
@@ -114,7 +114,7 @@ export default function VersionHistoryPanel({ workflowId, onRestore, onClose }: 
                 </div>
               )}
               <div className="text-sm text-muted" style={{ marginTop: '4px' }}>
-                {version.definition.stations.length} station{version.definition.stations.length !== 1 ? 's' : ''}
+                {version.definition.stations.length} stage{version.definition.stations.length !== 1 ? 's' : ''}
               </div>
             </div>
           ))

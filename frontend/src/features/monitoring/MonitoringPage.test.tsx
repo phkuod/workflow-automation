@@ -22,11 +22,15 @@ vi.mock('recharts', () => ({
   Legend: () => null,
 }));
 
-// Mock metricsApi
+// Mock metricsApi and scheduleApi
 const mockGetExecutionHistory = vi.fn().mockResolvedValue([]);
+const mockGetSchedules = vi.fn().mockResolvedValue([]);
 vi.mock('../../shared/api/workflowApi', () => ({
   metricsApi: {
     getExecutionHistory: (...args: unknown[]) => mockGetExecutionHistory(...args),
+  },
+  scheduleApi: {
+    getAll: (...args: unknown[]) => mockGetSchedules(...args),
   },
 }));
 
@@ -83,6 +87,7 @@ describe('MonitoringPage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.clearAllMocks();
     mockGetExecutionHistory.mockResolvedValue([]);
+    mockGetSchedules.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -99,12 +104,16 @@ describe('MonitoringPage', () => {
     render(<MonitoringPage />);
 
     expect(screen.getByText('System Monitoring')).toBeInTheDocument();
+
+    // Let the fire-and-forget schedule fetch settle inside act() so its
+    // setSchedules update doesn't fire unguarded after the test body ends
+    await waitFor(() => expect(mockGetSchedules).toHaveBeenCalled());
   });
 
   // -------------------------------------------------------------------------
   // Test 2: skeleton loading state
   // -------------------------------------------------------------------------
-  it('shows loading skeletons initially before data resolves', () => {
+  it('shows loading skeletons initially before data resolves', async () => {
     // Keep fetch perpetually pending so the loading state stays visible
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
 
@@ -113,6 +122,10 @@ describe('MonitoringPage', () => {
     // The component renders 4 skeleton cards while isLoading && !metrics
     const skeletons = document.querySelectorAll('.skeleton');
     expect(skeletons.length).toBeGreaterThan(0);
+
+    // Let the fire-and-forget schedule fetch settle inside act() so its
+    // setSchedules update doesn't fire unguarded after the test body ends
+    await waitFor(() => expect(mockGetSchedules).toHaveBeenCalled());
   });
 
   // -------------------------------------------------------------------------
@@ -160,5 +173,33 @@ describe('MonitoringPage', () => {
     render(<MonitoringPage />);
 
     expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
+
+    // Let the fire-and-forget schedule fetch settle inside act() so its
+    // setSchedules update doesn't fire unguarded after the test body ends
+    await waitFor(() => expect(mockGetSchedules).toHaveBeenCalled());
+  });
+
+  // -------------------------------------------------------------------------
+  // Test 6: scheduled automations section
+  // -------------------------------------------------------------------------
+  it('lists scheduled automations with next run time', async () => {
+    mockFetchSuccess(mockMetrics);
+    mockGetSchedules.mockResolvedValue([
+      {
+        workflowId: 'w1',
+        workflowName: 'Daily Report',
+        cronExpression: '0 9 * * *',
+        isActive: true,
+        nextRun: '2026-07-12T09:00:00.000Z',
+      },
+    ]);
+
+    render(<MonitoringPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Scheduled Automations')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Daily Report')).toBeInTheDocument();
+    expect(screen.getByText('0 9 * * *')).toBeInTheDocument();
   });
 });

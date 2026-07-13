@@ -170,7 +170,7 @@ export default function StageCanvas({
           <Panel position="top-center">
             <div className="card" style={{ textAlign: 'center', padding: '2rem 3rem' }}>
               <h3>Get Started</h3>
-              <p className="text-muted mt-2">Add a stage to begin building your workflow</p>
+              <p className="text-muted mt-2">Add a stage to begin building your automation</p>
               <button className="btn btn-primary mt-4" onClick={onAddStation}>
                 <Plus size={18} />
                 Add Stage

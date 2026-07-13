@@ -221,16 +221,16 @@ export interface NodeData {
 }
 
 export const STEP_TYPE_INFO: Record<StepType, { label: string; icon: string; color: string }> = {
-  'trigger-manual': { label: 'Manual Trigger', icon: '🔘', color: '#22c55e' },
-  'trigger-cron': { label: 'Cron Trigger', icon: '⏰', color: '#22c55e' },
-  'script-js': { label: 'JavaScript', icon: '📜', color: '#f59e0b' },
-  'script-python': { label: 'Python', icon: '🐍', color: '#3b82f6' },
-  'http-request': { label: 'HTTP Request', icon: '🔗', color: '#8b5cf6' },
-  'if-else': { label: 'If/Else', icon: '🔀', color: '#ec4899' },
-  'set-variable': { label: 'Set Variable', icon: '📝', color: '#6366f1' },
+  'trigger-manual': { label: 'Start manually', icon: '🔘', color: '#22c55e' },
+  'trigger-cron': { label: 'On a schedule', icon: '⏰', color: '#22c55e' },
+  'script-js': { label: 'Custom Script (JavaScript)', icon: '📜', color: '#f59e0b' },
+  'script-python': { label: 'Custom Script (Python)', icon: '🐍', color: '#3b82f6' },
+  'http-request': { label: 'Call an external service', icon: '🔗', color: '#8b5cf6' },
+  'if-else': { label: 'Decision', icon: '🔀', color: '#ec4899' },
+  'set-variable': { label: 'Remember a value', icon: '📝', color: '#6366f1' },
   'wait': { label: 'Wait', icon: '⏳', color: '#64748b' },
-  'trigger-webhook': { label: 'Webhook Trigger', icon: '⚡', color: '#22c55e' },
-  'action-email': { label: 'Send Email', icon: '📧', color: '#3b82f6' },
-  'action-slack': { label: 'Slack Message', icon: '💬', color: '#4a154b' },
-  'connector-db': { label: 'Database Query', icon: '🗄️', color: '#0ea5e9' },
+  'trigger-webhook': { label: 'When another system calls', icon: '⚡', color: '#22c55e' },
+  'action-email': { label: 'Send an email', icon: '📧', color: '#3b82f6' },
+  'action-slack': { label: 'Send a Slack message', icon: '💬', color: '#4a154b' },
+  'connector-db': { label: 'Query a database', icon: '🗄️', color: '#0ea5e9' },
 };

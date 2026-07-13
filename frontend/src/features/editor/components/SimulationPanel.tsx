@@ -174,7 +174,7 @@ function SimulationPanel({ execution, logs, isRunning, selectedStepId, onStepDes
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted">Stations</div>
+            <div className="text-xs text-muted">Stages</div>
             <div className="font-semibold">
               {execution.result?.stations.filter(s => s.status === 'completed').length || 0}/
               {execution.result?.stations.length || 0}
@@ -186,7 +186,7 @@ function SimulationPanel({ execution, logs, isRunning, selectedStepId, onStepDes
       {/* Station Results */}
       {execution?.result?.stations && (
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
-          <div className="text-xs text-muted mb-2">Station Progress</div>
+          <div className="text-xs text-muted mb-2">Stage Progress</div>
           {execution.result.stations.map((station) => (
             <div
               key={station.stationId}
@@ -208,7 +208,7 @@ function SimulationPanel({ execution, logs, isRunning, selectedStepId, onStepDes
               )}
               <span className="text-sm">{station.stationName}</span>
               <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>
-                {station.steps.filter(s => s.status === 'completed').length}/{station.steps.length} steps
+                {station.steps.filter(s => s.status === 'completed').length}/{station.steps.length} actions
               </span>
             </div>
           ))}
@@ -225,7 +225,7 @@ function SimulationPanel({ execution, logs, isRunning, selectedStepId, onStepDes
         ) : (
           <>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
-              <div className="text-xs text-muted">Execution Log ({displayLogs.length} entries)</div>
+              <div className="text-xs text-muted">Run Log ({displayLogs.length} entries)</div>
             </div>
             <div
               ref={logContainerRef}
@@ -294,23 +294,23 @@ function formatEventMessage(event: ExecutionEvent): string {
   const { type, data } = event;
   switch (type) {
     case 'step:start':
-      return `Step started: ${data.stepName}`;
+      return `Action started: ${data.stepName}`;
     case 'step:complete':
-      return `Step completed: ${data.stepName}`;
+      return `Action completed: ${data.stepName}`;
     case 'step:failed':
-      return `Step failed: ${data.stepName} — ${data.error || 'unknown error'}`;
+      return `Action failed: ${data.stepName} — ${data.error || 'unknown error'}`;
     case 'station:start':
-      return `Station started: ${data.stationName}`;
+      return `Stage started: ${data.stationName}`;
     case 'station:complete':
-      return `Station completed: ${data.stationName}`;
+      return `Stage completed: ${data.stationName}`;
     case 'station:failed':
-      return `Station failed: ${data.stationName} — ${data.error || 'unknown error'}`;
+      return `Stage failed: ${data.stationName} — ${data.error || 'unknown error'}`;
     case 'execution:complete':
-      return `Execution completed (${data.progress?.completed}/${data.progress?.total} steps)`;
+      return `Run completed (${data.progress?.completed}/${data.progress?.total} actions)`;
     case 'execution:failed':
-      return `Execution failed`;
+      return `Run failed`;
     case 'execution:cancelled':
-      return `Execution cancelled`;
+      return `Run cancelled`;
     default:
       return type;
   }

@@ -25,7 +25,7 @@ import {
   Cell,
   Legend
 } from 'recharts';
-import { metricsApi, type ExecutionHistoryEntry } from '../../shared/api/workflowApi';
+import { metricsApi, scheduleApi, type ExecutionHistoryEntry, type ScheduleInfo } from '../../shared/api/workflowApi';
 
 interface Metrics {
   timestamp: string;
@@ -75,6 +75,7 @@ export default function MonitoringPage() {
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [trendData, setTrendData] = useState<{ date: string; success: number; failed: number; total: number }[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -82,6 +83,7 @@ export default function MonitoringPage() {
   const fetchMetrics = useCallback(async () => {
     try {
       setIsLoading(true);
+      scheduleApi.getAll().then(setSchedules).catch(() => setSchedules([]));
       const [metricsResponse, historyData] = await Promise.all([
         fetch(`${API_BASE}/metrics`).then(r => r.json()),
         metricsApi.getExecutionHistory(7).catch(() => []),
@@ -274,7 +276,7 @@ export default function MonitoringPage() {
               <div className="card">
                 <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <HardDrive size={18} />
-                  Workflows
+                  Automations
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -300,7 +302,7 @@ export default function MonitoringPage() {
               <div className="card">
                 <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Activity size={18} />
-                  Executions
+                  Runs
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -361,7 +363,7 @@ export default function MonitoringPage() {
               <div className="card">
                 <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <TrendingUp size={18} />
-                  Execution Trend (Last 7 Days)
+                  Run Trend (Last 7 Days)
                 </h3>
                 <div style={{ height: '250px' }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -402,17 +404,17 @@ export default function MonitoringPage() {
               <div className="card">
                 <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Activity size={18} />
-                  Execution Results
+                  Run Results
                 </h3>
-                <div style={{ height: '250px' }}>
+                <div style={{ height: '340px' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={pieData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
+                        innerRadius={85}
+                        outerRadius={125}
                         paddingAngle={2}
                         dataKey="value"
                       >
@@ -435,6 +437,40 @@ export default function MonitoringPage() {
                   </ResponsiveContainer>
                 </div>
               </div>
+            </div>
+
+            {/* Scheduled Automations */}
+            <div className="card" style={{ marginTop: '1.5rem' }}>
+              <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={18} />
+                Scheduled Automations
+              </h3>
+              {schedules.length === 0 ? (
+                <p className="text-muted text-sm">No automations are on a schedule.</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <th style={{ textAlign: 'left', padding: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>Automation</th>
+                      <th style={{ textAlign: 'left', padding: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>Schedule</th>
+                      <th style={{ textAlign: 'left', padding: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>Next run</th>
+                      <th style={{ textAlign: 'left', padding: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {schedules.map(s => (
+                      <tr key={s.workflowId} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '8px', fontSize: '13px', fontWeight: 500 }}>{s.workflowName}</td>
+                        <td style={{ padding: '8px', fontSize: '13px', fontFamily: 'monospace' }}>{s.cronExpression}</td>
+                        <td style={{ padding: '8px', fontSize: '13px' }}>
+                          {s.nextRun ? new Date(s.nextRun).toLocaleString() : '—'}
+                        </td>
+                        <td style={{ padding: '8px', fontSize: '13px' }}>{s.isActive ? 'Active' : 'Paused'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </>
         )}

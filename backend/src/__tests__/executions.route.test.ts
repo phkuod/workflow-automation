@@ -304,92 +304,98 @@ describe('Executions Routes', () => {
   // ─── GET /api/executions/:id/stream ─────────────────────────────────
 
   describe('GET /api/executions/:id/stream', () => {
-    it('should send a connected event on SSE connection', (done) => {
-      const req = request(app)
-        .get('/api/executions/exec-001/stream')
-        .set('Accept', 'text/event-stream');
+    it('should send a connected event on SSE connection', async () => {
+      await new Promise<void>((resolve) => {
+        const req = request(app)
+          .get('/api/executions/exec-001/stream')
+          .set('Accept', 'text/event-stream');
 
-      req.buffer(true)
-        .parse((res: any, callback: any) => {
-          let data = '';
-          res.on('data', (chunk: Buffer) => {
-            data += chunk.toString();
-            if (data.includes('"connected"')) {
-              res.destroy();
-            }
+        req.buffer(true)
+          .parse((res: any, callback: any) => {
+            let data = '';
+            res.on('data', (chunk: Buffer) => {
+              data += chunk.toString();
+              if (data.includes('"connected"')) {
+                res.destroy();
+              }
+            });
+            res.on('end', () => callback(null, data));
+            res.on('error', () => callback(null, data));
+            res.on('close', () => callback(null, data));
+          })
+          .end((err: any, res: any) => {
+            expect(res.status).toBe(200);
+            expect(String(res.body)).toContain('data: {"type":"connected"}');
+            resolve();
           });
-          res.on('end', () => callback(null, data));
-          res.on('error', () => callback(null, data));
-          res.on('close', () => callback(null, data));
-        })
-        .end((err: any, res: any) => {
-          expect(res.status).toBe(200);
-          expect(String(res.body)).toContain('data: {"type":"connected"}');
-          done();
-        });
+      });
     });
 
-    it('should register event handler on executionEventBus', (done) => {
-      const req = request(app)
-        .get('/api/executions/exec-123/stream')
-        .set('Accept', 'text/event-stream');
+    it('should register event handler on executionEventBus', async () => {
+      await new Promise<void>((resolve) => {
+        const req = request(app)
+          .get('/api/executions/exec-123/stream')
+          .set('Accept', 'text/event-stream');
 
-      req.buffer(true)
-        .parse((res: any, callback: any) => {
-          let data = '';
-          res.on('data', (chunk: Buffer) => {
-            data += chunk.toString();
-            if (data.includes('"connected"')) {
-              res.destroy();
-            }
+        req.buffer(true)
+          .parse((res: any, callback: any) => {
+            let data = '';
+            res.on('data', (chunk: Buffer) => {
+              data += chunk.toString();
+              if (data.includes('"connected"')) {
+                res.destroy();
+              }
+            });
+            res.on('end', () => callback(null, data));
+            res.on('error', () => callback(null, data));
+            res.on('close', () => callback(null, data));
+          })
+          .end((err: any, res: any) => {
+            expect(res.status).toBe(200);
+            expect(executionEventBus.on).toHaveBeenCalledWith('execution:exec-123', expect.any(Function));
+            resolve();
           });
-          res.on('end', () => callback(null, data));
-          res.on('error', () => callback(null, data));
-          res.on('close', () => callback(null, data));
-        })
-        .end((err: any, res: any) => {
-          expect(res.status).toBe(200);
-          expect(executionEventBus.on).toHaveBeenCalledWith('execution:exec-123', expect.any(Function));
-          done();
-        });
+      });
     });
 
-    it('should forward execution events and close on terminal event', (done) => {
+    it('should forward execution events and close on terminal event', async () => {
       // Capture the handler registered on the event bus
       let capturedHandler: ((event: any) => void) | null = null;
       (executionEventBus.on as any).mockImplementation((_event: string, handler: (event: any) => void) => {
         capturedHandler = handler;
       });
 
-      const req = request(app)
-        .get('/api/executions/exec-001/stream')
-        .set('Accept', 'text/event-stream');
+      await new Promise<void>((resolve) => {
+        const req = request(app)
+          .get('/api/executions/exec-001/stream')
+          .set('Accept', 'text/event-stream');
 
-      req.buffer(true)
-        .parse((res: any, callback: any) => {
-          let data = '';
-          res.on('data', (chunk: Buffer) => {
-            data += chunk.toString();
-            // After connected event, emit a terminal event via the captured handler
-            if (capturedHandler && data.includes('"connected"') && !data.includes('execution:complete')) {
-              capturedHandler({
-                executionId: 'exec-001',
-                type: 'execution:complete',
-                data: { timestamp: new Date().toISOString() },
-              });
-            }
+        req.buffer(true)
+          .parse((res: any, callback: any) => {
+            let data = '';
+            res.on('data', (chunk: Buffer) => {
+              data += chunk.toString();
+              // After connected event, emit a terminal event via the captured handler
+              if (capturedHandler && data.includes('"connected"') && !data.includes('execution:complete')) {
+                capturedHandler({
+                  executionId: 'exec-001',
+                  type: 'execution:complete',
+                  data: { timestamp: new Date().toISOString() },
+                });
+              }
+            });
+            res.on('end', () => callback(null, data));
+            res.on('error', () => callback(null, data));
+            res.on('close', () => callback(null, data));
+          })
+          .end((err: any, res: any) => {
+            expect(res.status).toBe(200);
+            const body = String(res.body);
+            expect(body).toContain('"type":"connected"');
+            expect(body).toContain('"type":"execution:complete"');
+            resolve();
           });
-          res.on('end', () => callback(null, data));
-          res.on('error', () => callback(null, data));
-          res.on('close', () => callback(null, data));
-        })
-        .end((err: any, res: any) => {
-          expect(res.status).toBe(200);
-          const body = String(res.body);
-          expect(body).toContain('"type":"connected"');
-          expect(body).toContain('"type":"execution:complete"');
-          done();
-        });
+      });
     });
   });
 });

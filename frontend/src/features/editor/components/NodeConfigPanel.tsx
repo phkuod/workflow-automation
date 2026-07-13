@@ -280,7 +280,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
             {typeInfo.icon}
           </span>
           <div>
-            <div style={{ fontWeight: 600, fontSize: '14px' }}>Configure Step</div>
+            <div style={{ fontWeight: 600, fontSize: '14px' }}>Configure Action</div>
             <div style={{ fontSize: '12px', color: typeInfo.color }}>{typeInfo.label}</div>
           </div>
         </div>
@@ -292,7 +292,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
       {/* Body */}
       <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
         <div className="form-group">
-          <label className="form-label">Step Name</label>
+          <label className="form-label">Action Name</label>
           <input
             type="text"
             className="form-input"
@@ -305,58 +305,63 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
 
         {/* Retry Policy - Only for actions, not triggers */}
         {!step.type.startsWith('trigger-') && step.type !== 'if-else' && step.type !== 'wait' && (
-          <div className="mt-8 pt-6 border-t border-color">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-semibold">Retry Policy</h4>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={retryEnabled}
-                  onChange={(e) => setRetryEnabled(e.target.checked)}
-                />
-                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
-
-            {retryEnabled && (
-              <div className="space-y-4">
-                <div className="form-group">
-                  <label className="form-label">Max Attempts</label>
+          <details style={{ marginTop: '16px' }}>
+            <summary style={{ cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+              Advanced (retries)
+            </summary>
+            <div className="mt-8 pt-6 border-t border-color">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-semibold">Retry Policy</h4>
+                <label className="relative inline-flex items-center cursor-pointer">
                   <input
-                    type="number"
-                    className="form-input"
-                    value={maxAttempts}
-                    onChange={(e) => setMaxAttempts(Number(e.target.value))}
-                    min={1}
-                    max={10}
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={retryEnabled}
+                    onChange={(e) => setRetryEnabled(e.target.checked)}
                   />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Initial Interval (ms)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={initialInterval}
-                    onChange={(e) => setInitialInterval(Number(e.target.value))}
-                    min={100}
-                    step={100}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Backoff Coefficient</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={backoffCoefficient}
-                    onChange={(e) => setBackoffCoefficient(Number(e.target.value))}
-                    min={1}
-                    step={0.1}
-                  />
-                </div>
+                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
               </div>
-            )}
-          </div>
+
+              {retryEnabled && (
+                <div className="space-y-4">
+                  <div className="form-group">
+                    <label className="form-label">Max Attempts</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={maxAttempts}
+                      onChange={(e) => setMaxAttempts(Number(e.target.value))}
+                      min={1}
+                      max={10}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Initial Interval (ms)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={initialInterval}
+                      onChange={(e) => setInitialInterval(Number(e.target.value))}
+                      min={100}
+                      step={100}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Backoff Coefficient</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={backoffCoefficient}
+                      onChange={(e) => setBackoffCoefficient(Number(e.target.value))}
+                      min={1}
+                      step={0.1}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
         )}
       </div>
 
@@ -369,7 +374,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
           gap: '8px',
         }}
       >
-        <button className="btn btn-danger btn-sm" onClick={onDelete} aria-label="Delete step">
+        <button className="btn btn-danger btn-sm" onClick={onDelete} aria-label="Delete action">
           <Trash2 size={14} />
           Delete
         </button>
@@ -377,7 +382,7 @@ function NodeConfigPanel({ step, workflow, onUpdate, onDelete, onClose }: NodeCo
           className="btn btn-primary btn-sm"
           onClick={handleSave}
           style={{ marginLeft: 'auto' }}
-          aria-label="Save step configuration"
+          aria-label="Save action configuration"
         >
           <Save size={14} />
           Save
