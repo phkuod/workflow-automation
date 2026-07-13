@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { WorkflowDefinition, Station, Step, StepType } from '../types/workflow';
 import { createLogger } from '../utils/logger';
+import { deriveShape, redactRecord, ShapeNode } from '../utils/deriveShape';
 
 const log = createLogger('aiAssistant');
 
@@ -171,4 +172,41 @@ export async function explainRunError(ctx: ExplainContext): Promise<string> {
     },
   ]);
   return content.trim();
+}
+
+const INFER_SHAPE_SYSTEM_PROMPT = `You predict what data an automation action will output.
+Respond with ONLY a realistic example JSON output object — no prose, no markdown fences.
+Expected output style per action type (match these key names):
+- "http-request": {"status": 200, "statusText": "OK", "data": <realistic response body for the configured URL>}
+- "script-js" / "script-python": the object the configured code returns
+- "connector-db": {"rows": [<one example row for the configured query>], "count": 1}
+- "set-variable": {"<variableName>": <value>}
+- "if-else": {"result": true, "branch": "true"}
+- "wait": {"waited": true, "duration": 5, "unit": "seconds", "ms": 5000}
+- "trigger-manual" / "trigger-cron" / "trigger-webhook": {"triggered": true, "timestamp": "2026-01-01T00:00:00.000Z"}
+- "action-email": {"sent": true, "to": "a@b.c", "subject": "…", "messageId": "<id>", "timestamp": "…"}
+- "action-slack" / "notification-slack": {"sent": true, "message": "…"}
+Keep it small: arrays at most 1 item, strings short.`;
+
+export interface InferShapeInput {
+  name: string;
+  type: string;
+  config: Record<string, unknown>;
+}
+
+export async function inferStepShape(step: InferShapeInput): Promise<ShapeNode> {
+  const safeConfig = redactRecord(step.config);
+  const content = await chat([
+    { role: 'system', content: INFER_SHAPE_SYSTEM_PROMPT },
+    { role: 'user', content: `Action "${step.name}" of type "${step.type}" with configuration: ${JSON.stringify(safeConfig)}` },
+  ]);
+  const stripped = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  let example: unknown;
+  try {
+    example = JSON.parse(stripped);
+  } catch {
+    throw new Error('AI response was not valid JSON');
+  }
+  log.info({ step: step.name, type: step.type }, 'AI shape inferred');
+  return deriveShape(example);
 }

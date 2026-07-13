@@ -6,6 +6,7 @@ vi.mock('../services/aiAssistant', () => ({
   isAiEnabled: vi.fn(),
   draftAutomation: vi.fn(),
   explainRunError: vi.fn(),
+  inferStepShape: vi.fn(),
 }));
 vi.mock('../models/workflow', () => ({
   WorkflowModel: { create: vi.fn() },
@@ -15,7 +16,7 @@ vi.mock('../utils/logger', () => ({
 }));
 
 import aiRouter from '../routes/ai';
-import { isAiEnabled, draftAutomation, explainRunError } from '../services/aiAssistant';
+import { isAiEnabled, draftAutomation, explainRunError, inferStepShape } from '../services/aiAssistant';
 import { WorkflowModel } from '../models/workflow';
 
 const app = express();
@@ -150,5 +151,34 @@ describe('POST /api/ai/explain', () => {
     const res = await request(app).post('/api/ai/explain').send(CTX);
     expect(res.status).toBe(502);
     expect(res.body.success).toBe(false);
+  });
+});
+
+describe('POST /api/ai/infer-shape', () => {
+  it('503 when AI is disabled', async () => {
+    vi.mocked(isAiEnabled).mockReturnValue(false);
+    const res = await request(app).post('/api/ai/infer-shape').send({ step: { name: 'S', type: 'http-request', config: {} } });
+    expect(res.status).toBe(503);
+  });
+
+  it('400 when step or step.type is missing', async () => {
+    vi.mocked(isAiEnabled).mockReturnValue(true);
+    expect((await request(app).post('/api/ai/infer-shape').send({})).status).toBe(400);
+    expect((await request(app).post('/api/ai/infer-shape').send({ step: { name: 'S' } })).status).toBe(400);
+  });
+
+  it('200 with shape and ai-inferred source', async () => {
+    vi.mocked(isAiEnabled).mockReturnValue(true);
+    vi.mocked(inferStepShape).mockResolvedValue({ name: '', type: 'object', children: [] });
+    const res = await request(app).post('/api/ai/infer-shape').send({ step: { name: 'S', type: 'script-js', config: {} } });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ shape: { name: '', type: 'object', children: [] }, source: { kind: 'ai-inferred' } });
+  });
+
+  it('502 when inference fails', async () => {
+    vi.mocked(isAiEnabled).mockReturnValue(true);
+    vi.mocked(inferStepShape).mockRejectedValue(new Error('boom'));
+    const res = await request(app).post('/api/ai/infer-shape').send({ step: { name: 'S', type: 'script-js', config: {} } });
+    expect(res.status).toBe(502);
   });
 });

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { isAiEnabled, draftAutomation, explainRunError } from '../services/aiAssistant';
+import { isAiEnabled, draftAutomation, explainRunError, inferStepShape } from '../services/aiAssistant';
 import { WorkflowModel } from '../models/workflow';
 import { createLogger } from '../utils/logger';
 
@@ -66,6 +66,29 @@ router.post('/explain', async (req, res) => {
   } catch (error: unknown) {
     log.error({ err: error }, 'AI explain failed');
     res.status(502).json({ success: false, error: 'Could not generate an explanation' });
+  }
+});
+
+router.post('/infer-shape', async (req, res) => {
+  if (!isAiEnabled()) {
+    return res.status(503).json({ success: false, error: 'AI assist is not configured' });
+  }
+  const step = req.body?.step;
+  if (!step || typeof step !== 'object' || typeof step.type !== 'string' || !step.type.trim()) {
+    return res.status(400).json({ success: false, error: 'step with a type is required' });
+  }
+  try {
+    const shape = await inferStepShape({
+      name: truncateField(step.name),
+      type: truncateField(step.type),
+      config: step.config && typeof step.config === 'object' && !Array.isArray(step.config)
+        ? (step.config as Record<string, unknown>)
+        : {},
+    });
+    res.json({ success: true, data: { shape, source: { kind: 'ai-inferred' } } });
+  } catch (error: unknown) {
+    log.error({ err: error }, 'AI shape inference failed');
+    res.status(502).json({ success: false, error: 'Could not predict fields' });
   }
 });
 

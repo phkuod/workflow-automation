@@ -4,7 +4,7 @@ vi.mock('../utils/logger', () => ({
   createLogger: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }),
 }));
 
-import { isAiEnabled, parseDraft, draftAutomation, explainRunError } from '../services/aiAssistant';
+import { isAiEnabled, parseDraft, draftAutomation, explainRunError, inferStepShape } from '../services/aiAssistant';
 
 const VALID_DRAFT_JSON = JSON.stringify({
   name: 'Daily weather email',
@@ -177,5 +177,53 @@ describe('draftAutomation / explainRunError (fetch behavior)', () => {
       errorMessage: 'Invalid login: 535',
     });
     expect(text).toBe('The email address was rejected by the mail server. Check the recipient.');
+  });
+});
+
+describe('inferStepShape', () => {
+  beforeEach(() => {
+    vi.stubEnv('AI_API_KEY', 'sk-test');
+    vi.stubEnv('AI_MODEL', 'test-model');
+    vi.stubEnv('AI_API_BASE_URL', 'https://llm.example.com/v1');
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  const shapeChatResponse = (content: string) => ({
+    ok: true,
+    json: async () => ({ choices: [{ message: { content } }] }),
+  }) as Response;
+
+  it('derives a ShapeNode from the AI example output', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(shapeChatResponse('{"status": 200, "data": {"orderId": 10023}}'));
+    vi.stubGlobal('fetch', fetchMock);
+    const shape = await inferStepShape({ name: 'Fetch', type: 'http-request', config: { url: 'https://api.test' } });
+    expect(shape.type).toBe('object');
+    expect(shape.children!.map(c => c.name)).toEqual(['status', 'data']);
+  });
+
+  it('strips markdown fences before parsing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(shapeChatResponse('```json\n{"ok": true}\n```')));
+    const shape = await inferStepShape({ name: 'S', type: 'script-js', config: {} });
+    expect(shape.children).toEqual([{ name: 'ok', type: 'boolean', sample: 'true' }]);
+  });
+
+  it('redacts sensitive config values in the prompt sent to the provider', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(shapeChatResponse('{"sent": true}'));
+    vi.stubGlobal('fetch', fetchMock);
+    await inferStepShape({ name: 'Mail', type: 'action-email', config: { emailTo: 'a@b.c', smtpPassword: 'hunter2' } });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    const userMessage = body.messages.find((m: { role: string }) => m.role === 'user').content;
+    expect(userMessage).toContain('a@b.c');
+    expect(userMessage).not.toContain('hunter2');
+    expect(userMessage).toContain('***');
+  });
+
+  it('throws when the AI response is not valid JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(shapeChatResponse('Sure! The output would be…')));
+    await expect(inferStepShape({ name: 'S', type: 'script-js', config: {} }))
+      .rejects.toThrow('AI response was not valid JSON');
   });
 });
