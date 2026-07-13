@@ -200,7 +200,7 @@ export const aiApi = {
   },
 
   inferShape: async (step: { name: string; type: string; config: Record<string, unknown> }): Promise<ShapeNode> => {
-    const response = await api.post<ApiResponse<{ shape: ShapeNode }>>('/ai/infer-shape', { step });
+    const response = await api.post<ApiResponse<{ shape: ShapeNode }>>('/ai/infer-shape', { step }, { timeout: AI_REQUEST_TIMEOUT_MS });
     if (!response.data.success) throw new Error(response.data.error);
     return response.data.data!.shape;
   },

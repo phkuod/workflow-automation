@@ -325,7 +325,11 @@ describe('data shapes API', () => {
 
     const result = await aiApi.inferShape({ name: 'S', type: 'script-js', config: {} });
 
-    expect(mockPost).toHaveBeenCalledWith('/ai/infer-shape', { step: { name: 'S', type: 'script-js', config: {} } });
+    expect(mockPost).toHaveBeenCalledWith(
+      '/ai/infer-shape',
+      { step: { name: 'S', type: 'script-js', config: {} } },
+      { timeout: 120_000 },
+    );
     expect(result).toEqual(shape);
   });
 });
