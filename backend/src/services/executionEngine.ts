@@ -223,13 +223,25 @@ export class ExecutionEngine {
 
     if (station.iterator?.enabled) {
       const sourceVar = station.iterator.sourceVariable;
-      const resolvedSource = ScriptRunner.interpolateVariables(sourceVar, context.variables);
+      const interpolationContext = { ...context.variables, steps: context.steps };
       let items: unknown[] = [];
-      
+
       try {
-        items = JSON.parse(resolvedSource);
-        if (!Array.isArray(items)) {
-          throw new Error('Resolved source is not an array');
+        if (!sourceVar.includes('${')) {
+          // Bare-path form (what the iterator picker inserts, e.g. steps['X'].output.rows) —
+          // resolve the whole string directly as a path instead of via ${}-interpolation.
+          const resolved = ScriptRunner.getValueByPath(interpolationContext, sourceVar);
+          if (!Array.isArray(resolved)) {
+            throw new Error('Resolved source is not an array');
+          }
+          items = resolved;
+        } else {
+          const resolvedSource = ScriptRunner.interpolateVariables(sourceVar, interpolationContext);
+          const parsed = JSON.parse(resolvedSource);
+          if (!Array.isArray(parsed)) {
+            throw new Error('Resolved source is not an array');
+          }
+          items = parsed;
         }
       } catch (e) {
         this.log(context, 'error', `Iteration failed: Source variable ${sourceVar} is not a valid array`, undefined, station.id);
@@ -746,7 +758,7 @@ export class ExecutionEngine {
 
     if (step.inputVars) {
       for (const mapping of step.inputVars) {
-        const value = ScriptRunner.interpolateVariables(mapping.source, context.variables);
+        const value = ScriptRunner.interpolateVariables(mapping.source, { ...context.variables, steps: context.steps });
         try {
           input[mapping.name] = JSON.parse(value);
         } catch {
