@@ -32,6 +32,16 @@ describe('ShapeTree', () => {
     expect(screen.getByText('12 more fields omitted')).toBeInTheDocument();
   });
 
+  it('uses singular "field" when exactly one field is omitted', () => {
+    const singularShape: ShapeNode = {
+      name: '', type: 'object',
+      children: [{ name: 'big', type: 'object', truncated: true, omittedCount: 1 }],
+    };
+    render(<ShapeTree shape={singularShape} />);
+    expect(screen.getByText('1 more field omitted')).toBeInTheDocument();
+    expect(screen.queryByText('1 more fields omitted')).not.toBeInTheDocument();
+  });
+
   it('calls onSelectPath with a dot path for identifier-safe fields', () => {
     const onSelectPath = vi.fn();
     render(<ShapeTree shape={shape} onSelectPath={onSelectPath} />);

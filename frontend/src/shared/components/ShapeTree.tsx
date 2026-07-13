@@ -66,7 +66,7 @@ function ShapeTreeNode({ node, path, depth, onSelectPath }: NodeProps) {
       ))}
       {node.truncated && node.omittedCount !== undefined && (
         <div className="text-muted italic py-0.5" style={{ paddingLeft: 14 }}>
-          {node.omittedCount} more fields omitted
+          {node.omittedCount} more {node.omittedCount === 1 ? 'field' : 'fields'} omitted
         </div>
       )}
     </div>
