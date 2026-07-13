@@ -26,22 +26,27 @@ const workflow = {
   },
 } as Workflow;
 
+// Each legacy test starts with `await screen.findByText('Use result from')` purely to flush
+// the async useDataShapes mount fetch inside act() — all original assertions are unchanged.
 describe('VariablePicker plain language', () => {
-  it('is framed as "Use result from"', () => {
+  it('is framed as "Use result from"', async () => {
     render(<VariablePicker workflow={workflow} currentStepId="s2" onSelect={vi.fn()} />);
+    await screen.findByText('Use result from');
     expect(screen.getByText('Use result from')).toBeInTheDocument();
   });
 
-  it('inserts the identical interpolation string for the whole-result option', () => {
+  it('inserts the identical interpolation string for the whole-result option', async () => {
     const onSelect = vi.fn();
     render(<VariablePicker workflow={workflow} currentStepId="s2" onSelect={onSelect} />);
+    await screen.findByText('Use result from');
     fireEvent.click(screen.getByRole('button', { name: 'whole result (as text)' }));
     expect(onSelect).toHaveBeenCalledWith("${steps['Fetch data'].output}");
   });
 
-  it('offers response body for http steps with the identical path', () => {
+  it('offers response body for http steps with the identical path', async () => {
     const onSelect = vi.fn();
     render(<VariablePicker workflow={workflow} currentStepId="s2" onSelect={onSelect} />);
+    await screen.findByText('Use result from');
     fireEvent.click(screen.getByRole('button', { name: 'response body' }));
     expect(onSelect).toHaveBeenCalledWith("steps['Fetch data'].output.data");
   });
@@ -66,6 +71,7 @@ const runShapes = {
 describe('VariablePicker with data shapes', () => {
   beforeEach(() => {
     clearAiShapeCacheForTests();
+    vi.mocked(aiApi.inferShape).mockClear();
   });
 
   it('renders the field tree from the latest run with a source badge', async () => {
@@ -139,5 +145,37 @@ describe('VariablePicker with data shapes', () => {
     render(<VariablePicker workflow={workflow} currentStepId="s2" onSelect={onSelect} />);
     fireEvent.click(await screen.findByRole('button', { name: /content-type/ }));
     expect(onSelect).toHaveBeenCalledWith("steps['Fetch data'].output['content-type']");
+  });
+
+  it('dedupes AI predictions for steps with identical type and config via the module cache', async () => {
+    const twinStepsWorkflow = {
+      id: 'w1', name: 'W', status: 'draft', createdAt: '', updatedAt: '',
+      definition: {
+        stations: [{
+          id: 'st1', name: 'S', position: { x: 0, y: 0 },
+          steps: [
+            { id: 's1', name: 'Fetch A', type: 'http-request', config: { url: 'https://x' }, position: { x: 0, y: 0 } },
+            { id: 's2', name: 'Fetch B', type: 'http-request', config: { url: 'https://x' }, position: { x: 0, y: 0 } },
+            { id: 's3', name: 'Email', type: 'action-email', config: {}, position: { x: 0, y: 0 } },
+          ],
+        }],
+      },
+    } as Workflow;
+    vi.mocked(workflowApi.getDataShapes).mockResolvedValue({ source: { kind: 'none' }, steps: {} } as never);
+    vi.mocked(useAiEnabled).mockReturnValue(true);
+    vi.mocked(aiApi.inferShape).mockResolvedValue({
+      name: '', type: 'object',
+      children: [{ name: 'guessId', type: 'number', sample: '7' }],
+    } as never);
+    render(<VariablePicker workflow={twinStepsWorkflow} currentStepId="s3" onSelect={vi.fn()} />);
+    const predictButtons = await screen.findAllByRole('button', { name: /Predict fields/ });
+    expect(predictButtons).toHaveLength(2);
+    fireEvent.click(predictButtons[0]);
+    await waitFor(() => expect(screen.getByText(/AI guess/)).toBeInTheDocument());
+    // second step hits the module cache: guess renders without a second API call
+    fireEvent.click(screen.getByRole('button', { name: /Predict fields/ }));
+    await waitFor(() => expect(screen.getAllByText(/AI guess/)).toHaveLength(2));
+    expect(screen.getAllByRole('button', { name: 'guessId' })).toHaveLength(2);
+    expect(aiApi.inferShape).toHaveBeenCalledTimes(1);
   });
 });
