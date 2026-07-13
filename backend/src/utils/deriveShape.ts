@@ -18,13 +18,27 @@ export function deriveShape(value: unknown, name = ''): ShapeNode {
   return derive(value, name, 0, false);
 }
 
-/** Mask values of sensitive keys (shallow) — used before sending configs to the AI provider. */
+/** Mask values of sensitive keys (recursive) — used before sending configs to the AI provider. */
 export function redactRecord(record: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(record)) {
-    out[key] = SENSITIVE_FIELD_PATTERN.test(key) ? '***' : val;
+    out[key] = SENSITIVE_FIELD_PATTERN.test(key) ? '***' : redactValue(val);
   }
   return out;
+}
+
+function redactValue(val: unknown): unknown {
+  if (Array.isArray(val)) {
+    return val.map(item => (isPlainObject(item) ? redactRecord(item) : item));
+  }
+  if (isPlainObject(val)) {
+    return redactRecord(val);
+  }
+  return val;
+}
+
+function isPlainObject(val: unknown): val is Record<string, unknown> {
+  return typeof val === 'object' && val !== null && !Array.isArray(val);
 }
 
 function derive(value: unknown, name: string, depth: number, inheritedRedacted: boolean): ShapeNode {

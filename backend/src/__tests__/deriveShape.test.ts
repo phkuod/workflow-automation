@@ -94,4 +94,14 @@ describe('redactRecord', () => {
     expect(redactRecord({ url: 'https://x.test', headers: { a: 1 }, slackWebhookUrl: 'https://hooks', dbPassword: 'pw' }))
       .toEqual({ url: 'https://x.test', headers: { a: 1 }, slackWebhookUrl: 'https://hooks', dbPassword: '***' });
   });
+
+  it('masks sensitive keys nested inside plain objects', () => {
+    expect(redactRecord({ headers: { Authorization: 'Bearer x', 'Content-Type': 'application/json' } }))
+      .toEqual({ headers: { Authorization: '***', 'Content-Type': 'application/json' } });
+  });
+
+  it('masks sensitive keys inside plain-object array elements', () => {
+    expect(redactRecord({ targets: [{ url: 'https://a.test', apiKey: 'k1' }, 'plain', 7] }))
+      .toEqual({ targets: [{ url: 'https://a.test', apiKey: '***' }, 'plain', 7] });
+  });
 });

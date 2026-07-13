@@ -226,4 +226,26 @@ describe('inferStepShape', () => {
     await expect(inferStepShape({ name: 'S', type: 'script-js', config: {} }))
       .rejects.toThrow('AI response was not valid JSON');
   });
+
+  it('redacts sensitive values nested inside config objects (e.g. headers)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(shapeChatResponse('{"status": 200}'));
+    vi.stubGlobal('fetch', fetchMock);
+    await inferStepShape({
+      name: 'Fetch', type: 'http-request',
+      config: { url: 'https://api.test', headers: { Authorization: 'Bearer supersecret' } },
+    });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    const userMessage = body.messages.find((m: { role: string }) => m.role === 'user').content;
+    expect(userMessage).not.toContain('supersecret');
+    expect(userMessage).toContain('***');
+  });
+
+  it('documents the real (HTTP response) Slack output shape in the system prompt', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(shapeChatResponse('{"status": 200}'));
+    vi.stubGlobal('fetch', fetchMock);
+    await inferStepShape({ name: 'Notify', type: 'action-slack', config: {} });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    const systemMessage = body.messages.find((m: { role: string }) => m.role === 'system').content;
+    expect(systemMessage).toContain('"action-slack" / "notification-slack": {"status"');
+  });
 });

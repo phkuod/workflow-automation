@@ -185,7 +185,7 @@ Expected output style per action type (match these key names):
 - "wait": {"waited": true, "duration": 5, "unit": "seconds", "ms": 5000}
 - "trigger-manual" / "trigger-cron" / "trigger-webhook": {"triggered": true, "timestamp": "2026-01-01T00:00:00.000Z"}
 - "action-email": {"sent": true, "to": "a@b.c", "subject": "…", "messageId": "<id>", "timestamp": "…"}
-- "action-slack" / "notification-slack": {"sent": true, "message": "…"}
+- "action-slack" / "notification-slack": {"status": 200, "statusText": "OK", "data": "ok"}
 Keep it small: arrays at most 1 item, strings short.`;
 
 export interface InferShapeInput {
