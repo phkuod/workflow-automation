@@ -1229,12 +1229,12 @@ git add -A && git commit -m "fix: Phase A smoke-test findings"   # only if fixes
 
 ## Follow-ups (recorded at final review, 2026-07-14 — fast-follow, not merge blockers)
 
-1. **`steps` context for the two remaining interpolation sites:** `resolveInputVariables` (step `inputVars` mapping; unreachable from the picker today) and the station iterator's `sourceVariable` resolution.
-2. **Iterator `sourceVariable` design decision:** StationConfigPanel's iterator picker inserts the bare `steps['X'].output.rows` form, but the engine resolves `sourceVariable` via `${…}` interpolation only — either the picker wraps in `${}` for that consumer or the engine accepts a bare path. (Pre-existing; fails loudly with "not a valid array", not silently.)
-3. **Tokenizer full-consumption fallback:** legacy hand-typed segments containing spaces (`${My Step.output.x}`) resolved under the old `split('.')` resolver but stop at the space under the bracket-aware tokenizer. If `tokenizePath` doesn't consume the whole string, fall back to legacy splitting.
-4. **StationConfigPanel condition picker brace-strip bug (pre-existing):** `v.replace(/[{}]/g,'')` turns the generic `${steps['X'].output}` button insert into invalid `$steps['X'].output`.
-5. **Value-level secret redaction in AI prompts:** key-based redaction doesn't catch secrets embedded in values under non-sensitive keys (e.g. `?api_key=…` inside an http-request `url`). Consider pattern-based redaction of URL query strings/bodies.
-6. **Cosmetic:** ShapeTree "1 more fields omitted" pluralization.
+1. **`steps` context for the two remaining interpolation sites:** `resolveInputVariables` (step `inputVars` mapping; unreachable from the picker today) and the station iterator's `sourceVariable` resolution. (done 7b57f3c)
+2. **Iterator `sourceVariable` design decision:** StationConfigPanel's iterator picker inserts the bare `steps['X'].output.rows` form, but the engine resolves `sourceVariable` via `${…}` interpolation only — either the picker wraps in `${}` for that consumer or the engine accepts a bare path. (Pre-existing; fails loudly with "not a valid array", not silently.) (done 7b57f3c)
+3. **Tokenizer full-consumption fallback:** legacy hand-typed segments containing spaces (`${My Step.output.x}`) resolved under the old `split('.')` resolver but stop at the space under the bracket-aware tokenizer. If `tokenizePath` doesn't consume the whole string, fall back to legacy splitting. (done df158ca)
+4. **StationConfigPanel condition picker brace-strip bug (pre-existing):** `v.replace(/[{}]/g,'')` turns the generic `${steps['X'].output}` button insert into invalid `$steps['X'].output`. (done 1587162)
+5. **Value-level secret redaction in AI prompts:** key-based redaction doesn't catch secrets embedded in values under non-sensitive keys (e.g. `?api_key=…` inside an http-request `url`). Consider pattern-based redaction of URL query strings/bodies. (done 20a1770)
+6. **Cosmetic:** ShapeTree "1 more fields omitted" pluralization. (done e87a1c5)
 
 ## Self-Review Notes (done at plan-writing time)
 
