@@ -126,7 +126,7 @@ const StageNode = memo(({ data, selected }: { data: StageNodeData; selected?: bo
             fontSize: '11px', 
             color: 'var(--text-muted)',
           }}>
-            {station.steps.length} step{station.steps.length !== 1 ? 's' : ''}
+            {station.steps.length} action{station.steps.length !== 1 ? 's' : ''}
           </div>
         </div>
         {getStatusIcon()}
@@ -174,7 +174,7 @@ const StageNode = memo(({ data, selected }: { data: StageNodeData; selected?: bo
             textAlign: 'center',
             padding: '4px',
           }}>
-            +{stepsPreview.remainingCount} more step{stepsPreview.remainingCount !== 1 ? 's' : ''}
+            +{stepsPreview.remainingCount} more action{stepsPreview.remainingCount !== 1 ? 's' : ''}
           </div>
         )}
         {station.steps.length === 0 && (
@@ -187,7 +187,7 @@ const StageNode = memo(({ data, selected }: { data: StageNodeData; selected?: bo
             borderRadius: '8px',
             border: '1px dashed var(--border-color)',
           }}>
-            No steps yet
+            No actions yet
           </div>
         )}
       </div>
@@ -220,7 +220,7 @@ const StageNode = memo(({ data, selected }: { data: StageNodeData; selected?: bo
           e.currentTarget.style.borderColor = 'var(--border-color)';
         }}
       >
-        Edit Steps
+        Edit Actions
         <ChevronRight size={14} />
       </button>
 

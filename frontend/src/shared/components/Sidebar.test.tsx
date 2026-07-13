@@ -27,11 +27,11 @@ describe('Sidebar', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders navigation links for Dashboard, Executions, and Monitoring', () => {
+  it('renders navigation links for Dashboard, Runs, and Monitoring', () => {
     renderDesktop();
 
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /executions/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /runs/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /monitoring/i })).toBeInTheDocument();
   });
 
@@ -59,7 +59,7 @@ describe('Sidebar', () => {
   it('applies the active class to the link matching the current route', () => {
     renderDesktop('/executions');
 
-    const executionsLink = screen.getByRole('link', { name: /executions/i });
+    const executionsLink = screen.getByRole('link', { name: /runs/i });
     const dashboardLink = screen.getByRole('link', { name: /dashboard/i });
 
     expect(executionsLink).toHaveClass('active');

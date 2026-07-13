@@ -210,6 +210,9 @@ CREATE TABLE execution_logs (
 | PUT | `/api/schedules/:id/resume` | Resume schedule |
 | ANY | `/api/webhooks/:id` | Dynamic webhook handler (returns 202) |
 | GET | `/api/metrics` | Dashboard metrics |
+| GET | `/api/ai/status` | AI assist status (enabled/disabled) |
+| POST | `/api/ai/draft` | Generate workflow draft from description |
+| POST | `/api/ai/explain` | Explain workflow execution error |
 
 ---
 
@@ -223,6 +226,9 @@ CREATE TABLE execution_logs (
 | `PYTHON_CMD` | `python` | Python executable name |
 | `NODE_ENV` | — | `development` or `production` |
 | `SMTP_HOST/PORT/SECURE/USER/PASS/FROM` | — | Email configuration |
+| `AI_API_KEY` | — | OpenRouter API key for AI assist |
+| `AI_API_BASE_URL` | `https://openrouter.ai/api/v1` | AI provider base URL |
+| `AI_MODEL` | — | LLM model name (e.g., `meta-llama/llama-2-70b-chat`) |
 
 ### Frontend
 | Variable | Default | Purpose |

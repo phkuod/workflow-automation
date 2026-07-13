@@ -12,22 +12,26 @@ interface NodeLibraryProps {
 
 const NODE_CATEGORIES = {
   triggers: {
-    label: '📌 Triggers',
+    label: '📌 When it starts',
     types: ['trigger-manual', 'trigger-cron', 'trigger-webhook'] as StepType[],
   },
   actions: {
-    label: '⚙️ Actions',
-    types: ['script-js', 'script-python', 'http-request', 'set-variable', 'action-email', 'action-slack', 'connector-db'] as StepType[],
+    label: '⚙️ Do something',
+    types: ['http-request', 'set-variable', 'action-email', 'action-slack'] as StepType[],
   },
   flow: {
-    label: '🔀 Flow Control',
+    label: '🔀 Flow control',
     types: ['if-else', 'wait'] as StepType[],
+  },
+  advanced: {
+    label: '🛠️ Advanced',
+    types: ['script-js', 'script-python', 'connector-db'] as StepType[],
   },
 };
 
 function NodeLibrary({ onAddStep, stations, onAddStepToStation, onClose }: NodeLibraryProps) {
   const [search, setSearch] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['triggers', 'actions', 'flow']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['triggers', 'actions', 'flow', 'advanced']);
   const [selectedStation, setSelectedStation] = useState<string>(stations[0]?.id || '');
 
   const toggleCategory = (category: string) => {
@@ -108,7 +112,7 @@ function NodeLibrary({ onAddStep, stations, onAddStepToStation, onClose }: NodeL
       {/* Station Selector */}
       {stations.length > 0 && (
         <div style={{ padding: '0 16px 12px' }}>
-          <label className="form-label">Add to Station</label>
+          <label className="form-label">Add to Stage</label>
           <select
             className="form-select"
             value={selectedStation}

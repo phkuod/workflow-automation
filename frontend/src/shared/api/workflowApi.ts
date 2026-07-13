@@ -147,3 +147,48 @@ export const metricsApi = {
     return response.data.data!;
   },
 };
+
+// Schedules API
+export interface ScheduleInfo {
+  workflowId: string;
+  workflowName: string;
+  cronExpression: string;
+  isActive: boolean;
+  nextRun?: string;
+  lastRun?: string;
+}
+
+export const scheduleApi = {
+  getAll: async (): Promise<ScheduleInfo[]> => {
+    const response = await api.get<ApiResponse<ScheduleInfo[]>>('/schedules');
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+};
+
+// AI Assist API
+// AI requests can be slow; give them a longer timeout than the default client,
+// set above the backend's own request timeout so the server-side 502 fires first.
+const AI_REQUEST_TIMEOUT_MS = 120_000;
+
+export const aiApi = {
+  getStatus: async (): Promise<{ enabled: boolean }> => {
+    const response = await api.get<ApiResponse<{ enabled: boolean }>>('/ai/status');
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+
+  draft: async (description: string): Promise<Workflow> => {
+    const response = await api.post<ApiResponse<Workflow>>('/ai/draft', { description }, { timeout: AI_REQUEST_TIMEOUT_MS });
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+
+  explain: async (ctx: {
+    workflowName: string; stationName: string; stepName: string; stepType: string; errorMessage: string;
+  }): Promise<string> => {
+    const response = await api.post<ApiResponse<{ explanation: string }>>('/ai/explain', ctx, { timeout: AI_REQUEST_TIMEOUT_MS });
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!.explanation;
+  },
+};

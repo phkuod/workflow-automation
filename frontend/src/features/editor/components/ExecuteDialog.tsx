@@ -69,7 +69,7 @@ export default function ExecuteDialog({ parameters, mode, onSubmit, onCancel }: 
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
         <div className="modal-header">
           <h3 className="modal-title">
-            {mode === 'simulate' ? 'Simulate' : 'Execute'} Workflow
+            {mode === 'simulate' ? 'Test' : 'Execute'} Automation
           </h3>
           <button className="btn btn-ghost btn-icon" onClick={onCancel}>
             ✕
@@ -77,7 +77,7 @@ export default function ExecuteDialog({ parameters, mode, onSubmit, onCancel }: 
         </div>
         <div className="modal-body">
           <p className="text-sm text-muted" style={{ marginBottom: '16px' }}>
-            Provide input parameters for this workflow:
+            Provide input parameters for this automation:
           </p>
           {parameters.map((param) => (
             <div className="form-group" key={param.name}>
@@ -130,7 +130,7 @@ export default function ExecuteDialog({ parameters, mode, onSubmit, onCancel }: 
             onClick={handleSubmit}
           >
             <Play size={16} />
-            {mode === 'simulate' ? 'Simulate' : 'Execute'}
+            {mode === 'simulate' ? 'Test' : 'Execute'}
           </button>
         </div>
       </div>

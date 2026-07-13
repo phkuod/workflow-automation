@@ -123,7 +123,7 @@ export default function StationConfigPanel({ station, workflow, onUpdate, onDele
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
-               Execution Condition
+               Run Condition
             </h4>
           </div>
 
@@ -180,7 +180,7 @@ export default function StationConfigPanel({ station, workflow, onUpdate, onDele
                   </div>
                 )}
                 <p className="text-[10px] text-muted mt-1">
-                  Example: <code>steps['Step Name'].output.value &gt; 10</code>
+                  Example: <code>steps['Action Name'].output.value &gt; 10</code>
                 </p>
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function StationConfigPanel({ station, workflow, onUpdate, onDele
           </div>
 
           <p className="text-xs text-muted mb-4 italic">
-            Execute all steps in this stage repeatedly for each item in an array.
+            Execute all actions in this stage repeatedly for each item in an array.
           </p>
 
           {iteratorEnabled && (

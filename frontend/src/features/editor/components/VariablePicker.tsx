@@ -30,7 +30,7 @@ export function VariablePicker({ workflow, currentStepId, onSelect }: VariablePi
   if (availableSteps.length === 0) {
     return (
       <div className="p-3 text-xs text-muted italic border rounded bg-tertiary">
-        No upstream variables available.
+        Nothing to use yet — earlier actions' results appear here.
       </div>
     );
   }
@@ -39,7 +39,7 @@ export function VariablePicker({ workflow, currentStepId, onSelect }: VariablePi
     <div className="border rounded bg-secondary overflow-hidden">
       <div className="p-2 bg-tertiary border-b text-[10px] font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
         <Database size={12} />
-        Available Variables
+        Use result from
       </div>
       <div className="max-h-48 overflow-auto">
         {availableSteps.map((step) => (
@@ -51,16 +51,16 @@ export function VariablePicker({ workflow, currentStepId, onSelect }: VariablePi
               <button
                 onClick={() => onSelect(`steps['${step.name}'].output`)}
                 className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
-                title="Full output object (JS Object)"
+                title={`Full output object (JS Object) — steps['${step.name}'].output`}
               >
-                output (JS)
+                whole result (as code)
               </button>
               <button
                 onClick={() => onSelect(`\${steps['${step.name}'].output}`)}
                 className="text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors"
-                title="Interpolated string value"
+                title={`Interpolated string value — \${steps['${step.name}'].output}`}
               >
-                output (String)
+                whole result (as text)
               </button>
               
               {/* Special helpers for HTTP requests */}
@@ -69,16 +69,16 @@ export function VariablePicker({ workflow, currentStepId, onSelect }: VariablePi
                   <button
                     onClick={() => onSelect(`steps['${step.name}'].output.data`)}
                     className="text-[10px] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors"
-                    title="Response Body"
+                    title={`Response Body — steps['${step.name}'].output.data`}
                   >
-                    .data
+                    response body
                   </button>
                   <button
                     onClick={() => onSelect(`steps['${step.name}'].output.status`)}
                     className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                    title="HTTP Status Code"
+                    title={`HTTP Status Code — steps['${step.name}'].output.status`}
                   >
-                    .status
+                    status code
                   </button>
                 </>
               )}
@@ -88,9 +88,9 @@ export function VariablePicker({ workflow, currentStepId, onSelect }: VariablePi
                   key={v.name}
                   onClick={() => onSelect(`steps['${step.name}'].output.${v.name}`)}
                   className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
-                  title={v.description || v.name}
+                  title={`${v.description || v.name} — steps['${step.name}'].output.${v.name}`}
                 >
-                  .{v.name}
+                  {v.name}
                 </button>
               ))}
             </div>

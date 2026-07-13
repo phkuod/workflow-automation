@@ -4,10 +4,10 @@
   "description": "Workflow Automation System Backend",
   "main": "dist/index.js",
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=.env.development src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest"
