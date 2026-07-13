@@ -54,6 +54,17 @@ export class ExecutionModel {
     return row ? this.rowToExecution(row) : null;
   }
 
+  static getLatestFinishedByWorkflowId(workflowId: string): Execution | null {
+    const stmt = db.prepare(`
+      SELECT * FROM executions
+      WHERE workflow_id = ? AND status IN ('completed', 'failed')
+      ORDER BY start_time DESC
+      LIMIT 1
+    `);
+    const row = stmt.get(workflowId) as ExecutionRow | undefined;
+    return row ? this.rowToExecution(row) : null;
+  }
+
   static create(workflowId: string, workflowName: string, triggeredBy: Execution['triggeredBy']): Execution {
     const id = uuidv4();
     const now = new Date().toISOString();

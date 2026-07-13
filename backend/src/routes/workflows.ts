@@ -4,6 +4,7 @@ import { ExecutionModel } from '../models/execution';
 import { VersionModel } from '../models/version';
 import { ExecutionEngine } from '../services/executionEngine';
 import { scheduler } from '../services/scheduler';
+import { getWorkflowDataShapes } from '../services/dataShapes';
 import { createLogger } from '../utils/logger';
 import {
   CreateWorkflowRequest,
@@ -208,6 +209,23 @@ router.get('/:id/executions', (req: Request, res: Response) => {
   } catch (error: unknown) {
     log.error({ err: error }, 'Unexpected error');
     res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/workflows/:id/data-shapes
+ * Shape trees of each step's output from the latest finished run.
+ */
+router.get('/:id/data-shapes', (req: Request, res: Response) => {
+  try {
+    const workflow = WorkflowModel.getById(req.params.id);
+    if (!workflow) {
+      return res.status(404).json({ success: false, error: 'Workflow not found' });
+    }
+    res.json({ success: true, data: getWorkflowDataShapes(req.params.id) });
+  } catch (error: unknown) {
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Failed to compute data shapes' });
   }
 });
 
