@@ -172,10 +172,10 @@ export default function StationConfigPanel({ station, workflow, onUpdate, onDele
                       workflow={workflow} 
                       currentStepId={station.steps[0]?.id || ''} 
                       onSelect={(v) => {
-                        const cleanVar = v.replace(/[{}]/g, '');
+                        const cleanVar = v.replace(/^\$\{(.*)\}$/s, '$1');
                         setConditionExpression(conditionExpression ? conditionExpression + ' && ' + cleanVar : cleanVar);
                         setActivePicker(false);
-                      }} 
+                      }}
                     />
                   </div>
                 )}
