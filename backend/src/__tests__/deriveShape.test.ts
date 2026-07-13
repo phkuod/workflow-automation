@@ -87,6 +87,27 @@ describe('deriveShape', () => {
     expect(deriveShape({})).toEqual({ name: '', type: 'object', children: [] });
     expect(deriveShape([], 'list')).toEqual({ name: 'list', type: 'array', sample: '0 items' });
   });
+
+  it('reports no truncation for an empty object at the depth cap', () => {
+    const deep = { a: { b: { c: { d: {} } } } };
+    const shape = deriveShape(deep);
+    // depth 0=root, 1=a, 2=b, 3=c, 4=d — d is an empty object, nothing was actually omitted
+    const d = shape.children![0].children![0].children![0].children![0];
+    expect(d.name).toBe('d');
+    expect(d.truncated).toBeUndefined();
+    expect(d.omittedCount).toBeUndefined();
+  });
+
+  it('caps array depth at 4 and reports a non-zero omittedCount', () => {
+    const deep = { a: { b: { c: { d: [1, 2, 3] } } } };
+    const shape = deriveShape(deep);
+    const d = shape.children![0].children![0].children![0].children![0];
+    expect(d.name).toBe('d');
+    expect(d.type).toBe('array');
+    expect(d.truncated).toBe(true);
+    expect(d.omittedCount).toBe(1);
+    expect(d.children).toBeUndefined();
+  });
 });
 
 describe('redactRecord', () => {

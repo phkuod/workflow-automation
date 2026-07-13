@@ -59,7 +59,9 @@ function derive(value: unknown, name: string, depth: number, inheritedRedacted: 
       if (depth < MAX_DEPTH) {
         node.children = [derive(value[0], '[0]', depth + 1, redacted)];
       } else {
+        // Array itself is at the cap: its single derivable element type is omitted.
         node.truncated = true;
+        node.omittedCount = 1;
       }
     }
     return node;
@@ -68,8 +70,12 @@ function derive(value: unknown, name: string, depth: number, inheritedRedacted: 
   const entries = Object.entries(value as Record<string, unknown>);
   const node: ShapeNode = { name, type: 'object' };
   if (depth >= MAX_DEPTH) {
-    node.truncated = true;
-    node.omittedCount = entries.length;
+    // Only report truncation when fields were actually omitted — an empty
+    // object at the cap has nothing to report, so leave truncated/omittedCount unset.
+    if (entries.length > 0) {
+      node.truncated = true;
+      node.omittedCount = entries.length;
+    }
     return node;
   }
   node.children = entries.slice(0, MAX_FIELDS_PER_LEVEL).map(([key, val]) => derive(val, key, depth + 1, redacted));
