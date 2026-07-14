@@ -31,7 +31,7 @@ interface StageCanvasProps {
   execution?: Execution | null;
   isSimulating?: boolean;
   readOnly?: boolean;
-  onStageDoubleClick: (stageId: string) => void;
+  onStageDoubleClick?: (stageId: string) => void;
   onStageClick?: (stageId: string) => void;
   onAddStation: () => void;
   onStageConnect?: (sourceId: string, targetId: string) => void;

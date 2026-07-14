@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import EditorPage from './EditorPage';
 
 const navigate = vi.fn();
@@ -22,6 +22,7 @@ vi.mock('../../shared/stores/toastStore', () => ({
 
 const enterReplay = vi.fn();
 const exitReplay = vi.fn();
+const saveWorkflow = vi.fn();
 const workflow = {
   id: 'w1', name: 'W', status: 'draft', createdAt: '', updatedAt: '',
   definition: { stations: [
@@ -50,7 +51,7 @@ vi.mock('./stores/workflowStore', () => ({
     setCurrentWorkflow: vi.fn(),
     createWorkflow: vi.fn(),
     // editing actions/fields the component reads — stubbed
-    saveWorkflow: vi.fn(), addStation: vi.fn(), addStep: vi.fn(), updateStep: vi.fn(),
+    saveWorkflow, addStation: vi.fn(), addStep: vi.fn(), updateStep: vi.fn(),
     deleteStep: vi.fn(), selectStep: vi.fn(), selectedStepId: null, selectedStationId: null,
     selectStation: vi.fn(), updateStation: vi.fn(), deleteStation: vi.fn(), connectSteps: vi.fn(),
     simulateWorkflow: vi.fn(), executeWorkflow: vi.fn(), isSimulating: false,
@@ -73,6 +74,23 @@ describe('EditorPage replay mode', () => {
     expect(screen.getByRole('button', { name: /exit replay/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Save/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Test$/i })).not.toBeInTheDocument();
+  });
+
+  it('hides all editing chrome: Add Stage, Params, Version History, status select, Plan/Canvas toggle, Node Library', () => {
+    render(<EditorPage />);
+    expect(screen.queryByRole('button', { name: /add stage/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add action/i })).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Input Parameters')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Version History')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Plan View$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Canvas View$/i })).not.toBeInTheDocument();
+  });
+
+  it('does not persist on Ctrl+S while in replay', () => {
+    render(<EditorPage />);
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    expect(saveWorkflow).not.toHaveBeenCalled();
   });
 
   it('shows the current action snapshot in the inspector', () => {

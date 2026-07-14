@@ -241,6 +241,7 @@ function EditorPage() {
   }, [hasUnsavedChanges, confirm, navigate]);
 
   const handleAddStation = useCallback(async () => {
+    if (isReplay) return;
     const name = await showInputDialog({
       title: 'Add Stage',
       message: 'Enter a name for the new stage:',
@@ -250,9 +251,10 @@ function EditorPage() {
     if (name) {
       addStation(name);
     }
-  }, [addStation, showInputDialog]);
+  }, [addStation, showInputDialog, isReplay]);
 
   const handleAddStep = useCallback(async (stationId: string, type: StepType) => {
+    if (isReplay) return;
     const name = await showInputDialog({
       title: 'Add Action',
       message: `Enter a name for the new ${type.replace('-', ' ')} action:`,
@@ -262,16 +264,17 @@ function EditorPage() {
     if (name) {
       addStep(stationId, type, name);
     }
-  }, [addStep, showInputDialog]);
+  }, [addStep, showInputDialog, isReplay]);
 
   const handleSave = useCallback(async () => {
+    if (isReplay) return;
     try {
       await saveWorkflow();
       toast.success('Automation saved');
     } catch {
       toast.error('Failed to save automation');
     }
-  }, [saveWorkflow]);
+  }, [saveWorkflow, isReplay]);
 
   const handleSimulate = useCallback(async () => {
     const params = currentWorkflow?.definition.inputParameters;
@@ -328,6 +331,7 @@ function EditorPage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
+        if (isReplay) return;
         handleSave();
         return;
       }
@@ -344,7 +348,7 @@ function EditorPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedStepId, selectedStationId, editorView, selectStep, selectStation, handleBackToStageView, handleSave]);
+  }, [selectedStepId, selectedStationId, editorView, selectStep, selectStation, handleBackToStageView, handleSave, isReplay]);
 
   // Loading state
   if (isLoading && !currentWorkflow) {
@@ -541,7 +545,7 @@ function EditorPage() {
       {/* Main Editor Area */}
       <div className="flex" style={{ flex: 1, overflow: 'hidden' }}>
         {/* Node Library Panel (only in Step View) */}
-        {viewMode === 'canvas' && showLibrary && editorView.type === 'step-view' && currentStage && (
+        {!isReplay && viewMode === 'canvas' && showLibrary && editorView.type === 'step-view' && currentStage && (
           <NodeLibrary
             onAddStep={(type) => handleAddStep(currentStage.id, type)}
             stations={currentWorkflow?.definition.stations || []}
@@ -568,7 +572,7 @@ function EditorPage() {
                     execution={isReplay ? replayPartialExecution : currentExecution}
                     isSimulating={isSimulating}
                     readOnly={isReplay}
-                    onStageDoubleClick={handleStageDoubleClick}
+                    onStageDoubleClick={isReplay ? undefined : handleStageDoubleClick}
                     onStageClick={handleStationClick}
                     onAddStation={handleAddStation}
                   />
