@@ -59,4 +59,20 @@ describe('useReplay', () => {
     expect(result.current.index).toBe(0);
     expect(result.current.isPlaying).toBe(false);
   });
+
+  it('toggle from the end restarts playback at 0 like play', () => {
+    const { result } = renderHook(() => useReplay(3));
+    act(() => result.current.seek(2));      // now paused at the last index
+    act(() => result.current.toggle());
+    expect(result.current.index).toBe(0);
+    expect(result.current.isPlaying).toBe(true);
+  });
+
+  it('toggle while playing pauses', () => {
+    const { result } = renderHook(() => useReplay(3));
+    act(() => result.current.play());
+    expect(result.current.isPlaying).toBe(true);
+    act(() => result.current.toggle());
+    expect(result.current.isPlaying).toBe(false);
+  });
 });

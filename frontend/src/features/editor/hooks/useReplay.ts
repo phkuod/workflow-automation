@@ -25,7 +25,7 @@ export function useReplay(total: number, tickMs = 1000): UseReplay {
     setIndex((i) => (i >= total - 1 ? 0 : i)); // restart if at the end
     setIsPlaying(true);
   }, [total]);
-  const toggle = useCallback(() => setIsPlaying((p) => (total === 0 ? false : !p)), [total]);
+  const toggle = useCallback(() => { if (isPlaying) pause(); else play(); }, [isPlaying, pause, play]);
   const next = useCallback(() => { setIsPlaying(false); setIndex((i) => clamp(i + 1)); }, [clamp]);
   const prev = useCallback(() => { setIsPlaying(false); setIndex((i) => clamp(i - 1)); }, [clamp]);
   const seek = useCallback((i: number) => { setIsPlaying(false); setIndex(clamp(i)); }, [clamp]);
