@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import '@xyflow/react/dist/style.css';
 
 import { useWorkflowStore } from './stores/workflowStore';
@@ -16,6 +16,10 @@ import SimulationPanel from './components/SimulationPanel';
 import VersionHistoryPanel from './components/VersionHistoryPanel';
 import ExecuteDialog from './components/ExecuteDialog';
 import CoachMarks from './components/CoachMarks';
+import { ReplayBar } from './components/ReplayBar';
+import { ReplayInspector } from './components/ReplayInspector';
+import { useReplay } from './hooks/useReplay';
+import { buildReplaySequence, buildPartialExecution } from './utils/replaySnapshot';
 import { toast } from '../../shared/stores/toastStore';
 import type { StepType } from '../../shared/types/workflow';
 import InputParametersEditor from './components/InputParametersEditor';
@@ -37,6 +41,9 @@ type EditorView =
 function EditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const replayId = searchParams.get('replay');
+  const isReplay = !!replayId;
   const {
     currentWorkflow,
     fetchWorkflow,
@@ -63,6 +70,9 @@ function EditorPage() {
     isDirty,
     updateWorkflow,
     createWorkflow,
+    replayExecution,
+    enterReplay,
+    exitReplay,
   } = useWorkflowStore();
 
   // Input dialog hook
@@ -83,6 +93,15 @@ function EditorPage() {
       setEditorView({ type: 'stage-view' });
     }
   }, []);
+
+  // Force canvas + stage-view while replaying
+  useEffect(() => {
+    if (isReplay) {
+      setViewMode('canvas');
+      setEditorView({ type: 'stage-view' });
+    }
+  }, [isReplay]);
+
   const [showLibrary, setShowLibrary] = useState(true);
   const [showSimulation, setShowSimulation] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -120,6 +139,13 @@ function EditorPage() {
     }
   }, [id, fetchWorkflow, setCurrentWorkflow, createWorkflow, navigate]);
 
+  // Replay lifecycle: enter on mount / when the param appears, exit on unmount / when it clears
+  useEffect(() => {
+    if (replayId) {
+      enterReplay(replayId);
+      return () => exitReplay();
+    }
+  }, [replayId, enterReplay, exitReplay]);
 
   // Browser beforeunload warning
   useEffect(() => {
@@ -284,6 +310,19 @@ function EditorPage() {
     selectStation(stationId);
   }, [selectStation]);
 
+  // Replay sequence, playback state, and current partial execution
+  const replaySequence = useMemo(
+    () => (replayExecution?.result ? buildReplaySequence(replayExecution.result, currentWorkflow?.definition) : []),
+    [replayExecution, currentWorkflow],
+  );
+  const replay = useReplay(replaySequence.length);
+  const currentReplayStep = replaySequence[replay.index] ?? null;
+  const replayPartialExecution = useMemo(
+    () => (replayExecution && replaySequence.length ? buildPartialExecution(replayExecution, replaySequence, replay.index) : null),
+    [replayExecution, replaySequence, replay.index],
+  );
+  const exitReplayMode = useCallback(() => navigate(`/editor/${id}`), [navigate, id]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -346,23 +385,25 @@ function EditorPage() {
         </div>
         
         <div className="header-actions">
-          {/* Plan / Canvas view toggle */}
-          <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-tertiary)', borderRadius: '8px', padding: '2px' }}>
-            <button
-              className={`btn btn-sm ${viewMode === 'plan' ? 'btn-primary' : 'btn-ghost'}`}
-              onClick={() => switchViewMode('plan')}
-            >
-              Plan View
-            </button>
-            <button
-              className={`btn btn-sm ${viewMode === 'canvas' ? 'btn-primary' : 'btn-ghost'}`}
-              onClick={() => switchViewMode('canvas')}
-            >
-              Canvas View
-            </button>
-          </div>
+          {/* Plan / Canvas view toggle (hidden in replay — replay forces canvas) */}
+          {!isReplay && (
+            <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-tertiary)', borderRadius: '8px', padding: '2px' }}>
+              <button
+                className={`btn btn-sm ${viewMode === 'plan' ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => switchViewMode('plan')}
+              >
+                Plan View
+              </button>
+              <button
+                className={`btn btn-sm ${viewMode === 'canvas' ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => switchViewMode('canvas')}
+              >
+                Canvas View
+              </button>
+            </div>
+          )}
 
-          {viewMode === 'canvas' && (
+          {!isReplay && viewMode === 'canvas' && (
             <>
               {/* View indicator */}
               <div style={{
@@ -410,7 +451,7 @@ function EditorPage() {
           )}
 
           {/* Workflow Status */}
-          {currentWorkflow && (
+          {!isReplay && currentWorkflow && (
             <select
               className="form-select"
               value={currentWorkflow.status}
@@ -433,59 +474,67 @@ function EditorPage() {
             </select>
           )}
 
-          <button
-            className={`btn btn-secondary ${showInputParams ? 'btn-active' : ''}`}
-            onClick={() => setShowInputParams(!showInputParams)}
-            title="Input Parameters"
-          >
-            <Settings size={18} />
-            Params
-          </button>
+          {!isReplay && (
+            <button
+              className={`btn btn-secondary ${showInputParams ? 'btn-active' : ''}`}
+              onClick={() => setShowInputParams(!showInputParams)}
+              title="Input Parameters"
+            >
+              <Settings size={18} />
+              Params
+            </button>
+          )}
 
-          <button
-            className="btn btn-secondary btn-icon"
-            onClick={() => setShowVersionHistory(!showVersionHistory)}
-            title="Version History"
-          >
-            <Clock size={18} />
-          </button>
+          {!isReplay && (
+            <button
+              className="btn btn-secondary btn-icon"
+              onClick={() => setShowVersionHistory(!showVersionHistory)}
+              title="Version History"
+            >
+              <Clock size={18} />
+            </button>
+          )}
 
-          <button
-            className={`btn ${hasUnsavedChanges ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={handleSave}
-            disabled={isSaving}
-            style={{
-              position: 'relative',
-            }}
-          >
-            {isSaving ? <span className="loading-spinner" /> : <Save size={18} />}
-            {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save*' : 'Save'}
-            {hasUnsavedChanges && (
-              <span style={{
-                position: 'absolute',
-                top: '-4px',
-                right: '-4px',
-                width: '10px',
-                height: '10px',
-                background: 'var(--accent-warning)',
-                borderRadius: '50%',
-                border: '2px solid var(--bg-secondary)',
-              }} />
-            )}
-          </button>
-          
-          <button 
-            className="btn btn-success"
-            onClick={handleSimulate}
-            disabled={isSimulating || !currentWorkflow?.definition.stations.length}
-          >
-            {isSimulating ? (
-              <span className="loading-spinner" />
-            ) : (
-              <Play size={18} />
-            )}
-            Test
-          </button>
+          {!isReplay && (
+            <button
+              className={`btn ${hasUnsavedChanges ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={handleSave}
+              disabled={isSaving}
+              style={{
+                position: 'relative',
+              }}
+            >
+              {isSaving ? <span className="loading-spinner" /> : <Save size={18} />}
+              {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save*' : 'Save'}
+              {hasUnsavedChanges && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '-4px',
+                  width: '10px',
+                  height: '10px',
+                  background: 'var(--accent-warning)',
+                  borderRadius: '50%',
+                  border: '2px solid var(--bg-secondary)',
+                }} />
+              )}
+            </button>
+          )}
+
+          {!isReplay && (
+            <button
+              className="btn btn-success"
+              onClick={handleSimulate}
+              disabled={isSimulating || !currentWorkflow?.definition.stations.length}
+            >
+              {isSimulating ? (
+                <span className="loading-spinner" />
+              ) : (
+                <Play size={18} />
+              )}
+              Test
+            </button>
+          )}
         </div>
       </header>
 
@@ -502,47 +551,64 @@ function EditorPage() {
         )}
 
         {/* Canvas Area */}
-        <div style={{ flex: 1, height: '100%' }}>
-          {currentWorkflow && viewMode === 'plan' ? (
-            <PlanView
-              workflow={currentWorkflow}
-              onEditStep={(stepId) => selectStep(stepId)}
-              onEditStage={(stageId) => selectStation(stageId)}
-              onAddStage={handleAddStation}
-            />
-          ) : (
-            <>
-              {currentWorkflow && editorView.type === 'stage-view' && (
-                <StageCanvas
-                  workflow={currentWorkflow}
-                  execution={currentExecution}
-                  isSimulating={isSimulating}
-                  onStageDoubleClick={handleStageDoubleClick}
-                  onStageClick={handleStationClick}
-                  onAddStation={handleAddStation}
-                />
-              )}
+        <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            {currentWorkflow && viewMode === 'plan' ? (
+              <PlanView
+                workflow={currentWorkflow}
+                onEditStep={(stepId) => selectStep(stepId)}
+                onEditStage={(stageId) => selectStation(stageId)}
+                onAddStage={handleAddStation}
+              />
+            ) : (
+              <>
+                {currentWorkflow && editorView.type === 'stage-view' && (
+                  <StageCanvas
+                    workflow={currentWorkflow}
+                    execution={isReplay ? replayPartialExecution : currentExecution}
+                    isSimulating={isSimulating}
+                    readOnly={isReplay}
+                    onStageDoubleClick={handleStageDoubleClick}
+                    onStageClick={handleStationClick}
+                    onAddStation={handleAddStation}
+                  />
+                )}
 
-              {currentWorkflow && editorView.type === 'step-view' && currentStage && (
-                <StepCanvas
-                  station={currentStage}
-                  execution={currentExecution}
-                  isSimulating={isSimulating}
-                  selectedStepId={selectedStepId}
-                  onStepClick={handleStepClick}
-                  onStepUpdate={updateStep}
-                  onStepConnect={(sourceId, targetId, sourceHandle) =>
-                    connectSteps(currentStage.id, sourceId, targetId, sourceHandle)
-                  }
-                />
-              )}
-            </>
+                {currentWorkflow && editorView.type === 'step-view' && currentStage && (
+                  <StepCanvas
+                    station={currentStage}
+                    execution={isReplay ? replayPartialExecution : currentExecution}
+                    isSimulating={isSimulating}
+                    readOnly={isReplay}
+                    selectedStepId={selectedStepId}
+                    onStepClick={handleStepClick}
+                    onStepUpdate={updateStep}
+                    onStepConnect={(sourceId, targetId, sourceHandle) =>
+                      connectSteps(currentStage.id, sourceId, targetId, sourceHandle)
+                    }
+                  />
+                )}
+              </>
+            )}
+          </div>
+          {isReplay && replaySequence.length > 0 && (
+            <ReplayBar
+              index={replay.index}
+              total={replaySequence.length}
+              isPlaying={replay.isPlaying}
+              currentLabel={currentReplayStep ? `${currentReplayStep.stationName} · ${currentReplayStep.stepName}` : ''}
+              onPrev={replay.prev}
+              onNext={replay.next}
+              onToggle={replay.toggle}
+              onSeek={replay.seek}
+              onExit={exitReplayMode}
+            />
           )}
         </div>
 
         {/* Config Panel (hidden when simulation results are showing) */}
-        {selectedStep && currentWorkflow && !(showSimulation && currentExecution?.result) && (
-          <NodeConfigPanel 
+        {selectedStep && currentWorkflow && !isReplay && !(showSimulation && currentExecution?.result) && (
+          <NodeConfigPanel
             step={selectedStep}
             workflow={currentWorkflow}
             onUpdate={(data) => updateStep(selectedStep.id, data)}
@@ -551,8 +617,8 @@ function EditorPage() {
           />
         )}
 
-        {selectedStation && currentWorkflow && (editorView.type === 'stage-view' || viewMode === 'plan') && (
-          <StationConfigPanel 
+        {selectedStation && currentWorkflow && !isReplay && (editorView.type === 'stage-view' || viewMode === 'plan') && (
+          <StationConfigPanel
             station={selectedStation}
             workflow={currentWorkflow}
             onUpdate={(data) => {
@@ -562,6 +628,10 @@ function EditorPage() {
             onDelete={() => deleteStation(selectedStation.id)}
             onClose={() => selectStation(null)}
           />
+        )}
+
+        {isReplay && (
+          <ReplayInspector replayStep={currentReplayStep} workflowName={currentWorkflow?.name} onExit={exitReplayMode} />
         )}
 
         {/* Input Parameters Panel */}

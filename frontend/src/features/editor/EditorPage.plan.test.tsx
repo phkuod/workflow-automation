@@ -7,6 +7,7 @@ const mockNavigate = vi.fn();
 vi.mock('react-router-dom', () => ({
   useParams: () => ({ id: 'w1' }),
   useNavigate: () => mockNavigate,
+  useSearchParams: () => [new URLSearchParams(''), vi.fn()],
 }));
 
 // Mock useInput
