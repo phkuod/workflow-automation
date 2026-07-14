@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Search,
   Filter,
+  Clapperboard,
 } from 'lucide-react';
 import { executionApi } from '../../shared/api/workflowApi';
 import { EDGE_COLORS } from '../../shared/constants/colors';
@@ -266,6 +267,7 @@ export default function ExecutionsPage() {
                       onToggle={() => toggleExpand(exec.id)}
                       onDelete={() => handleDelete(exec.id)}
                       onCancel={() => handleCancel(exec.id)}
+                      onReplay={() => navigate(`/editor/${exec.workflowId}?replay=${exec.id}`)}
                     />
                   ))}
                 </tbody>
@@ -300,7 +302,7 @@ const tdStyle: React.CSSProperties = {
 };
 
 function ExecutionRow({
-  execution, isExpanded, logs, onToggle, onDelete, onCancel,
+  execution, isExpanded, logs, onToggle, onDelete, onCancel, onReplay,
 }: {
   execution: Execution;
   isExpanded: boolean;
@@ -308,6 +310,7 @@ function ExecutionRow({
   onToggle: () => void;
   onDelete: () => void;
   onCancel: () => void;
+  onReplay: () => void;
 }) {
   return (
     <>
@@ -337,23 +340,33 @@ function ExecutionRow({
           </span>
         </td>
         <td style={tdStyle}>
-          {execution.status === 'running' ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
             <button
-              className="btn btn-ghost btn-icon btn-sm"
-              onClick={(e) => { e.stopPropagation(); onCancel(); }}
-              title="Cancel run"
+              className="btn btn-ghost btn-sm"
+              aria-label="Replay on canvas"
+              title="Replay on canvas"
+              onClick={(e) => { e.stopPropagation(); onReplay(); }}
             >
-              <XCircle size={14} style={{ color: 'var(--accent-warning)' }} />
+              <Clapperboard size={14} /> Replay
             </button>
-          ) : (
-            <button
-              className="btn btn-ghost btn-icon btn-sm"
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              title="Delete run record"
-            >
-              <Trash2 size={14} style={{ color: 'var(--accent-error)' }} />
-            </button>
-          )}
+            {execution.status === 'running' ? (
+              <button
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={(e) => { e.stopPropagation(); onCancel(); }}
+                title="Cancel run"
+              >
+                <XCircle size={14} style={{ color: 'var(--accent-warning)' }} />
+              </button>
+            ) : (
+              <button
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                title="Delete run record"
+              >
+                <Trash2 size={14} style={{ color: 'var(--accent-error)' }} />
+              </button>
+            )}
+          </div>
         </td>
       </tr>
       {isExpanded && (
