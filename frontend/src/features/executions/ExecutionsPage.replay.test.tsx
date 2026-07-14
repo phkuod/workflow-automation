@@ -30,4 +30,18 @@ describe('ExecutionsPage replay entry', () => {
     fireEvent.click(btn);
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/editor/w1?replay=exec-1'));
   });
+
+  it('does not render Replay on canvas for a running run', async () => {
+    vi.mocked(executionApi.getAll).mockResolvedValue([
+      { ...run, id: 'exec-2', status: 'running', endTime: undefined },
+    ] as never);
+    render(<ExecutionsPage />);
+    await screen.findByText('Orders');
+    expect(screen.queryByRole('button', { name: /replay on canvas/i })).not.toBeInTheDocument();
+  });
+
+  it('renders Replay on canvas for a completed run', async () => {
+    render(<ExecutionsPage />);
+    expect(await screen.findByRole('button', { name: /replay on canvas/i })).toBeInTheDocument();
+  });
 });

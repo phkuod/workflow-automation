@@ -341,14 +341,16 @@ function ExecutionRow({
         </td>
         <td style={tdStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
-            <button
-              className="btn btn-ghost btn-sm"
-              aria-label="Replay on canvas"
-              title="Replay on canvas"
-              onClick={(e) => { e.stopPropagation(); onReplay(); }}
-            >
-              <Clapperboard size={14} /> Replay
-            </button>
+            {execution.status !== 'running' && (
+              <button
+                className="btn btn-ghost btn-sm"
+                aria-label="Replay on canvas"
+                title="Replay on canvas"
+                onClick={(e) => { e.stopPropagation(); onReplay(); }}
+              >
+                <Clapperboard size={14} /> Replay
+              </button>
+            )}
             {execution.status === 'running' ? (
               <button
                 className="btn btn-ghost btn-icon btn-sm"
