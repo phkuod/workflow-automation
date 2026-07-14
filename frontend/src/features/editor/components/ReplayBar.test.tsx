@@ -17,10 +17,10 @@ describe('ReplayBar', () => {
   it('play/pause button reflects isPlaying and calls onToggle', () => {
     const onToggle = vi.fn();
     const { rerender } = render(<ReplayBar {...baseProps} isPlaying={false} onToggle={onToggle} />);
-    fireEvent.click(screen.getByRole('button', { name: /play/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
     expect(onToggle).toHaveBeenCalled();
     rerender(<ReplayBar {...baseProps} isPlaying onToggle={onToggle} />);
-    expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
   });
 
   it('prev/next/exit fire their handlers', () => {
@@ -28,7 +28,7 @@ describe('ReplayBar', () => {
     render(<ReplayBar {...baseProps} onPrev={onPrev} onNext={onNext} onExit={onExit} />);
     fireEvent.click(screen.getByRole('button', { name: /previous action/i }));
     fireEvent.click(screen.getByRole('button', { name: /next action/i }));
-    fireEvent.click(screen.getByRole('button', { name: /exit run/i }));
+    fireEvent.click(screen.getByRole('button', { name: /exit replay/i }));
     expect(onPrev).toHaveBeenCalled();
     expect(onNext).toHaveBeenCalled();
     expect(onExit).toHaveBeenCalled();

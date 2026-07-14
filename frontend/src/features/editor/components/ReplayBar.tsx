@@ -54,7 +54,7 @@ export function ReplayBar({ index, total, isPlaying, currentLabel, onPrev, onNex
         {currentLabel}
       </span>
 
-      <button className="btn btn-secondary btn-sm" aria-label="Exit run" onClick={onExit}>
+      <button className="btn btn-secondary btn-sm" aria-label="Exit replay" onClick={onExit}>
         <X size={14} /> Exit replay
       </button>
     </div>
