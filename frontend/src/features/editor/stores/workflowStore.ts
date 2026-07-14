@@ -28,7 +28,8 @@ interface WorkflowState {
   executions: Execution[];
   currentExecution: Execution | null;
   executionLogs: ExecutionLog[];
-  
+  replayExecution: Execution | null;
+
   // UI State
   isLoading: boolean;
   isSaving: boolean;
@@ -63,7 +64,9 @@ interface WorkflowState {
   simulateWorkflow: (inputData?: Record<string, unknown>) => Promise<Execution>;
   fetchExecutions: (workflowId: string) => Promise<void>;
   fetchExecutionLogs: (executionId: string) => Promise<void>;
-  
+  enterReplay: (executionId: string) => Promise<void>;
+  exitReplay: () => void;
+
   // Utils
   clearError: () => void;
 }
@@ -75,6 +78,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   executions: [],
   currentExecution: null,
   executionLogs: [],
+  replayExecution: null,
   isLoading: false,
   isSaving: false,
   isDirty: false,
@@ -420,6 +424,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       set({ error: error instanceof Error ? error.message : String(error) });
     }
   },
+
+  // Replay a past execution on the canvas (read-only)
+  enterReplay: async (executionId: string) => {
+    set({ error: null });
+    try {
+      const execution = await executionApi.getById(executionId);
+      set({ replayExecution: execution });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error), replayExecution: null });
+    }
+  },
+
+  exitReplay: () => set({ replayExecution: null }),
 
   // Clear error
   clearError: () => {
