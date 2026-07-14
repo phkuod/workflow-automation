@@ -30,6 +30,7 @@ interface StageCanvasProps {
   workflow: Workflow;
   execution?: Execution | null;
   isSimulating?: boolean;
+  readOnly?: boolean;
   onStageDoubleClick: (stageId: string) => void;
   onStageClick?: (stageId: string) => void;
   onAddStation: () => void;
@@ -40,6 +41,7 @@ export default function StageCanvas({
   workflow,
   execution,
   isSimulating = false,
+  readOnly = false,
   onStageDoubleClick,
   onStageClick,
   onAddStation,
@@ -144,6 +146,8 @@ export default function StageCanvas({
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         fitView
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
         snapToGrid
         snapGrid={[20, 20]}
         connectionLineStyle={{ stroke: EDGE_COLORS.secondary, strokeWidth: 2 }}

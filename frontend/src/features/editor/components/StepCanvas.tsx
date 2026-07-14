@@ -27,6 +27,7 @@ interface StepCanvasProps {
   station: Station;
   execution?: Execution | null;
   isSimulating?: boolean;
+  readOnly?: boolean;
   selectedStepId?: string | null;
   onStepClick: (stepId: string) => void;
   onStepUpdate?: (stepId: string, data: Partial<Step>) => void;
@@ -38,6 +39,7 @@ export default function StepCanvas({
   station,
   execution,
   isSimulating = false,
+  readOnly = false,
   selectedStepId,
   onStepClick,
   onStepUpdate,
@@ -157,15 +159,14 @@ export default function StepCanvas({
   const handleNodesChange = useCallback(
     (changes: any[]) => {
       onNodesChange(changes);
-      
-      // Update step positions in workflow store
+      if (readOnly) return;
       changes.forEach((change: any) => {
         if (change.type === 'position' && change.position && onStepUpdate) {
           onStepUpdate(change.id, { position: change.position });
         }
       });
     },
-    [onNodesChange, onStepUpdate]
+    [onNodesChange, onStepUpdate, readOnly]
   );
 
   return (
@@ -179,6 +180,8 @@ export default function StepCanvas({
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
         snapToGrid
         snapGrid={[20, 20]}
         connectionLineStyle={{ stroke: EDGE_COLORS.success, strokeWidth: 2 }}
