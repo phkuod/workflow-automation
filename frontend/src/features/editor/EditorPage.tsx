@@ -68,6 +68,7 @@ function EditorPage() {
     isLoading,
     isSaving,
     isDirty,
+    error,
     updateWorkflow,
     createWorkflow,
     replayExecution,
@@ -607,6 +608,22 @@ function EditorPage() {
               onSeek={replay.seek}
               onExit={exitReplayMode}
             />
+          )}
+          {isReplay && replaySequence.length === 0 && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '8px 16px', borderTop: '1px solid var(--border-color)',
+                background: 'var(--bg-secondary)',
+              }}
+            >
+              <span className="text-sm text-muted">
+                {error || 'This run could not be loaded for replay.'}
+              </span>
+              <button className="btn btn-secondary btn-sm" onClick={exitReplayMode}>
+                Exit replay
+              </button>
+            </div>
           )}
         </div>
 
