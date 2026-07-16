@@ -194,7 +194,13 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
       }
       const rawScenarios = scenariosInput as Array<Record<string, unknown>>;
       for (const scenario of rawScenarios) {
-        const overrides = (scenario?.stepOverrides as unknown[] | undefined) || [];
+        if (!scenario || typeof scenario !== 'object' || Array.isArray(scenario)) {
+          return res.status(400).json({ success: false, error: 'Each scenario must be an object' });
+        }
+        if (scenario.stepOverrides !== undefined && !Array.isArray(scenario.stepOverrides)) {
+          return res.status(400).json({ success: false, error: 'stepOverrides must be an array' });
+        }
+        const overrides = (scenario.stepOverrides as unknown[] | undefined) || [];
         for (const o of overrides) {
           const override = o as Record<string, unknown> | null | undefined;
           if (!override || typeof override.stepId !== 'string' || !knownStepIds.has(override.stepId)) {
@@ -209,8 +215,8 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
       }
       const normalized: Scenario[] = rawScenarios.map((s, i) => ({
         name: typeof s?.name === 'string' && s.name.trim() ? s.name.trim() : `Scenario ${i + 1}`,
-        inputData: s.inputData as Record<string, unknown> | undefined,
-        stepOverrides: s.stepOverrides as ScenarioOverride[] | undefined,
+        inputData: s?.inputData as Record<string, unknown> | undefined,
+        stepOverrides: s?.stepOverrides as ScenarioOverride[] | undefined,
       }));
       const results = await ExecutionEngine.simulateScenarios(workflow, normalized);
       return res.json({ success: true, data: { results } });

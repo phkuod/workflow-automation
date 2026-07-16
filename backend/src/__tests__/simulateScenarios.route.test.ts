@@ -71,6 +71,22 @@ describe('POST /api/workflows/:id/simulate with scenarios', () => {
     expect(both.status).toBe(400);
   });
 
+  it('400 when a scenario element is not an object', async () => {
+    const res = await request(app).post('/api/workflows/w1/simulate').send({ scenarios: [null] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/must be an object/i);
+    expect(ExecutionEngine.simulateScenarios).not.toHaveBeenCalled();
+  });
+
+  it('400 when stepOverrides is not an array', async () => {
+    const res = await request(app).post('/api/workflows/w1/simulate').send({
+      scenarios: [{ name: 'a', stepOverrides: {} }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/must be an array/i);
+    expect(ExecutionEngine.simulateScenarios).not.toHaveBeenCalled();
+  });
+
   it('404 when the workflow does not exist', async () => {
     vi.mocked(WorkflowModel.getById).mockReturnValue(null as never);
     const res = await request(app).post('/api/workflows/nope/simulate').send({ scenarios: [{ name: 'a' }] });
