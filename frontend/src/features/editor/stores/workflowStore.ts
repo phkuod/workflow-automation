@@ -11,6 +11,7 @@ import type {
   ExecutionLog
 } from '../../../shared/types/workflow';
 import { workflowApi, executionApi } from '../../../shared/api/workflowApi';
+import type { ScenarioInput, ScenarioResult } from '../types/scenario';
 
 // Generate UUID function (simple version for browser)
 function generateId(): string {
@@ -29,6 +30,9 @@ interface WorkflowState {
   currentExecution: Execution | null;
   executionLogs: ExecutionLog[];
   replayExecution: Execution | null;
+  whatIfScenarios: ScenarioInput[];
+  whatIfResults: ScenarioResult[] | null;
+  isRunningScenarios: boolean;
 
   // UI State
   isLoading: boolean;
@@ -66,6 +70,8 @@ interface WorkflowState {
   fetchExecutionLogs: (executionId: string) => Promise<void>;
   enterReplay: (executionId: string) => Promise<void>;
   exitReplay: () => void;
+  setWhatIfScenarios: (scenarios: ScenarioInput[]) => void;
+  runScenarios: () => Promise<void>;
 
   // Utils
   clearError: () => void;
@@ -79,6 +85,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   currentExecution: null,
   executionLogs: [],
   replayExecution: null,
+  whatIfScenarios: [],
+  whatIfResults: null,
+  isRunningScenarios: false,
   isLoading: false,
   isSaving: false,
   isDirty: false,
@@ -437,6 +446,20 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
 
   exitReplay: () => set({ replayExecution: null }),
+
+  setWhatIfScenarios: (scenarios) => set({ whatIfScenarios: scenarios }),
+
+  runScenarios: async () => {
+    const { currentWorkflow, whatIfScenarios } = get();
+    if (!currentWorkflow) throw new Error('No workflow selected');
+    set({ isRunningScenarios: true, error: null });
+    try {
+      const results = await workflowApi.simulateScenarios(currentWorkflow.id, whatIfScenarios);
+      set({ whatIfResults: results, isRunningScenarios: false });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error), isRunningScenarios: false });
+    }
+  },
 
   // Clear error
   clearError: () => {

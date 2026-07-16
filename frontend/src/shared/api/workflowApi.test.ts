@@ -333,3 +333,15 @@ describe('data shapes API', () => {
     expect(result).toEqual(shape);
   });
 });
+
+describe('simulateScenarios API', () => {
+  it('posts scenarios and unwraps data.results', async () => {
+    const results = [{ name: 'a', result: { stations: [] } }];
+    mockPost.mockResolvedValueOnce(successResponse({ results }));
+
+    const result = await workflowApi.simulateScenarios('w1', [{ name: 'a' }]);
+
+    expect(mockPost).toHaveBeenCalledWith('/workflows/w1/simulate', { scenarios: [{ name: 'a' }] });
+    expect(result).toEqual(results);
+  });
+});

@@ -8,6 +8,7 @@ import type {
   ApiResponse
 } from '../types/workflow';
 import type { DataShapesResponse, ShapeNode } from '../types/shapes';
+import type { ScenarioInput, ScenarioResult } from '../../features/editor/types/scenario';
 
 const api = axios.create({
   baseURL: '/api',
@@ -67,6 +68,12 @@ export const workflowApi = {
     });
     if (!response.data.success) throw new Error(response.data.error);
     return response.data.data!;
+  },
+
+  simulateScenarios: async (id: string, scenarios: ScenarioInput[]): Promise<ScenarioResult[]> => {
+    const response = await api.post<ApiResponse<{ results: ScenarioResult[] }>>(`/workflows/${id}/simulate`, { scenarios });
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!.results;
   },
 
   getExecutions: async (id: string, limit = 20): Promise<Execution[]> => {
