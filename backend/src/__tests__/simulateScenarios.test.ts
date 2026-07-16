@@ -75,3 +75,49 @@ describe('ExecutionEngine.simulateScenarios', () => {
     expect(results[0].result.error?.message).toMatch(/Missing required input parameter/);
   });
 });
+
+describe('ExecutionEngine log buffer overflow (ephemeral vs persisted contexts)', () => {
+  // log() is private; reach it through a typed cast so we can hit the overflow
+  // branch deterministically by pre-seeding the buffer to the flush threshold.
+  type TestLogEntry = { executionId: string; level: string; message: string };
+  type TestContext = {
+    executionId: string;
+    workflow: Workflow;
+    variables: Record<string, unknown>;
+    stations: Record<string, unknown>;
+    steps: Record<string, unknown>;
+    logs: TestLogEntry[];
+    simulate: boolean;
+    ephemeral?: boolean;
+  };
+  const engine = ExecutionEngine as unknown as {
+    MAX_BUFFERED_LOGS: number;
+    log: (context: TestContext, level: string, message: string) => void;
+  };
+
+  function overflowContext(ephemeral: boolean): TestContext {
+    const logs: TestLogEntry[] = Array.from({ length: engine.MAX_BUFFERED_LOGS - 1 }, (_, i) => ({
+      executionId: 'ctx', level: 'info', message: `entry ${i}`,
+    }));
+    return {
+      executionId: 'ctx', workflow: workflow(), variables: {}, stations: {}, steps: {},
+      logs, simulate: true, ephemeral,
+    };
+  }
+
+  it('ephemeral context never flushes logs to the database at overflow; buffer stays bounded', () => {
+    vi.mocked(LogModel.createMany).mockClear();
+    const ctx = overflowContext(true);
+    engine.log(ctx, 'info', 'tips the buffer over the threshold');
+    expect(LogModel.createMany).not.toHaveBeenCalled();
+    expect(ctx.logs.length).toBeLessThan(engine.MAX_BUFFERED_LOGS);
+  });
+
+  it('non-ephemeral context still flushes logs to the database at overflow', () => {
+    vi.mocked(LogModel.createMany).mockClear();
+    const ctx = overflowContext(false);
+    engine.log(ctx, 'info', 'tips the buffer over the threshold');
+    expect(LogModel.createMany).toHaveBeenCalledTimes(1);
+    expect(ctx.logs.length).toBe(0);
+  });
+});

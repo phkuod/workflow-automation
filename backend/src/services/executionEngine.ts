@@ -43,6 +43,8 @@ interface ExecutionContext {
   simulate: boolean;
   signal?: AbortSignal;
   stepOverrides?: Map<string, StepOverride>;
+  /** Scenario contexts persist nothing — the log buffer must never flush to the DB. */
+  ephemeral?: boolean;
 }
 
 export class ExecutionEngine {
@@ -228,6 +230,7 @@ export class ExecutionEngine {
           simulate: true,
           signal: new AbortController().signal,
           stepOverrides: overrides,
+          ephemeral: true,
         };
         const { result } = await this.runStations(context);
         results.push({ name: scenario.name, result });
@@ -893,6 +896,12 @@ export class ExecutionEngine {
 
     // Flush logs to DB periodically to prevent OOM on large workflows
     if (context.logs.length >= this.MAX_BUFFERED_LOGS) {
+      if (context.ephemeral) {
+        // Ephemeral (scenario) contexts must never write to the DB;
+        // drop the oldest half of the buffer to keep memory bounded instead.
+        context.logs.splice(0, Math.floor(context.logs.length / 2));
+        return;
+      }
       try {
         LogModel.createMany(context.logs);
         context.logs.length = 0;
