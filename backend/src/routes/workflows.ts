@@ -11,7 +11,9 @@ import {
   UpdateWorkflowRequest,
   ExecuteWorkflowRequest,
   ApiResponse,
-  Workflow
+  Workflow,
+  Scenario,
+  ScenarioOverride
 } from '../types/workflow';
 import { findTriggerStep } from '../utils/workflowHelpers';
 
@@ -176,6 +178,42 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
     const workflow = WorkflowModel.getById(req.params.id);
     if (!workflow) {
       return res.status(404).json({ success: false, error: 'Workflow not found' });
+    }
+
+    const scenariosInput: unknown = req.body?.scenarios;
+    if (scenariosInput !== undefined) {
+      if (!Array.isArray(scenariosInput) || scenariosInput.length === 0) {
+        return res.status(400).json({ success: false, error: 'scenarios must be a non-empty array' });
+      }
+      if (scenariosInput.length > 10) {
+        return res.status(400).json({ success: false, error: 'At most 10 scenarios per request' });
+      }
+      const knownStepIds = new Set<string>();
+      for (const station of workflow.definition.stations) {
+        for (const step of station.steps) knownStepIds.add(step.id);
+      }
+      const rawScenarios = scenariosInput as Array<Record<string, unknown>>;
+      for (const scenario of rawScenarios) {
+        const overrides = (scenario?.stepOverrides as unknown[] | undefined) || [];
+        for (const o of overrides) {
+          const override = o as Record<string, unknown> | null | undefined;
+          if (!override || typeof override.stepId !== 'string' || !knownStepIds.has(override.stepId)) {
+            return res.status(400).json({ success: false, error: `Unknown step id in override: ${String(override?.stepId)}` });
+          }
+          const hasOutput = override.mockOutput !== undefined;
+          const hasError = override.mockError !== undefined;
+          if (hasOutput === hasError) {
+            return res.status(400).json({ success: false, error: 'Each override needs exactly one of mockOutput or mockError' });
+          }
+        }
+      }
+      const normalized: Scenario[] = rawScenarios.map((s, i) => ({
+        name: typeof s?.name === 'string' && s.name.trim() ? s.name.trim() : `Scenario ${i + 1}`,
+        inputData: s.inputData as Record<string, unknown> | undefined,
+        stepOverrides: s.stepOverrides as ScenarioOverride[] | undefined,
+      }));
+      const results = await ExecutionEngine.simulateScenarios(workflow, normalized);
+      return res.json({ success: true, data: { results } });
     }
 
     const { inputData = {} }: ExecuteWorkflowRequest = req.body;
