@@ -191,6 +191,25 @@ export interface ErrorInfo {
   code?: string;
 }
 
+export type StepOverride = { mockOutput: Record<string, unknown> } | { mockError: string };
+
+export interface ScenarioOverride {
+  stepId: string;
+  mockOutput?: Record<string, unknown>;
+  mockError?: string;
+}
+
+export interface Scenario {
+  name: string;
+  inputData?: Record<string, unknown>;
+  stepOverrides?: ScenarioOverride[];
+}
+
+export interface ScenarioResult {
+  name: string;
+  result: ExecutionResult;
+}
+
 // Log Types
 
 export interface ExecutionLog {
