@@ -76,11 +76,12 @@ describe('EditorPage replay mode', () => {
     expect(screen.queryByRole('button', { name: /^Test$/i })).not.toBeInTheDocument();
   });
 
-  it('hides all editing chrome: Add Stage, Params, Version History, status select, Plan/Canvas toggle, Node Library', () => {
+  it('hides all editing chrome: Add Stage, Params, What-If, Version History, status select, Plan/Canvas toggle, Node Library', () => {
     render(<EditorPage />);
     expect(screen.queryByRole('button', { name: /add stage/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add action/i })).not.toBeInTheDocument();
     expect(screen.queryByTitle('Input Parameters')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('What-If Lab')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Version History')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Plan View$/i })).not.toBeInTheDocument();
