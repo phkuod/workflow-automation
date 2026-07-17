@@ -16,7 +16,7 @@ export function WhatIfLab({ workflow, onClose }: WhatIfLabProps) {
   const allSteps: Step[] = workflow.definition.stations.flatMap((st) => st.steps);
 
   const addScenario = () => {
-    const next: ScenarioInput = { name: `Scenario ${whatIfScenarios.length + 1}` };
+    const next: ScenarioInput = { id: crypto.randomUUID(), name: `Scenario ${whatIfScenarios.length + 1}` };
     setWhatIfScenarios([...whatIfScenarios, next]);
   };
   const updateScenario = (i: number, next: ScenarioInput) =>
@@ -38,7 +38,7 @@ export function WhatIfLab({ workflow, onClose }: WhatIfLabProps) {
 
         {whatIfScenarios.map((scenario, i) => (
           <ScenarioEditor
-            key={i}
+            key={scenario.id ?? i}
             scenario={scenario}
             steps={allSteps}
             onChange={(next) => updateScenario(i, next)}

@@ -31,6 +31,17 @@ describe('workflowStore What-If', () => {
     expect(useWorkflowStore.getState().isRunningScenarios).toBe(false);
   });
 
+  it('runScenarios strips client-side ids before POST', async () => {
+    vi.mocked(workflowApi.simulateScenarios).mockResolvedValue([] as never);
+    useWorkflowStore.getState().setWhatIfScenarios([
+      { id: 'a', name: 'S1', inputData: { x: 1 }, stepOverrides: [{ id: 'o1', stepId: 's1', mockOutput: { y: 2 } }] },
+    ]);
+    await useWorkflowStore.getState().runScenarios();
+    expect(workflowApi.simulateScenarios).toHaveBeenCalledWith('w1', [
+      { name: 'S1', inputData: { x: 1 }, stepOverrides: [{ stepId: 's1', mockOutput: { y: 2 } }] },
+    ]);
+  });
+
   it('runScenarios records an error and clears the running flag on failure', async () => {
     vi.mocked(workflowApi.simulateScenarios).mockRejectedValue(new Error('boom'));
     useWorkflowStore.getState().setWhatIfScenarios([{ name: 'a' }]);

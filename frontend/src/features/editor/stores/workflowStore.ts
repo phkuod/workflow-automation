@@ -454,7 +454,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     if (!currentWorkflow) throw new Error('No workflow selected');
     set({ isRunningScenarios: true, error: null });
     try {
-      const results = await workflowApi.simulateScenarios(currentWorkflow.id, whatIfScenarios);
+      // Strip client-side ids so the wire payload stays exactly the API contract
+      const payload: ScenarioInput[] = whatIfScenarios.map(({ name, inputData, stepOverrides }) => ({
+        name,
+        inputData,
+        stepOverrides: stepOverrides?.map(({ stepId, mockOutput, mockError }) => ({ stepId, mockOutput, mockError })),
+      }));
+      const results = await workflowApi.simulateScenarios(currentWorkflow.id, payload);
       set({ whatIfResults: results, isRunningScenarios: false });
     } catch (error: unknown) {
       set({ error: error instanceof Error ? error.message : String(error), isRunningScenarios: false });
