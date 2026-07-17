@@ -23,6 +23,7 @@ import { buildReplaySequence, buildPartialExecution } from './utils/replaySnapsh
 import { toast } from '../../shared/stores/toastStore';
 import type { StepType } from '../../shared/types/workflow';
 import InputParametersEditor from './components/InputParametersEditor';
+import { WhatIfLab } from './components/WhatIfLab';
 import {
   ArrowLeft,
   Save,
@@ -30,7 +31,8 @@ import {
   Plus,
   Layers,
   Clock,
-  Settings
+  Settings,
+  FlaskConical
 } from 'lucide-react';
 
 // Editor view state
@@ -108,6 +110,7 @@ function EditorPage() {
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showExecuteDialog, setShowExecuteDialog] = useState<'execute' | 'simulate' | null>(null);
   const [showInputParams, setShowInputParams] = useState(false);
+  const [showWhatIf, setShowWhatIf] = useState(false);
   const [showCoachMarks, setShowCoachMarks] = useState(() => !localStorage.getItem('editor.coachMarksSeen'));
 
   const dismissCoachMarks = useCallback(() => {
@@ -492,6 +495,17 @@ function EditorPage() {
 
           {!isReplay && (
             <button
+              className={`btn btn-secondary ${showWhatIf ? 'btn-active' : ''}`}
+              onClick={() => setShowWhatIf((v) => !v)}
+              title="What-If Lab"
+            >
+              <FlaskConical size={18} />
+              What-If
+            </button>
+          )}
+
+          {!isReplay && (
+            <button
               className="btn btn-secondary btn-icon"
               onClick={() => setShowVersionHistory(!showVersionHistory)}
               title="Version History"
@@ -702,6 +716,11 @@ function EditorPage() {
             }}
             onClose={() => setShowVersionHistory(false)}
           />
+        )}
+
+        {/* What-If Lab Panel */}
+        {showWhatIf && currentWorkflow && !isReplay && (
+          <WhatIfLab workflow={currentWorkflow} onClose={() => setShowWhatIf(false)} />
         )}
       </div>
 
