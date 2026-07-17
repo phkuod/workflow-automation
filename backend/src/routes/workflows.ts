@@ -189,7 +189,7 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
         return res.status(400).json({ success: false, error: 'At most 10 scenarios per request' });
       }
       const knownStepIds = new Set<string>();
-      for (const station of workflow.definition.stations) {
+      for (const station of workflow.definition.stations || []) {
         for (const step of station.steps) knownStepIds.add(step.id);
       }
       const rawScenarios = scenariosInput as Array<Record<string, unknown>>;
@@ -199,6 +199,10 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
         }
         if (scenario.stepOverrides !== undefined && !Array.isArray(scenario.stepOverrides)) {
           return res.status(400).json({ success: false, error: 'stepOverrides must be an array' });
+        }
+        if (scenario.inputData !== undefined
+          && (typeof scenario.inputData !== 'object' || scenario.inputData === null || Array.isArray(scenario.inputData))) {
+          return res.status(400).json({ success: false, error: 'inputData must be an object' });
         }
         const overrides = (scenario.stepOverrides as unknown[] | undefined) || [];
         for (const o of overrides) {

@@ -1297,3 +1297,13 @@ git add -A && git commit -m "fix: Phase C smoke-test findings"   # only if fixes
 - **Type consistency:** backend `Scenario`/`ScenarioResult`/`StepOverride` (Task 1) ↔ route (Task 2); frontend `ScenarioInput`/`ScenarioOverrideInput`/`ScenarioResult` (Task 3) ↔ matrix (Task 4) ↔ panel (Task 5); store field/action names identical Tasks 3↔5↔6; response `{ data: { results } }` identical Task 2↔3.
 - **Risk noted for review:** the `runStations` extraction touches the real execution path — Task 1's full-backend-suite run is the guard against regressing production execution; the reviewer should confirm the extracted block is behavior-identical to the inline original.
 - **Follow-ups seeded:** "Suggest scenarios" AI button; a per-scenario input-data schema hint from `inputParameters`; matrix column handling when scenarios skip different stages (currently columns come from the definition, which is correct).
+
+## Deferred follow-ups (recorded at final review 2026-07-18, non-blocking — Phase C merge-ready)
+
+1. Engine `simulateScenarios` override coercion is silently lossy for direct callers (both-set → mockError wins; neither-set → `mockOutput:{}`); the HTTP route enforces exactly-one-of, so unreachable via the API — assert or document the invariant.
+2. Empty `mockError` (`''`) passes validation — a forced failure can carry an empty message; consider requiring non-empty.
+3. `store.runScenarios` throws synchronously when no workflow selected (vs error-state convention); unreachable while the panel requires `currentWorkflow`.
+4. Scenario DTO types live in `features/editor` but are imported by `shared/api` (reversed layering, plan-mandated) — cleaner home is `shared/types`.
+5. ScenarioMatrix: pending/running statuses render the same dash as not-run (scenario results are always terminal today); `selected!` assertion; no click-test on a never-reached cell.
+6. WhatIfLab: `id ?? index` key fallback for programmatically injected id-less scenarios; empty mock-output shows "Invalid JSON" (friendlier copy possible); radio toggle discards the other mode's value.
+7. "Suggest scenarios" AI button remains the spec's deferred stretch.

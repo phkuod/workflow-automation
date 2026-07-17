@@ -87,6 +87,22 @@ describe('POST /api/workflows/:id/simulate with scenarios', () => {
     expect(ExecutionEngine.simulateScenarios).not.toHaveBeenCalled();
   });
 
+  it('400 when inputData is not an object', async () => {
+    const res = await request(app).post('/api/workflows/w1/simulate').send({
+      scenarios: [{ name: 'a', inputData: 'text' }],
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/inputData/i);
+    expect(ExecutionEngine.simulateScenarios).not.toHaveBeenCalled();
+  });
+
+  it('does not 500 when the workflow definition has no stations array', async () => {
+    vi.mocked(WorkflowModel.getById).mockReturnValue({ ...wf, definition: {} } as never);
+    vi.mocked(ExecutionEngine.simulateScenarios).mockResolvedValue([{ name: 'a', result: { stations: [] } }] as never);
+    const res = await request(app).post('/api/workflows/w1/simulate').send({ scenarios: [{ name: 'a' }] });
+    expect(res.status).toBe(200);
+  });
+
   it('404 when the workflow does not exist', async () => {
     vi.mocked(WorkflowModel.getById).mockReturnValue(null as never);
     const res = await request(app).post('/api/workflows/nope/simulate').send({ scenarios: [{ name: 'a' }] });
