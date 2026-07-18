@@ -11,6 +11,7 @@ import type {
   ExecutionLog
 } from '../../../shared/types/workflow';
 import { workflowApi, executionApi } from '../../../shared/api/workflowApi';
+import type { ScenarioInput, ScenarioResult } from '../types/scenario';
 
 // Generate UUID function (simple version for browser)
 function generateId(): string {
@@ -28,7 +29,11 @@ interface WorkflowState {
   executions: Execution[];
   currentExecution: Execution | null;
   executionLogs: ExecutionLog[];
-  
+  replayExecution: Execution | null;
+  whatIfScenarios: ScenarioInput[];
+  whatIfResults: ScenarioResult[] | null;
+  isRunningScenarios: boolean;
+
   // UI State
   isLoading: boolean;
   isSaving: boolean;
@@ -63,7 +68,11 @@ interface WorkflowState {
   simulateWorkflow: (inputData?: Record<string, unknown>) => Promise<Execution>;
   fetchExecutions: (workflowId: string) => Promise<void>;
   fetchExecutionLogs: (executionId: string) => Promise<void>;
-  
+  enterReplay: (executionId: string) => Promise<void>;
+  exitReplay: () => void;
+  setWhatIfScenarios: (scenarios: ScenarioInput[]) => void;
+  runScenarios: () => Promise<void>;
+
   // Utils
   clearError: () => void;
 }
@@ -75,6 +84,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   executions: [],
   currentExecution: null,
   executionLogs: [],
+  replayExecution: null,
+  whatIfScenarios: [],
+  whatIfResults: null,
+  isRunningScenarios: false,
   isLoading: false,
   isSaving: false,
   isDirty: false,
@@ -418,6 +431,39 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       set({ executionLogs: logs });
     } catch (error: unknown) {
       set({ error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+
+  // Replay a past execution on the canvas (read-only)
+  enterReplay: async (executionId: string) => {
+    set({ error: null });
+    try {
+      const execution = await executionApi.getById(executionId);
+      set({ replayExecution: execution });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error), replayExecution: null });
+    }
+  },
+
+  exitReplay: () => set({ replayExecution: null }),
+
+  setWhatIfScenarios: (scenarios) => set({ whatIfScenarios: scenarios }),
+
+  runScenarios: async () => {
+    const { currentWorkflow, whatIfScenarios } = get();
+    if (!currentWorkflow) throw new Error('No workflow selected');
+    set({ isRunningScenarios: true, error: null });
+    try {
+      // Strip client-side ids so the wire payload stays exactly the API contract
+      const payload: ScenarioInput[] = whatIfScenarios.map(({ name, inputData, stepOverrides }) => ({
+        name,
+        inputData,
+        stepOverrides: stepOverrides?.map(({ stepId, mockOutput, mockError }) => ({ stepId, mockOutput, mockError })),
+      }));
+      const results = await workflowApi.simulateScenarios(currentWorkflow.id, payload);
+      set({ whatIfResults: results, isRunningScenarios: false });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : String(error), isRunningScenarios: false });
     }
   },
 

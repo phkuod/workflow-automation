@@ -61,6 +61,36 @@ describe('Variable Interpolation', () => {
       const result = ScriptRunner.interpolateVariables('Active: ${active}', { active: true });
       expect(result).toBe('Active: true');
     });
+
+    it('resolves a picker-inserted steps[...] bracket reference inside a template', () => {
+      const context = { steps: { 'My Step': { output: { data: { orderId: 'ORD-42' } } } } };
+      const result = ScriptRunner.interpolateVariables("Order: ${steps['My Step'].output.data.orderId}", context);
+      expect(result).toBe('Order: ORD-42');
+    });
+
+    it('resolves a picker-inserted array index reference inside a template', () => {
+      const context = { steps: { X: { output: { rows: [{ id: 'r1' }] } } } };
+      const result = ScriptRunner.interpolateVariables("Row: ${steps['X'].output.rows[0].id}", context);
+      expect(result).toBe('Row: r1');
+    });
+
+    it('resolves a picker-inserted bracket key with a dash inside a template', () => {
+      const context = { steps: { X: { output: { 'content-type': 'application/json' } } } };
+      const result = ScriptRunner.interpolateVariables("Type: ${steps['X'].output['content-type']}", context);
+      expect(result).toBe('Type: application/json');
+    });
+
+    it('resolves to empty string when the referenced step is unknown', () => {
+      const context = { steps: { X: { output: { data: {} } } } };
+      const result = ScriptRunner.interpolateVariables("Missing: ${steps['Unknown'].output.data.orderId}", context);
+      expect(result).toBe('Missing: ');
+    });
+
+    it('falls back to legacy dot-split for a hand-typed step name containing a space', () => {
+      const context = { 'My Step': { output: { x: 'legacy-value' } } };
+      const result = ScriptRunner.interpolateVariables('Value: ${My Step.output.x}', context);
+      expect(result).toBe('Value: legacy-value');
+    });
   });
 
   describe('getValueByPath', () => {
@@ -75,6 +105,47 @@ describe('Variable Interpolation', () => {
 
     it('returns undefined for missing path', () => {
       expect(ScriptRunner.getValueByPath({}, 'a.b.c')).toBeUndefined();
+    });
+
+    it('resolves picker-style quoted bracket path: steps[\'My Step\'].output.data.orderId', () => {
+      const obj = { steps: { 'My Step': { output: { data: { orderId: 'ORD-1' } } } } };
+      expect(ScriptRunner.getValueByPath(obj, "steps['My Step'].output.data.orderId")).toBe('ORD-1');
+    });
+
+    it('resolves numeric array index path: steps[\'X\'].output.rows[0].id', () => {
+      const obj = { steps: { X: { output: { rows: [{ id: 7 }, { id: 8 }] } } } };
+      expect(ScriptRunner.getValueByPath(obj, "steps['X'].output.rows[0].id")).toBe(7);
+    });
+
+    it('resolves quoted bracket key with non-identifier characters: [\'content-type\']', () => {
+      const obj = { steps: { X: { output: { 'content-type': 'application/json' } } } };
+      expect(ScriptRunner.getValueByPath(obj, "steps['X'].output['content-type']")).toBe('application/json');
+    });
+
+    it('resolves an escaped quote inside a bracket key', () => {
+      const obj = { "it's": 'value' };
+      expect(ScriptRunner.getValueByPath(obj, "['it\\'s']")).toBe('value');
+    });
+
+    it('returns undefined (not a crash) for unknown step/field in bracket paths', () => {
+      const obj = { steps: { X: { output: { data: {} } } } };
+      expect(ScriptRunner.getValueByPath(obj, "steps['Unknown Step'].output.data.orderId")).toBeUndefined();
+      expect(ScriptRunner.getValueByPath(obj, "steps['X'].output.data.missingField")).toBeUndefined();
+    });
+
+    it('falls back to legacy dot-split when a segment contains a space (no brackets)', () => {
+      const obj = { 'My Step': { output: { x: 42 } } };
+      expect(ScriptRunner.getValueByPath(obj, 'My Step.output.x')).toBe(42);
+    });
+
+    it('still uses the bracket-aware tokenizer when brackets are present (no regression)', () => {
+      const obj = { steps: { X: { output: { rows: [{ id: 9 }] } } } };
+      expect(ScriptRunner.getValueByPath(obj, "steps['X'].output.rows[0].id")).toBe(9);
+    });
+
+    it('does not crash on a mixed nonsense path', () => {
+      expect(() => ScriptRunner.getValueByPath({}, "some][invalid('path")).not.toThrow();
+      expect(ScriptRunner.getValueByPath({}, "some][invalid('path")).toBeUndefined();
     });
   });
 

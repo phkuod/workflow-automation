@@ -1,0 +1,105 @@
+export interface ShapeNode {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'null';
+  sample?: string;
+  children?: ShapeNode[];
+  truncated?: boolean;
+  omittedCount?: number;
+}
+
+export const SENSITIVE_FIELD_PATTERN = /password|token|secret|api[_-]?key|authorization/i;
+
+const MAX_SAMPLE_LENGTH = 100;
+const MAX_DEPTH = 4;
+const MAX_FIELDS_PER_LEVEL = 30;
+
+/** Convert an arbitrary JSON value into a bounded, redacted shape tree. */
+export function deriveShape(value: unknown, name = ''): ShapeNode {
+  return derive(value, name, 0, false);
+}
+
+/** Mask values of sensitive keys (recursive) — used before sending configs to the AI provider. */
+export function redactRecord(record: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(record)) {
+    out[key] = SENSITIVE_FIELD_PATTERN.test(key) ? '***' : redactValue(val);
+  }
+  return out;
+}
+
+// Matches `?key=value` / `&key=value` query-string segments; only the VALUE is
+// replaced when the parameter NAME matches SENSITIVE_FIELD_PATTERN — this is
+// deliberately scoped to query-param names, not general secret sniffing.
+const QUERY_PARAM_PATTERN = /([?&])([A-Za-z0-9_-]+)=([^&#\s]*)/g;
+
+function redactQueryParamValues(value: string): string {
+  return value.replace(QUERY_PARAM_PATTERN, (match, sep, key) =>
+    SENSITIVE_FIELD_PATTERN.test(key) ? `${sep}${key}=***` : match
+  );
+}
+
+function redactValue(val: unknown): unknown {
+  if (Array.isArray(val)) {
+    return val.map(item => redactValue(item));
+  }
+  if (isPlainObject(val)) {
+    return redactRecord(val);
+  }
+  if (typeof val === 'string') {
+    return redactQueryParamValues(val);
+  }
+  return val;
+}
+
+function isPlainObject(val: unknown): val is Record<string, unknown> {
+  return typeof val === 'object' && val !== null && !Array.isArray(val);
+}
+
+function derive(value: unknown, name: string, depth: number, inheritedRedacted: boolean): ShapeNode {
+  const redacted = inheritedRedacted || SENSITIVE_FIELD_PATTERN.test(name);
+
+  if (value === null || value === undefined) {
+    return { name, type: 'null' };
+  }
+  if (typeof value === 'string') {
+    return { name, type: 'string', sample: redacted ? '***' : truncateSample(value) };
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return { name, type: typeof value === 'number' ? 'number' : 'boolean', sample: redacted ? '***' : String(value) };
+  }
+  if (Array.isArray(value)) {
+    const node: ShapeNode = { name, type: 'array', sample: `${value.length} items` };
+    if (value.length > 0) {
+      if (depth < MAX_DEPTH) {
+        node.children = [derive(value[0], '[0]', depth + 1, redacted)];
+      } else {
+        // Array itself is at the cap: its single derivable element type is omitted.
+        node.truncated = true;
+        node.omittedCount = 1;
+      }
+    }
+    return node;
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>);
+  const node: ShapeNode = { name, type: 'object' };
+  if (depth >= MAX_DEPTH) {
+    // Only report truncation when fields were actually omitted — an empty
+    // object at the cap has nothing to report, so leave truncated/omittedCount unset.
+    if (entries.length > 0) {
+      node.truncated = true;
+      node.omittedCount = entries.length;
+    }
+    return node;
+  }
+  node.children = entries.slice(0, MAX_FIELDS_PER_LEVEL).map(([key, val]) => derive(val, key, depth + 1, redacted));
+  if (entries.length > MAX_FIELDS_PER_LEVEL) {
+    node.truncated = true;
+    node.omittedCount = entries.length - MAX_FIELDS_PER_LEVEL;
+  }
+  return node;
+}
+
+function truncateSample(s: string): string {
+  return s.length > MAX_SAMPLE_LENGTH ? `${s.slice(0, MAX_SAMPLE_LENGTH)}…` : s;
+}

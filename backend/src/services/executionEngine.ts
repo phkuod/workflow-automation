@@ -7,7 +7,10 @@ import {
   ExecutionResult,
   StationResult,
   StepResult,
-  ExecutionLog
+  ExecutionLog,
+  StepOverride,
+  Scenario,
+  ScenarioResult
 } from '../types/workflow';
 import { ExecutionModel, LogModel } from '../models/execution';
 import { ScriptRunner, ScriptResult } from './scriptRunner';
@@ -39,6 +42,9 @@ interface ExecutionContext {
   logs: Omit<ExecutionLog, 'id' | 'timestamp'>[];
   simulate: boolean;
   signal?: AbortSignal;
+  stepOverrides?: Map<string, StepOverride>;
+  /** Scenario contexts persist nothing — the log buffer must never flush to the DB. */
+  ephemeral?: boolean;
 }
 
 export class ExecutionEngine {
@@ -105,75 +111,8 @@ export class ExecutionEngine {
 
     this.log(context, 'info', `${simulate ? '[SIMULATE] ' : ''}Starting workflow: ${workflow.name}`);
 
-    const result: ExecutionResult = {
-      stations: []
-    };
-
-    let totalSteps = 0;
-    let completedSteps = 0;
-    let failed = false;
-
-    // Execute stations sequentially
-    let cancelled = false;
-    const stations = workflow.definition.stations || [];
-    for (const station of stations) {
-      if (failed) break;
-
-      // Check for cancellation
-      if (signal.aborted) {
-        cancelled = true;
-        failed = true;
-        result.error = { message: 'Execution cancelled', code: 'CANCELLED' };
-        break;
-      }
-
-      // Check station condition
-      if (!this.shouldExecuteStation(station, context)) {
-        this.log(context, 'info', `Skipping station: ${station.name} (condition not met)`, undefined, station.id);
-        const skippedResult = this.createSkippedStationResult(station);
-        result.stations.push(skippedResult);
-        continue;
-      }
-
-      this.log(context, 'info', `Starting station: ${station.name}`, undefined, station.id);
-      this.emitEvent(context, 'station:start', { stationId: station.id, stationName: station.name });
-
-      const stationResult = await this.executeStation(station, context);
-      result.stations.push(stationResult);
-
-      // Count steps
-      totalSteps += station.steps.length;
-      completedSteps += stationResult.steps.filter(s => s.status === 'completed').length;
-
-      // Check if station failed
-      if (stationResult.status === 'failed') {
-        failed = true;
-        // Check if it was due to cancellation
-        if (signal.aborted) {
-          cancelled = true;
-          result.error = { message: 'Execution cancelled', code: 'CANCELLED' };
-        } else {
-          result.error = {
-            message: `Workflow stopped at station: ${station.name}`,
-            code: 'STATION_FAILED'
-          };
-        }
-        this.log(context, 'error', `Station failed: ${station.name}`, undefined, station.id);
-        this.emitEvent(context, 'station:failed', { stationId: station.id, stationName: station.name, error: result.error.message });
-      } else {
-        this.log(context, 'info', `Station completed: ${station.name}`, stationResult.output, station.id);
-        this.emitEvent(context, 'station:complete', { stationId: station.id, stationName: station.name, output: stationResult.output });
-      }
-
-      // Store station result for variable access
-      context.stations[station.id] = stationResult;
-      context.stations[station.name] = stationResult;
-    }
-
-    // Calculate success rate
+    const { result, totalSteps, completedSteps, failed, cancelled } = await this.runStations(context);
     const successRate = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
-
-    // Determine final status
     const finalStatus = cancelled ? 'cancelled' : (failed ? 'failed' : 'completed');
 
     // Save logs
@@ -208,6 +147,101 @@ export class ExecutionEngine {
     return updatedExecution!;
   }
 
+  /** Run all stations against a prepared context. Pure of DB/log persistence. */
+  private static async runStations(context: ExecutionContext): Promise<{
+    result: ExecutionResult; totalSteps: number; completedSteps: number; failed: boolean; cancelled: boolean;
+  }> {
+    const result: ExecutionResult = { stations: [] };
+    let totalSteps = 0;
+    let completedSteps = 0;
+    let failed = false;
+    let cancelled = false;
+
+    const stations = context.workflow.definition.stations || [];
+    for (const station of stations) {
+      if (failed) break;
+      if (context.signal?.aborted) {
+        cancelled = true; failed = true;
+        result.error = { message: 'Execution cancelled', code: 'CANCELLED' };
+        break;
+      }
+      if (!this.shouldExecuteStation(station, context)) {
+        this.log(context, 'info', `Skipping station: ${station.name} (condition not met)`, undefined, station.id);
+        result.stations.push(this.createSkippedStationResult(station));
+        continue;
+      }
+      this.log(context, 'info', `Starting station: ${station.name}`, undefined, station.id);
+      this.emitEvent(context, 'station:start', { stationId: station.id, stationName: station.name });
+
+      const stationResult = await this.executeStation(station, context);
+      result.stations.push(stationResult);
+      totalSteps += station.steps.length;
+      completedSteps += stationResult.steps.filter((s) => s.status === 'completed').length;
+
+      if (stationResult.status === 'failed') {
+        failed = true;
+        if (context.signal?.aborted) {
+          cancelled = true;
+          result.error = { message: 'Execution cancelled', code: 'CANCELLED' };
+        } else {
+          result.error = { message: `Workflow stopped at station: ${station.name}`, code: 'STATION_FAILED' };
+        }
+        this.log(context, 'error', `Station failed: ${station.name}`, undefined, station.id);
+        this.emitEvent(context, 'station:failed', { stationId: station.id, stationName: station.name, error: result.error.message });
+      } else {
+        this.log(context, 'info', `Station completed: ${station.name}`, stationResult.output, station.id);
+        this.emitEvent(context, 'station:complete', { stationId: station.id, stationName: station.name, output: stationResult.output });
+      }
+      context.stations[station.id] = stationResult;
+      context.stations[station.name] = stationResult;
+    }
+    return { result, totalSteps, completedSteps, failed, cancelled };
+  }
+
+  /**
+   * Run scenarios in memory with per-step overrides. Persists nothing:
+   * no executions/logs rows, no executionManager registration.
+   */
+  static async simulateScenarios(workflow: Workflow, scenarios: Scenario[]): Promise<ScenarioResult[]> {
+    const results: ScenarioResult[] = [];
+    for (const scenario of scenarios) {
+      const inputData: Record<string, any> = { ...(scenario.inputData || {}) };
+      try {
+        if (workflow.definition.inputParameters?.length) {
+          for (const param of workflow.definition.inputParameters) {
+            if (inputData[param.name] === undefined && param.defaultValue !== undefined) {
+              inputData[param.name] = param.defaultValue;
+            } else if (param.required && inputData[param.name] === undefined) {
+              throw new Error(`Missing required input parameter: ${param.name}`);
+            }
+          }
+        }
+        const overrides = new Map<string, StepOverride>();
+        for (const o of scenario.stepOverrides || []) {
+          overrides.set(o.stepId, o.mockError !== undefined ? { mockError: o.mockError } : { mockOutput: o.mockOutput || {} });
+        }
+        const context: ExecutionContext = {
+          executionId: `scenario-${uuidv4()}`,
+          workflow,
+          variables: { ...inputData, input: { ...inputData } },
+          stations: {},
+          steps: {},
+          logs: [],
+          simulate: true,
+          signal: new AbortController().signal,
+          stepOverrides: overrides,
+          ephemeral: true,
+        };
+        const { result } = await this.runStations(context);
+        results.push({ name: scenario.name, result });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        results.push({ name: scenario.name, result: { stations: [], error: { message } } });
+      }
+    }
+    return results;
+  }
+
   /**
    * Execute a station with all its steps
    */
@@ -223,13 +257,25 @@ export class ExecutionEngine {
 
     if (station.iterator?.enabled) {
       const sourceVar = station.iterator.sourceVariable;
-      const resolvedSource = ScriptRunner.interpolateVariables(sourceVar, context.variables);
+      const interpolationContext = { ...context.variables, steps: context.steps };
       let items: unknown[] = [];
-      
+
       try {
-        items = JSON.parse(resolvedSource);
-        if (!Array.isArray(items)) {
-          throw new Error('Resolved source is not an array');
+        if (!sourceVar.includes('${')) {
+          // Bare-path form (what the iterator picker inserts, e.g. steps['X'].output.rows) —
+          // resolve the whole string directly as a path instead of via ${}-interpolation.
+          const resolved = ScriptRunner.getValueByPath(interpolationContext, sourceVar);
+          if (!Array.isArray(resolved)) {
+            throw new Error('Resolved source is not an array');
+          }
+          items = resolved;
+        } else {
+          const resolvedSource = ScriptRunner.interpolateVariables(sourceVar, interpolationContext);
+          const parsed = JSON.parse(resolvedSource);
+          if (!Array.isArray(parsed)) {
+            throw new Error('Resolved source is not an array');
+          }
+          items = parsed;
         }
       } catch (e) {
         this.log(context, 'error', `Iteration failed: Source variable ${sourceVar} is not a valid array`, undefined, station.id);
@@ -429,6 +475,22 @@ export class ExecutionEngine {
       input: this.resolveInputVariables(step, context)
     };
 
+    const override = context.stepOverrides?.get(step.id);
+    if (override) {
+      const now = new Date().toISOString();
+      this.emitEvent(context, 'step:start', { stepId: step.id, stepName: step.name });
+      if ('mockError' in override) {
+        const failedResult: StepResult = { ...stepResult, status: 'failed', endTime: now, error: { message: override.mockError } };
+        this.log(context, 'error', `[SIMULATE] Forced failure for ${step.name}: ${override.mockError}`, undefined, undefined, step.id);
+        this.emitEvent(context, 'step:failed', { stepId: step.id, stepName: step.name, error: override.mockError });
+        return failedResult;
+      }
+      const completedResult: StepResult = { ...stepResult, status: 'completed', endTime: now, output: override.mockOutput };
+      this.log(context, 'info', `[SIMULATE] Forced output for ${step.name}`, override.mockOutput, undefined, step.id);
+      this.emitEvent(context, 'step:complete', { stepId: step.id, stepName: step.name, output: override.mockOutput });
+      return completedResult;
+    }
+
     this.emitEvent(context, 'step:start', { stepId: step.id, stepName: step.name });
 
     const startTime = new Date().toISOString();
@@ -491,7 +553,7 @@ export class ExecutionEngine {
               }
               result = await ScriptRunner.executeHttpRequest(
                 step.config,
-                { ...context.variables, inputData: stepResult.input }
+                { ...context.variables, inputData: stepResult.input, steps: context.steps }
               );
             }
             break;
@@ -519,7 +581,8 @@ export class ExecutionEngine {
             const condition = step.config.condition || 'true';
             const conditionResult = ScriptRunner.evaluateCondition(condition, {
               ...context.variables,
-              inputData: stepResult.input
+              inputData: stepResult.input,
+              steps: context.steps
             });
             result = {
               success: true,
@@ -532,7 +595,7 @@ export class ExecutionEngine {
             const varName = step.config.variableName || 'variable';
             const varValue = ScriptRunner.interpolateVariables(
               step.config.variableValue || '',
-              { ...context.variables, inputData: stepResult.input }
+              { ...context.variables, inputData: stepResult.input, steps: context.steps }
             );
             context.variables[varName] = varValue;
             result = {
@@ -554,8 +617,8 @@ export class ExecutionEngine {
 
           case 'notification-slack':
           case 'action-slack': {
-            const slackUrl = ScriptRunner.interpolateVariables(step.config.slackWebhookUrl || '', { ...context.variables, inputData: stepResult.input });
-            const slackMsg = ScriptRunner.interpolateVariables(step.config.slackMessage || '', { ...context.variables, inputData: stepResult.input });
+            const slackUrl = ScriptRunner.interpolateVariables(step.config.slackWebhookUrl || '', { ...context.variables, inputData: stepResult.input, steps: context.steps });
+            const slackMsg = ScriptRunner.interpolateVariables(step.config.slackMessage || '', { ...context.variables, inputData: stepResult.input, steps: context.steps });
 
             if (context.simulate) {
               this.log(context, 'info', `[SIMULATE] Skipping Slack message`, { message: slackMsg }, undefined, step.id);
@@ -572,16 +635,16 @@ export class ExecutionEngine {
                   method: 'POST',
                   body: JSON.stringify({ text: slackMsg })
                 },
-                { ...context.variables, inputData: stepResult.input }
+                { ...context.variables, inputData: stepResult.input, steps: context.steps }
               );
             }
             break;
           }
 
           case 'action-email': {
-            const to = ScriptRunner.interpolateVariables(step.config.emailTo || '', { ...context.variables, inputData: stepResult.input });
-            const subject = ScriptRunner.interpolateVariables(step.config.emailSubject || '', { ...context.variables, inputData: stepResult.input });
-            const emailBody = ScriptRunner.interpolateVariables(step.config.emailBody || '', { ...context.variables, inputData: stepResult.input });
+            const to = ScriptRunner.interpolateVariables(step.config.emailTo || '', { ...context.variables, inputData: stepResult.input, steps: context.steps });
+            const subject = ScriptRunner.interpolateVariables(step.config.emailSubject || '', { ...context.variables, inputData: stepResult.input, steps: context.steps });
+            const emailBody = ScriptRunner.interpolateVariables(step.config.emailBody || '', { ...context.variables, inputData: stepResult.input, steps: context.steps });
 
             if (context.simulate) {
               this.log(context, 'info', `[SIMULATE] Skipping email to ${to}`, { subject }, undefined, step.id);
@@ -622,7 +685,7 @@ export class ExecutionEngine {
           case 'connector-db': {
             const dbQuery = ScriptRunner.interpolateVariables(
               step.config.dbQuery || '',
-              { ...context.variables, inputData: stepResult.input }
+              { ...context.variables, inputData: stepResult.input, steps: context.steps }
             );
 
             if (context.simulate) {
@@ -745,7 +808,7 @@ export class ExecutionEngine {
 
     if (step.inputVars) {
       for (const mapping of step.inputVars) {
-        const value = ScriptRunner.interpolateVariables(mapping.source, context.variables);
+        const value = ScriptRunner.interpolateVariables(mapping.source, { ...context.variables, steps: context.steps });
         try {
           input[mapping.name] = JSON.parse(value);
         } catch {
@@ -833,6 +896,12 @@ export class ExecutionEngine {
 
     // Flush logs to DB periodically to prevent OOM on large workflows
     if (context.logs.length >= this.MAX_BUFFERED_LOGS) {
+      if (context.ephemeral) {
+        // Ephemeral (scenario) contexts must never write to the DB;
+        // drop the oldest half of the buffer to keep memory bounded instead.
+        context.logs.splice(0, Math.floor(context.logs.length / 2));
+        return;
+      }
       try {
         LogModel.createMany(context.logs);
         context.logs.length = 0;

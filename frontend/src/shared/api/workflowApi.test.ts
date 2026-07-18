@@ -26,7 +26,7 @@ vi.mock('axios', () => ({
 }));
 
 // Import after mock setup
-import { workflowApi, executionApi, versionApi, metricsApi } from './workflowApi';
+import { workflowApi, executionApi, versionApi, metricsApi, aiApi } from './workflowApi';
 import axios from 'axios';
 
 // Helpers
@@ -305,5 +305,43 @@ describe('metricsApi', () => {
       params: { days: 30 },
     });
     expect(result).toEqual(historyData);
+  });
+});
+
+describe('data shapes API', () => {
+  it('getDataShapes — calls GET /workflows/:id/data-shapes and unwraps the envelope', async () => {
+    const payload = { source: { kind: 'run', executionId: 'e1', time: 't' }, steps: {} };
+    mockGet.mockResolvedValueOnce(successResponse(payload));
+
+    const result = await workflowApi.getDataShapes('w1');
+
+    expect(mockGet).toHaveBeenCalledWith('/workflows/w1/data-shapes');
+    expect(result).toEqual(payload);
+  });
+
+  it('aiApi.inferShape — posts the step and unwraps the shape', async () => {
+    const shape = { name: '', type: 'object', children: [] };
+    mockPost.mockResolvedValueOnce(successResponse({ shape, source: { kind: 'ai-inferred' } }));
+
+    const result = await aiApi.inferShape({ name: 'S', type: 'script-js', config: {} });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/ai/infer-shape',
+      { step: { name: 'S', type: 'script-js', config: {} } },
+      { timeout: 120_000 },
+    );
+    expect(result).toEqual(shape);
+  });
+});
+
+describe('simulateScenarios API', () => {
+  it('posts scenarios and unwraps data.results', async () => {
+    const results = [{ name: 'a', result: { stations: [] } }];
+    mockPost.mockResolvedValueOnce(successResponse({ results }));
+
+    const result = await workflowApi.simulateScenarios('w1', [{ name: 'a' }]);
+
+    expect(mockPost).toHaveBeenCalledWith('/workflows/w1/simulate', { scenarios: [{ name: 'a' }] });
+    expect(result).toEqual(results);
   });
 });

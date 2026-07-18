@@ -7,6 +7,8 @@ import type {
   WorkflowVersion,
   ApiResponse
 } from '../types/workflow';
+import type { DataShapesResponse, ShapeNode } from '../types/shapes';
+import type { ScenarioInput, ScenarioResult } from '../../features/editor/types/scenario';
 
 const api = axios.create({
   baseURL: '/api',
@@ -68,10 +70,22 @@ export const workflowApi = {
     return response.data.data!;
   },
 
+  simulateScenarios: async (id: string, scenarios: ScenarioInput[]): Promise<ScenarioResult[]> => {
+    const response = await api.post<ApiResponse<{ results: ScenarioResult[] }>>(`/workflows/${id}/simulate`, { scenarios });
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!.results;
+  },
+
   getExecutions: async (id: string, limit = 20): Promise<Execution[]> => {
     const response = await api.get<ApiResponse<Execution[]>>(`/workflows/${id}/executions`, {
       params: { limit },
     });
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!;
+  },
+
+  getDataShapes: async (id: string): Promise<DataShapesResponse> => {
+    const response = await api.get<ApiResponse<DataShapesResponse>>(`/workflows/${id}/data-shapes`);
     if (!response.data.success) throw new Error(response.data.error);
     return response.data.data!;
   },
@@ -190,5 +204,11 @@ export const aiApi = {
     const response = await api.post<ApiResponse<{ explanation: string }>>('/ai/explain', ctx, { timeout: AI_REQUEST_TIMEOUT_MS });
     if (!response.data.success) throw new Error(response.data.error);
     return response.data.data!.explanation;
+  },
+
+  inferShape: async (step: { name: string; type: string; config: Record<string, unknown> }): Promise<ShapeNode> => {
+    const response = await api.post<ApiResponse<{ shape: ShapeNode }>>('/ai/infer-shape', { step }, { timeout: AI_REQUEST_TIMEOUT_MS });
+    if (!response.data.success) throw new Error(response.data.error);
+    return response.data.data!.shape;
   },
 };

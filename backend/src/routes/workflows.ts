@@ -4,13 +4,16 @@ import { ExecutionModel } from '../models/execution';
 import { VersionModel } from '../models/version';
 import { ExecutionEngine } from '../services/executionEngine';
 import { scheduler } from '../services/scheduler';
+import { getWorkflowDataShapes } from '../services/dataShapes';
 import { createLogger } from '../utils/logger';
 import {
   CreateWorkflowRequest,
   UpdateWorkflowRequest,
   ExecuteWorkflowRequest,
   ApiResponse,
-  Workflow
+  Workflow,
+  Scenario,
+  ScenarioOverride
 } from '../types/workflow';
 import { findTriggerStep } from '../utils/workflowHelpers';
 
@@ -177,6 +180,52 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Workflow not found' });
     }
 
+    const scenariosInput: unknown = req.body?.scenarios;
+    if (scenariosInput !== undefined) {
+      if (!Array.isArray(scenariosInput) || scenariosInput.length === 0) {
+        return res.status(400).json({ success: false, error: 'scenarios must be a non-empty array' });
+      }
+      if (scenariosInput.length > 10) {
+        return res.status(400).json({ success: false, error: 'At most 10 scenarios per request' });
+      }
+      const knownStepIds = new Set<string>();
+      for (const station of workflow.definition.stations || []) {
+        for (const step of station.steps) knownStepIds.add(step.id);
+      }
+      const rawScenarios = scenariosInput as Array<Record<string, unknown>>;
+      for (const scenario of rawScenarios) {
+        if (!scenario || typeof scenario !== 'object' || Array.isArray(scenario)) {
+          return res.status(400).json({ success: false, error: 'Each scenario must be an object' });
+        }
+        if (scenario.stepOverrides !== undefined && !Array.isArray(scenario.stepOverrides)) {
+          return res.status(400).json({ success: false, error: 'stepOverrides must be an array' });
+        }
+        if (scenario.inputData !== undefined
+          && (typeof scenario.inputData !== 'object' || scenario.inputData === null || Array.isArray(scenario.inputData))) {
+          return res.status(400).json({ success: false, error: 'inputData must be an object' });
+        }
+        const overrides = (scenario.stepOverrides as unknown[] | undefined) || [];
+        for (const o of overrides) {
+          const override = o as Record<string, unknown> | null | undefined;
+          if (!override || typeof override.stepId !== 'string' || !knownStepIds.has(override.stepId)) {
+            return res.status(400).json({ success: false, error: `Unknown step id in override: ${String(override?.stepId)}` });
+          }
+          const hasOutput = override.mockOutput !== undefined;
+          const hasError = override.mockError !== undefined;
+          if (hasOutput === hasError) {
+            return res.status(400).json({ success: false, error: 'Each override needs exactly one of mockOutput or mockError' });
+          }
+        }
+      }
+      const normalized: Scenario[] = rawScenarios.map((s, i) => ({
+        name: typeof s?.name === 'string' && s.name.trim() ? s.name.trim() : `Scenario ${i + 1}`,
+        inputData: s?.inputData as Record<string, unknown> | undefined,
+        stepOverrides: s?.stepOverrides as ScenarioOverride[] | undefined,
+      }));
+      const results = await ExecutionEngine.simulateScenarios(workflow, normalized);
+      return res.json({ success: true, data: { results } });
+    }
+
     const { inputData = {} }: ExecuteWorkflowRequest = req.body;
 
     const execution = await ExecutionEngine.execute(workflow, 'manual', inputData, true);
@@ -208,6 +257,23 @@ router.get('/:id/executions', (req: Request, res: Response) => {
   } catch (error: unknown) {
     log.error({ err: error }, 'Unexpected error');
     res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/workflows/:id/data-shapes
+ * Shape trees of each step's output from the latest finished run.
+ */
+router.get('/:id/data-shapes', (req: Request, res: Response) => {
+  try {
+    const workflow = WorkflowModel.getById(req.params.id);
+    if (!workflow) {
+      return res.status(404).json({ success: false, error: 'Workflow not found' });
+    }
+    res.json({ success: true, data: getWorkflowDataShapes(req.params.id) });
+  } catch (error: unknown) {
+    log.error({ err: error }, 'Unexpected error');
+    res.status(500).json({ success: false, error: 'Failed to compute data shapes' });
   }
 });
 
