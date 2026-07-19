@@ -3,10 +3,14 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import EditorPage from './EditorPage';
 
 const navigate = vi.fn();
+// Mutable so tests can simulate the ?replay= param clearing (exiting replay)
+// without remounting the component — EditorPage genuinely doesn't remount on
+// that transition (navigate() targets the same /editor/:id route).
+let searchParamsValue = new URLSearchParams('replay=exec-1');
 vi.mock('react-router-dom', () => ({
   useParams: () => ({ id: 'w1' }),
   useNavigate: () => navigate,
-  useSearchParams: () => [new URLSearchParams('replay=exec-1'), vi.fn()],
+  useSearchParams: () => [searchParamsValue, vi.fn()],
 }));
 
 // EditorPage calls these unconditionally on every render (see EditorPage.plan.test.tsx).
@@ -61,7 +65,10 @@ vi.mock('./stores/workflowStore', () => ({
 }));
 vi.mock('../../shared/hooks/useAiEnabled', () => ({ useAiEnabled: () => false }));
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  searchParamsValue = new URLSearchParams('replay=exec-1');
+});
 
 describe('EditorPage replay mode', () => {
   it('enters replay for the ?replay= execution', async () => {
@@ -97,5 +104,43 @@ describe('EditorPage replay mode', () => {
   it('shows the current action snapshot in the inspector', () => {
     render(<EditorPage />);
     expect(screen.getByText('10023')).toBeInTheDocument();
+  });
+
+  it('exiting replay restores the pre-replay view mode instead of leaving the user stuck on Canvas View', () => {
+    window.localStorage.setItem('editor.viewMode', 'plan');
+    const { rerender } = render(<EditorPage />);
+
+    // While replaying, canvas is forced — Plan View content is not shown.
+    expect(screen.queryByText('When it starts:')).not.toBeInTheDocument();
+
+    // Exit replay: the ?replay= param clears, but EditorPage does not remount
+    // (same navigate(`/editor/${id}`) route) — the fix must derive the effective
+    // view mode in render rather than relying on a one-way forcing effect.
+    searchParamsValue = new URLSearchParams('');
+    rerender(<EditorPage />);
+
+    expect(screen.getByText('When it starts:')).toBeInTheDocument();
+  });
+
+  it('Escape during replay does not wipe the preserved step-view drill-in', async () => {
+    window.localStorage.setItem('editor.viewMode', 'canvas');
+    searchParamsValue = new URLSearchParams('');
+    const { rerender } = render(<EditorPage />);
+
+    // Drill into step view via the stage node's Edit Actions button.
+    fireEvent.click(await screen.findByText('Edit Actions'));
+    expect(screen.getByRole('button', { name: /back to stages/i })).toBeInTheDocument();
+
+    // Enter replay (no remount), press Escape — the raw editorView still holds
+    // step-view, but the handler must consult the effective (forced) view and
+    // leave the preserved state alone.
+    searchParamsValue = new URLSearchParams('replay=exec-1');
+    rerender(<EditorPage />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    // Exit replay: the drill-in must still be there.
+    searchParamsValue = new URLSearchParams('');
+    rerender(<EditorPage />);
+    expect(screen.getByRole('button', { name: /back to stages/i })).toBeInTheDocument();
   });
 });

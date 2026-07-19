@@ -30,6 +30,9 @@ interface WorkflowState {
   currentExecution: Execution | null;
   executionLogs: ExecutionLog[];
   replayExecution: Execution | null;
+  /** Monotonically increasing id for the in-flight enterReplay request; used to
+   *  discard a stale response if a newer enterReplay call resolves first. */
+  replayRequestSeq: number;
   whatIfScenarios: ScenarioInput[];
   whatIfResults: ScenarioResult[] | null;
   isRunningScenarios: boolean;
@@ -85,6 +88,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   currentExecution: null,
   executionLogs: [],
   replayExecution: null,
+  replayRequestSeq: 0,
   whatIfScenarios: [],
   whatIfResults: null,
   isRunningScenarios: false,
@@ -436,22 +440,34 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   // Replay a past execution on the canvas (read-only)
   enterReplay: async (executionId: string) => {
-    set({ error: null });
+    // Record this request's sequence number so a slower, earlier enterReplay call
+    // can't clobber a newer one's result if it resolves later (EditorPage isn't
+    // remounted when ?replay= changes, so requests can race).
+    const requestSeq = get().replayRequestSeq + 1;
+    set({ error: null, replayRequestSeq: requestSeq });
     try {
       const execution = await executionApi.getById(executionId);
+      if (get().replayRequestSeq !== requestSeq) return; // superseded by a newer request
       set({ replayExecution: execution });
     } catch (error: unknown) {
+      if (get().replayRequestSeq !== requestSeq) return; // superseded by a newer request
       set({ error: error instanceof Error ? error.message : String(error), replayExecution: null });
     }
   },
 
-  exitReplay: () => set({ replayExecution: null }),
+  exitReplay: () => set((state) => ({ replayExecution: null, replayRequestSeq: state.replayRequestSeq + 1 })),
 
   setWhatIfScenarios: (scenarios) => set({ whatIfScenarios: scenarios }),
 
   runScenarios: async () => {
     const { currentWorkflow, whatIfScenarios } = get();
-    if (!currentWorkflow) throw new Error('No workflow selected');
+    if (!currentWorkflow) {
+      // Callers (e.g. WhatIfLab) invoke this un-awaited, so throwing here would
+      // surface as an unhandled promise rejection instead of the store's error
+      // state. Report through the same error field the catch below uses.
+      set({ error: 'No workflow selected' });
+      return;
+    }
     set({ isRunningScenarios: true, error: null });
     try {
       // Strip client-side ids so the wire payload stays exactly the API contract

@@ -5,15 +5,14 @@ import { VersionModel } from '../models/version';
 import { ExecutionEngine } from '../services/executionEngine';
 import { scheduler } from '../services/scheduler';
 import { getWorkflowDataShapes } from '../services/dataShapes';
+import { validateScenarios } from '../services/scenarioValidation';
 import { createLogger } from '../utils/logger';
 import {
   CreateWorkflowRequest,
   UpdateWorkflowRequest,
   ExecuteWorkflowRequest,
   ApiResponse,
-  Workflow,
-  Scenario,
-  ScenarioOverride
+  Workflow
 } from '../types/workflow';
 import { findTriggerStep } from '../utils/workflowHelpers';
 
@@ -182,47 +181,11 @@ router.post('/:id/simulate', async (req: Request, res: Response) => {
 
     const scenariosInput: unknown = req.body?.scenarios;
     if (scenariosInput !== undefined) {
-      if (!Array.isArray(scenariosInput) || scenariosInput.length === 0) {
-        return res.status(400).json({ success: false, error: 'scenarios must be a non-empty array' });
+      const validation = validateScenarios(workflow, scenariosInput);
+      if (!validation.ok) {
+        return res.status(400).json({ success: false, error: validation.error });
       }
-      if (scenariosInput.length > 10) {
-        return res.status(400).json({ success: false, error: 'At most 10 scenarios per request' });
-      }
-      const knownStepIds = new Set<string>();
-      for (const station of workflow.definition.stations || []) {
-        for (const step of station.steps) knownStepIds.add(step.id);
-      }
-      const rawScenarios = scenariosInput as Array<Record<string, unknown>>;
-      for (const scenario of rawScenarios) {
-        if (!scenario || typeof scenario !== 'object' || Array.isArray(scenario)) {
-          return res.status(400).json({ success: false, error: 'Each scenario must be an object' });
-        }
-        if (scenario.stepOverrides !== undefined && !Array.isArray(scenario.stepOverrides)) {
-          return res.status(400).json({ success: false, error: 'stepOverrides must be an array' });
-        }
-        if (scenario.inputData !== undefined
-          && (typeof scenario.inputData !== 'object' || scenario.inputData === null || Array.isArray(scenario.inputData))) {
-          return res.status(400).json({ success: false, error: 'inputData must be an object' });
-        }
-        const overrides = (scenario.stepOverrides as unknown[] | undefined) || [];
-        for (const o of overrides) {
-          const override = o as Record<string, unknown> | null | undefined;
-          if (!override || typeof override.stepId !== 'string' || !knownStepIds.has(override.stepId)) {
-            return res.status(400).json({ success: false, error: `Unknown step id in override: ${String(override?.stepId)}` });
-          }
-          const hasOutput = override.mockOutput !== undefined;
-          const hasError = override.mockError !== undefined;
-          if (hasOutput === hasError) {
-            return res.status(400).json({ success: false, error: 'Each override needs exactly one of mockOutput or mockError' });
-          }
-        }
-      }
-      const normalized: Scenario[] = rawScenarios.map((s, i) => ({
-        name: typeof s?.name === 'string' && s.name.trim() ? s.name.trim() : `Scenario ${i + 1}`,
-        inputData: s?.inputData as Record<string, unknown> | undefined,
-        stepOverrides: s?.stepOverrides as ScenarioOverride[] | undefined,
-      }));
-      const results = await ExecutionEngine.simulateScenarios(workflow, normalized);
+      const results = await ExecutionEngine.simulateScenarios(workflow, validation.scenarios);
       return res.json({ success: true, data: { results } });
     }
 

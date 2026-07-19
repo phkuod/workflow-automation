@@ -49,4 +49,17 @@ describe('workflowStore What-If', () => {
     expect(useWorkflowStore.getState().error).toBe('boom');
     expect(useWorkflowStore.getState().isRunningScenarios).toBe(false);
   });
+
+  it('runScenarios with no currentWorkflow sets the error state instead of throwing, and never calls the API', async () => {
+    useWorkflowStore.setState({ currentWorkflow: null });
+    useWorkflowStore.getState().setWhatIfScenarios([{ name: 'a' }]);
+
+    // Callers (WhatIfLab) invoke runScenarios() un-awaited, so a throw here would
+    // become an unhandled promise rejection instead of a visible store error.
+    await expect(useWorkflowStore.getState().runScenarios()).resolves.toBeUndefined();
+
+    expect(useWorkflowStore.getState().error).toBe('No workflow selected');
+    expect(useWorkflowStore.getState().isRunningScenarios).toBe(false);
+    expect(workflowApi.simulateScenarios).not.toHaveBeenCalled();
+  });
 });

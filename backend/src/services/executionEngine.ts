@@ -218,7 +218,9 @@ export class ExecutionEngine {
         }
         const overrides = new Map<string, StepOverride>();
         for (const o of scenario.stepOverrides || []) {
-          overrides.set(o.stepId, o.mockError !== undefined ? { mockError: o.mockError } : { mockOutput: o.mockOutput || {} });
+          // Use ?? (not ||) so falsy-but-valid mock outputs (0, false, '', null) survive —
+          // only an actually-absent mockOutput should fall back to {}.
+          overrides.set(o.stepId, o.mockError !== undefined ? { mockError: o.mockError } : { mockOutput: o.mockOutput ?? {} });
         }
         const context: ExecutionContext = {
           executionId: `scenario-${uuidv4()}`,
@@ -261,21 +263,32 @@ export class ExecutionEngine {
       let items: unknown[] = [];
 
       try {
-        if (!sourceVar.includes('${')) {
-          // Bare-path form (what the iterator picker inserts, e.g. steps['X'].output.rows) —
-          // resolve the whole string directly as a path instead of via ${}-interpolation.
-          const resolved = ScriptRunner.getValueByPath(interpolationContext, sourceVar);
-          if (!Array.isArray(resolved)) {
-            throw new Error('Resolved source is not an array');
-          }
-          items = resolved;
-        } else {
+        if (sourceVar.includes('${') || sourceVar.includes('{{')) {
+          // Wrapped form (${...} or the {{...}} handlebars form the UI placeholder still
+          // suggests) — interpolate to a string, then parse it as JSON.
           const resolvedSource = ScriptRunner.interpolateVariables(sourceVar, interpolationContext);
           const parsed = JSON.parse(resolvedSource);
           if (!Array.isArray(parsed)) {
             throw new Error('Resolved source is not an array');
           }
           items = parsed;
+        } else {
+          // Bare-path form (what the iterator picker inserts, e.g. steps['X'].output.rows) —
+          // resolve the whole string directly as a path instead of via ${}-interpolation.
+          let resolved = ScriptRunner.getValueByPath(interpolationContext, sourceVar);
+          if (resolved === undefined) {
+            // Not a resolvable path — it may be a literal JSON array typed directly
+            // (e.g. "[1,2,3]"), so fall back to parsing the raw string as JSON.
+            try {
+              resolved = JSON.parse(sourceVar);
+            } catch {
+              // Not JSON either; leave undefined so the Array.isArray check below fails loudly.
+            }
+          }
+          if (!Array.isArray(resolved)) {
+            throw new Error('Resolved source is not an array');
+          }
+          items = resolved;
         }
       } catch (e) {
         this.log(context, 'error', `Iteration failed: Source variable ${sourceVar} is not a valid array`, undefined, station.id);

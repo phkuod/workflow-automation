@@ -75,4 +75,30 @@ describe('useReplay', () => {
     act(() => result.current.toggle());
     expect(result.current.isPlaying).toBe(false);
   });
+
+  it('resets index and stops playback when resetKey changes, even with the same total', () => {
+    const { result, rerender } = renderHook(
+      ({ key }: { key: string }) => useReplay(3, 1000, key),
+      { initialProps: { key: 'exec-1' } },
+    );
+    act(() => result.current.play());
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.index).toBe(1);
+    expect(result.current.isPlaying).toBe(true);
+
+    // Same total (3), but switched to a different execution's replay — must reset.
+    rerender({ key: 'exec-2' });
+    expect(result.current.index).toBe(0);
+    expect(result.current.isPlaying).toBe(false);
+  });
+
+  it('does not reset when resetKey is unchanged across rerenders', () => {
+    const { result, rerender } = renderHook(
+      ({ key }: { key: string }) => useReplay(3, 1000, key),
+      { initialProps: { key: 'exec-1' } },
+    );
+    act(() => result.current.seek(2));
+    rerender({ key: 'exec-1' });
+    expect(result.current.index).toBe(2);
+  });
 });

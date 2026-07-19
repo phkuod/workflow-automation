@@ -81,4 +81,34 @@ describe('buildPartialExecution', () => {
     buildPartialExecution(base, seq, 0);
     expect(base.result!.stations[1].status).toBe('failed'); // original untouched
   });
+
+  it('resolves each duplicate StepResult (iterator station) to its own occurrence, not the first match', () => {
+    // Iterator stations push one StepResult per loop iteration, so stationId+stepId
+    // repeats across the array. Positions must be assigned by occurrence order.
+    const base: Execution = {
+      id: 'exec-2', workflowId: 'w1', workflowName: 'W', status: 'completed',
+      triggeredBy: 'manual', startTime: '2026-07-14T06:00:00.000Z', successRate: 100,
+      result: {
+        stations: [
+          {
+            stationId: 'loop-station', stationName: 'Loop', status: 'completed', steps: [
+              { stepId: 'loop-step', stepName: 'Process item', stepType: 'script-js', status: 'completed', output: { i: 1 } },
+              { stepId: 'loop-step', stepName: 'Process item', stepType: 'script-js', status: 'completed', output: { i: 2 } },
+              { stepId: 'loop-step', stepName: 'Process item', stepType: 'script-js', status: 'completed', output: { i: 3 } },
+            ],
+          },
+        ],
+      },
+    };
+    const seq = buildReplaySequence(base.result!);
+    expect(seq).toHaveLength(3); // three distinct sequence positions for the same stepId
+
+    // Scrub to just after the 1st occurrence (index 0), before the 2nd (index 1).
+    const partial = buildPartialExecution(base, seq, 0);
+    const [occ1, occ2, occ3] = partial.result!.stations[0].steps;
+    expect(occ1.status).toBe('completed'); // reached — 1st occurrence
+    expect(occ1.output).toEqual({ i: 1 });
+    expect(occ2.status).toBe('pending');   // not yet reached — 2nd occurrence
+    expect(occ3.status).toBe('pending');   // not yet reached — 3rd occurrence
+  });
 });

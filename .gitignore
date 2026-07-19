@@ -43,10 +43,10 @@ lerna-debug.log*
 # Environment files
 # ============================================================
 .env
-.env.local
-.env.*.local
-# Keep .env.example files (they are un-ignored by default since
-# they don't match the patterns above)
+.env.*
+!.env.example
+# .env.* covers .env.development / .env.production / .env.local etc.;
+# .env.example templates are re-included above
 
 # ============================================================
 # Test & coverage

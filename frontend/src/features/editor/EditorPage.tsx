@@ -97,13 +97,14 @@ function EditorPage() {
     }
   }, []);
 
-  // Force canvas + stage-view while replaying
-  useEffect(() => {
-    if (isReplay) {
-      setViewMode('canvas');
-      setEditorView({ type: 'stage-view' });
-    }
-  }, [isReplay]);
+  // Replay forces canvas + stage-view without touching the underlying state:
+  // exiting replay does not remount EditorPage (navigate to the same /editor/:id
+  // route), so mutating viewMode/editorView directly would strand a Plan View
+  // user in Canvas View (and step-view users mid-drill-in) on exit. Derive the
+  // effective values instead and use these — not the raw state — for anything
+  // that drives rendering/behavior.
+  const effectiveViewMode: 'plan' | 'canvas' = isReplay ? 'canvas' : viewMode;
+  const effectiveEditorView: EditorView = isReplay ? { type: 'stage-view' } : editorView;
 
   const [showLibrary, setShowLibrary] = useState(true);
   const [showSimulation, setShowSimulation] = useState(false);
@@ -173,9 +174,9 @@ function EditorPage() {
 
   // Get current stage for Step View
   const currentStage = useMemo(() => {
-    if (editorView.type !== 'step-view') return null;
-    return currentWorkflow?.definition.stations.find(s => s.id === editorView.stageId) || null;
-  }, [editorView, currentWorkflow]);
+    if (effectiveEditorView.type !== 'step-view') return null;
+    return currentWorkflow?.definition.stations.find(s => s.id === effectiveEditorView.stageId) || null;
+  }, [effectiveEditorView, currentWorkflow]);
 
   // Get selected step
   const selectedStep = useMemo(() => {
@@ -197,7 +198,7 @@ function EditorPage() {
       {
         id: 'workflow',
         label: currentWorkflow?.name || 'Automation',
-        onClick: editorView.type === 'step-view' 
+        onClick: effectiveEditorView.type === 'step-view'
           ? () => {
               setEditorView({ type: 'stage-view' });
               selectStep(null);
@@ -206,7 +207,7 @@ function EditorPage() {
       },
     ];
 
-    if (editorView.type === 'step-view' && currentStage) {
+    if (effectiveEditorView.type === 'step-view' && currentStage) {
       items.push({
         id: 'stage',
         label: currentStage.name,
@@ -215,7 +216,7 @@ function EditorPage() {
     }
 
     return items;
-  }, [currentWorkflow, editorView, currentStage]);
+  }, [currentWorkflow, effectiveEditorView, currentStage]);
 
   // Handlers
   const handleStageDoubleClick = useCallback((stageId: string) => {
@@ -322,7 +323,7 @@ function EditorPage() {
     () => (replayExecution?.result ? buildReplaySequence(replayExecution.result, currentWorkflow?.definition) : []),
     [replayExecution, currentWorkflow],
   );
-  const replay = useReplay(replaySequence.length);
+  const replay = useReplay(replaySequence.length, 1000, replayId ?? undefined);
   const currentReplayStep = replaySequence[replay.index] ?? null;
   const replayPartialExecution = useMemo(
     () => (replayExecution && replaySequence.length ? buildPartialExecution(replayExecution, replaySequence, replay.index) : null),
@@ -344,7 +345,10 @@ function EditorPage() {
           selectStep(null);
         } else if (selectedStationId) {
           selectStation(null);
-        } else if (editorView.type === 'step-view') {
+        } else if (effectiveEditorView.type === 'step-view') {
+          // Raw editorView must not be consulted here: during replay it may
+          // still hold the user's preserved step-view drill-in, and calling
+          // handleBackToStageView() would wipe it.
           handleBackToStageView();
         }
       }
@@ -352,7 +356,7 @@ function EditorPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedStepId, selectedStationId, editorView, selectStep, selectStation, handleBackToStageView, handleSave, isReplay]);
+  }, [selectedStepId, selectedStationId, effectiveEditorView, selectStep, selectStation, handleBackToStageView, handleSave, isReplay]);
 
   // Loading state
   if (isLoading && !currentWorkflow) {
@@ -572,7 +576,7 @@ function EditorPage() {
         {/* Canvas Area */}
         <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ flex: 1, minHeight: 0 }}>
-            {currentWorkflow && viewMode === 'plan' ? (
+            {currentWorkflow && effectiveViewMode === 'plan' ? (
               <PlanView
                 workflow={currentWorkflow}
                 onEditStep={(stepId) => selectStep(stepId)}
@@ -581,7 +585,7 @@ function EditorPage() {
               />
             ) : (
               <>
-                {currentWorkflow && editorView.type === 'stage-view' && (
+                {currentWorkflow && effectiveEditorView.type === 'stage-view' && (
                   <StageCanvas
                     workflow={currentWorkflow}
                     execution={isReplay ? replayPartialExecution : currentExecution}
@@ -593,7 +597,7 @@ function EditorPage() {
                   />
                 )}
 
-                {currentWorkflow && editorView.type === 'step-view' && currentStage && (
+                {currentWorkflow && effectiveEditorView.type === 'step-view' && currentStage && (
                   <StepCanvas
                     station={currentStage}
                     execution={isReplay ? replayPartialExecution : currentExecution}
@@ -735,7 +739,7 @@ function EditorPage() {
       )}
 
       {/* First-visit coach marks (Plan View only) */}
-      {showCoachMarks && currentWorkflow && viewMode === 'plan' && (
+      {showCoachMarks && currentWorkflow && effectiveViewMode === 'plan' && (
         <CoachMarks onDone={dismissCoachMarks} />
       )}
     </div>
