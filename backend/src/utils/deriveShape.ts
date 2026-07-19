@@ -18,6 +18,45 @@ export function deriveShape(value: unknown, name = ''): ShapeNode {
   return derive(value, name, 0, false);
 }
 
+/**
+ * Union two shape trees derived from separate values of the same step (e.g. one
+ * StepResult per iterator loop item, all sharing a stepId). Object fields are merged
+ * by name, and array nodes merge their element shape (children share the '[0]' name,
+ * so the same by-name union applies); on a type conflict for the same field, the
+ * first-seen (`a`) entry's type wins rather than attempting a lossy cross-type merge. Both inputs are assumed to
+ * already respect deriveShape's MAX_DEPTH/MAX_FIELDS_PER_LEVEL caps, so recursion
+ * naturally stops wherever the source trees stop growing children; the merged
+ * children list is re-capped at MAX_FIELDS_PER_LEVEL in case the union of two
+ * already-capped field sets exceeds it.
+ */
+export function mergeShapes(a: ShapeNode, b: ShapeNode): ShapeNode {
+  const mergeable = a.type === 'object' || a.type === 'array';
+  if (a.type !== b.type || !mergeable || !a.children || !b.children) {
+    return a;
+  }
+
+  const byName = new Map<string, ShapeNode>();
+  for (const child of a.children) byName.set(child.name, child);
+  for (const child of b.children) {
+    const existing = byName.get(child.name);
+    byName.set(child.name, existing ? mergeShapes(existing, child) : child);
+  }
+
+  let children = Array.from(byName.values());
+  let omittedCount = (a.omittedCount || 0) + (b.omittedCount || 0);
+  if (children.length > MAX_FIELDS_PER_LEVEL) {
+    omittedCount += children.length - MAX_FIELDS_PER_LEVEL;
+    children = children.slice(0, MAX_FIELDS_PER_LEVEL);
+  }
+
+  const node: ShapeNode = { ...a, children };
+  if (omittedCount > 0 || a.truncated || b.truncated) {
+    node.truncated = true;
+    node.omittedCount = omittedCount;
+  }
+  return node;
+}
+
 /** Mask values of sensitive keys (recursive) — used before sending configs to the AI provider. */
 export function redactRecord(record: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};

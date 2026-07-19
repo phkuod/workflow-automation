@@ -65,6 +65,15 @@ describe('ExecutionEngine.simulateScenarios', () => {
     expect(LogModel.createMany).not.toHaveBeenCalled();
   });
 
+  it('applies a falsy-but-valid mockOutput (0) without coercing it to {}', async () => {
+    const results = await ExecutionEngine.simulateScenarios(workflow(), [
+      { name: 'zero', stepOverrides: [{ stepId: 's1', mockOutput: 0 as unknown as Record<string, unknown> }] },
+    ]);
+    const fetchStep = results[0].result.stations[0].steps.find((s) => s.stepId === 's1')!;
+    expect(fetchStep.status).toBe('completed');
+    expect(fetchStep.output).toBe(0);
+  });
+
   it('a scenario missing a required input yields an error result, not a thrown batch', async () => {
     const wf = workflow();
     wf.definition.inputParameters = [{ name: 'token', type: 'string', required: true }];

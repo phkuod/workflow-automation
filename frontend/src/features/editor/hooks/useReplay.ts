@@ -12,8 +12,14 @@ export interface UseReplay {
   seek: (i: number) => void;
 }
 
-/** Playback state machine over a fixed-length step sequence. */
-export function useReplay(total: number, tickMs = 1000): UseReplay {
+/**
+ * Playback state machine over a fixed-length step sequence.
+ * @param resetKey Identity of the sequence being played (e.g. the replay execution
+ *   id). Switching to a different execution that happens to have the same `total`
+ *   step count would otherwise leave a stale index/playback state behind, since the
+ *   reset effect only keys off `total`.
+ */
+export function useReplay(total: number, tickMs = 1000, resetKey?: string): UseReplay {
   const [index, setIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -42,8 +48,9 @@ export function useReplay(total: number, tickMs = 1000): UseReplay {
     return () => clearInterval(timer);
   }, [isPlaying, total, tickMs]);
 
-  // Reset when the sequence length changes (a new execution was loaded).
-  useEffect(() => { setIndex(0); setIsPlaying(false); }, [total]);
+  // Reset when the sequence length changes, or when resetKey identifies a different
+  // execution (even one with the same step count).
+  useEffect(() => { setIndex(0); setIsPlaying(false); }, [total, resetKey]);
 
   return { index, isPlaying, total, play, pause, toggle, next, prev, seek };
 }

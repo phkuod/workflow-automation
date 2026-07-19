@@ -64,6 +64,49 @@ describe('getWorkflowDataShapes', () => {
     });
     expect(getWorkflowDataShapes('w1')).toEqual({ source: { kind: 'none' }, steps: {} });
   });
+
+  it('merges shapes across repeated stepIds instead of last-write-wins (iterator stations reuse one stepId per item)', () => {
+    const iteratorExecution: Execution = {
+      id: 'exec-2', workflowId: 'w1', workflowName: 'W', status: 'completed',
+      triggeredBy: 'manual', startTime: '2026-07-13T06:00:00.000Z', successRate: 100,
+      result: {
+        stations: [{
+          stationId: 'st1', stationName: 'Iterate', status: 'completed',
+          steps: [
+            { stepId: 'iter-step', stepName: 'Iter', stepType: 'script-js', status: 'completed', output: { a: 1 } },
+            { stepId: 'iter-step', stepName: 'Iter', stepType: 'script-js', status: 'completed', output: { b: 'x' } },
+          ],
+        }],
+      },
+    };
+    vi.mocked(ExecutionModel.getLatestFinishedByWorkflowId).mockReturnValue(iteratorExecution);
+    const shapes = getWorkflowDataShapes('w1');
+    expect(shapes.steps['iter-step'].shape!.type).toBe('object');
+    expect(shapes.steps['iter-step'].shape!.children!.map(c => c.name)).toEqual(['a', 'b']);
+  });
+
+  it('merges element shapes across repeated stepIds when the step output is an array', () => {
+    const iteratorExecution: Execution = {
+      id: 'exec-3', workflowId: 'w1', workflowName: 'W', status: 'completed',
+      triggeredBy: 'manual', startTime: '2026-07-13T06:00:00.000Z', successRate: 100,
+      result: {
+        stations: [{
+          stationId: 'st1', stationName: 'Iterate', status: 'completed',
+          steps: [
+            { stepId: 'iter-step', stepName: 'Iter', stepType: 'script-js', status: 'completed', output: [{ a: 1 }] },
+            { stepId: 'iter-step', stepName: 'Iter', stepType: 'script-js', status: 'completed', output: [{ b: 'x' }] },
+          ],
+        }],
+      },
+    };
+    vi.mocked(ExecutionModel.getLatestFinishedByWorkflowId).mockReturnValue(iteratorExecution);
+    const shapes = getWorkflowDataShapes('w1');
+    const shape = shapes.steps['iter-step'].shape!;
+    expect(shape.type).toBe('array');
+    const element = shape.children![0];
+    expect(element.name).toBe('[0]');
+    expect(element.children!.map(c => c.name)).toEqual(['a', 'b']);
+  });
 });
 
 describe('GET /api/workflows/:id/data-shapes', () => {

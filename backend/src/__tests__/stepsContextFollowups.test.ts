@@ -142,5 +142,25 @@ describe('steps context follow-ups', () => {
       const iterStation = execution.result!.stations[1];
       expect(iterStation.status).toBe('failed');
     });
+
+    it('iterates over a {{...}}-wrapped sourceVariable (handlebars form, still the UI placeholder)', async () => {
+      const workflow = buildWorkflow("{{steps['Fetch'].output.rows}}");
+      const execution = await ExecutionEngine.execute(workflow);
+
+      expect(execution.status).toBe('completed');
+      const iterStation = execution.result!.stations[1];
+      expect(iterStation.status).toBe('completed');
+      expect(iterStation.steps).toHaveLength(3);
+    });
+
+    it('iterates over a literal JSON array typed directly as the sourceVariable', async () => {
+      const workflow = buildWorkflow('[1,2,3]');
+      const execution = await ExecutionEngine.execute(workflow);
+
+      expect(execution.status).toBe('completed');
+      const iterStation = execution.result!.stations[1];
+      expect(iterStation.status).toBe('completed');
+      expect(iterStation.steps).toHaveLength(3);
+    });
   });
 });
